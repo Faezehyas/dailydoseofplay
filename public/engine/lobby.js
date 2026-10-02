@@ -253,8 +253,9 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       if (attempt !== state.attempt) return;
       const hostPeer = joined.peers.find((p) => p.id === joined.host);
       setStatus(`Connecting to ${hostPeer ? hostPeer.name : "your friend"}…`);
+      // The host frees the room once its own channel is up, which can be just before ours.
       rooms.on("host-left", () => {
-        if (!state.session) showFailure("Your friend closed the room. Ask them for a new invite link.");
+        if (!state.session && !state.peer?.open) showFailure("Your friend closed the room. Ask them for a new invite link.");
       });
       linkPeer(rooms, joined.host, false, 1, name);
     } catch (err) {

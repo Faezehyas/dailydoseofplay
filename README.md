@@ -4,7 +4,11 @@ Free, no-login classic games for two, in the browser. Send a link to a friend
 or play the robot. The gameplay and flow follow papergames.io; names, art,
 text and code are original.
 
-**Games:** Sea Battle (Battleship rules, with gifts and special weapons).
+**Games:**
+
+- Sea Battle: Battleship rules, with gifts and special weapons.
+- Tic Tac Toe: 3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks.
+
 More are coming, one at a time; see [GAMES.md](GAMES.md).
 
 - **Live:** https://dailydoseofplay.wasmer.app (after the one-time setup below)
@@ -22,7 +26,8 @@ npm start                 # http://localhost:8080  (PORT=3000 npm start to chang
 
 - Home: http://localhost:8080/
 - Sea Battle: http://localhost:8080/sea-battle/
-- Shortcuts: `/sea-battle/?robot=1` starts a robot game; `/sea-battle/?room=CODE` joins a room.
+- Tic Tac Toe: http://localhost:8080/tic-tac-toe/
+- Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?room=CODE` joins a room.
 - Health: http://localhost:8080/healthz
 
 To play a friend match on one machine, open the game in two windows (one
@@ -34,7 +39,7 @@ the other. Two devices on the same Wi-Fi work too: open
 
 ```bash
 npm test                  # unit (rules, robot, fair play, protocol) + server/signaling integration
-npm run test:browser      # headless Chromium: full friend match, robot game, failure screen
+npm run test:browser      # headless Chromium: friend matches with rematch, robot games, failure screen
 ```
 
 The browser test needs Playwright (`npm i -g playwright && npx playwright
@@ -50,6 +55,7 @@ public/
   games.json       game registry
   engine/          shared browser engine: lobby, signaling client, WebRTC, sessions, fair play, UI shell
   sea-battle/      Sea Battle: rules, protocol, robot, view, tests
+  tic-tac-toe/     Tic Tac Toe: rules, robot, view, tests (TurnMatch protocol)
 test/              integration and browser tests
 app.yaml           Wasmer Edge app config (name dailydoseofplay, owner faezeh_yass)
 ```

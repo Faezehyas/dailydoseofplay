@@ -11,7 +11,7 @@
     {
       "slug": "tic-tac-toe",
       "name": "Tic Tac Toe",
-      "status": "soon",
+      "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Three in a row wins. The classic five-minute duel."

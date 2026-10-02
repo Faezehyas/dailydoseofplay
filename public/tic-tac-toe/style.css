@@ -1,0 +1,444 @@
+/* Tic Tac Toe view. Uses the shared tokens from /engine/theme.css. */
+.tic-tac-toe {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.ttt-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ttt-top > .btn {
+  flex: none;
+}
+
+/* Each name keeps its full width when it fits; long names share what's left. */
+.ttt-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.ttt-players .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.ttt-players .who.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.ttt-players .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ttt-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.pill-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.pill-mark .mark {
+  width: 20px;
+  height: 20px;
+  stroke-width: 14;
+}
+
+/* ---------- score ---------- */
+.ttt-score {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.ttt-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.ttt-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ttt-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.ttt-score .mine dd {
+  color: var(--accent);
+}
+
+.ttt-score .theirs dd {
+  color: var(--accent-2);
+}
+
+/* ---------- status ---------- */
+.ttt-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.ttt-status.mine {
+  color: var(--accent);
+}
+
+.ttt-config,
+.ttt-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- clocks ---------- */
+.ttt-clocks {
+  display: grid;
+  grid-template-columns: 4.2em minmax(0, 1fr) 4.2em;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.ttt-clocks .clock {
+  padding: 2px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ttt-clocks .clock.theirs {
+  grid-column: 3;
+}
+
+.ttt-clocks .clock.active {
+  color: var(--text);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2) inset;
+}
+
+.ttt-clocks .clock.mine.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.ttt-clocks .clock.low {
+  color: var(--danger);
+}
+
+.ttt-clocks .move {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ttt-movebar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ttt-movebar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  transition: width 0.2s linear;
+}
+
+.ttt-movebar.mine > span {
+  background: var(--accent);
+}
+
+.ttt-movebar.low > span {
+  background: var(--danger);
+}
+
+.move-left {
+  flex: none;
+  min-width: 2.6em;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- settings (lobby) ---------- */
+.ttt-settings {
+  text-align: left;
+}
+
+.ttt-settings h2 {
+  font-size: 1.1rem;
+}
+
+.ttt-seg {
+  border: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  min-width: 0;
+}
+
+.ttt-seg legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.seg-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seg-opt {
+  position: relative;
+}
+
+.seg-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.seg-opt span {
+  display: inline-grid;
+  align-content: center;
+  min-height: 40px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.seg-opt small {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.seg-opt input:checked + span {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+.seg-opt input:checked + span small {
+  color: inherit;
+}
+
+.seg-opt input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.ttt-settings .hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- board ---------- */
+.ttt-board-wrap {
+  display: grid;
+  justify-items: center;
+}
+
+.ttt-board {
+  --n: 3;
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--n), minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 1;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: var(--border);
+}
+
+.ttt-board.big {
+  gap: 5px;
+  padding: 6px;
+}
+
+.ttt-board.big .ttt-cell {
+  border-radius: 7px;
+}
+
+.ttt-cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: default;
+  transition: background 0.15s ease;
+}
+
+.ttt-board.armed .ttt-cell[data-v=""] {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .ttt-board.armed .ttt-cell[data-v=""]:hover {
+    background: var(--surface-2);
+  }
+}
+
+.ttt-cell.last {
+  background: var(--surface-2);
+}
+
+.ttt-cell.win {
+  background: var(--accent);
+}
+
+.ttt-cell.win[data-v="O"] {
+  background: var(--accent-2);
+}
+
+.ttt-cell.win .mark {
+  stroke: var(--accent-ink);
+}
+
+.ttt-board.done .ttt-cell:not(.win) .mark {
+  opacity: 0.45;
+}
+
+.mark {
+  width: 78%;
+  height: 78%;
+  fill: none;
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+
+.mark.x {
+  stroke: var(--accent);
+}
+
+.mark.o {
+  stroke: var(--accent-2);
+}
+
+.ttt-cell .mark path,
+.ttt-cell .mark circle {
+  stroke-dasharray: 180;
+  stroke-dashoffset: 0;
+  animation: ttt-draw 0.28s ease-out both;
+}
+
+.ttt-cell .mark path:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+@keyframes ttt-draw {
+  from {
+    stroke-dashoffset: 180;
+  }
+}
+
+/* ---------- game over ---------- */
+.ttt-over {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.ttt-over h2 {
+  font-size: 1.6rem;
+}
+
+.ttt-over h2.win {
+  color: var(--accent);
+}
+
+.ttt-over .detail {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.ttt-over .detail.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.ttt-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}

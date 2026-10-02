@@ -68,7 +68,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
 | `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
 | `signaling.js` | `RoomClient`: create, join, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
-| `peer.js` | `PeerChannel`: one ordered, reliable DataChannel; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
+| `peer.js` | `PeerChannel`: one ordered, reliable DataChannel, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory channel with the same interface as `PeerChannel` (used for the robot and the tests) |
 | `session.js` | `Session`: names exchange (`$hello` with a protocol version), buffering of game messages, rematch votes (`$rematch`), goodbye (`$bye`). No DOM. |
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, and holds messages for a rematch that hasn't started yet |
@@ -85,12 +85,20 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 3. The host starts the WebRTC offer, the guest answers, and ICE goes through `signal`.
 4. The DataChannel opens and both sides send `$hello` → `Session`.
 5. The lobby closes the signaling socket. This frees the room and keeps instance load near zero.
+   The host can get there first, so a guest whose channel is already open ignores `host-left`.
 6. The engine calls `onSession(session, root)` and the game takes over.
 
 In robot mode the engine builds a `localPair()`. It runs the same `$hello`
 on both ends and hands the second `Session` to the game's `createRobot()`.
 **The robot is just another peer**, so robot games use exactly the same
 protocol and rules code as friend games.
+
+**Why a pre-negotiated channel.** With the default in-band handshake, the
+guest's channel opens when the host's open request arrives, and Chrome
+sometimes drops a message the guest sends at that moment. The guest's `$hello`
+was lost about once in 15 local connections, and the host then timed out.
+Both peers now create the same channel (`id: 0`) before the offer, so neither
+side's first message can arrive before the other side has the channel.
 
 Engine messages start with `$`. Everything else belongs to the game. The
 game receives messages through `session.onMessage()`, which buffers until a
@@ -199,6 +207,37 @@ It averages about 40 shots to sink a fleet, against about 89 for random fire
 (300 fleets, plain shots only; `robot.test.js` checks it stays under 55). It plays through `startRobot(session)`, the same
 `SeaBattleMatch` that a human uses, and waits 1.4–2.1 s before each shot so
 its moves are easy to follow.
+
+## Tic Tac Toe in depth
+
+Tic Tac Toe has no hidden information, so it runs on `TurnMatch`. What it adds
+is room settings and clocks, both of which later games (Connect 4, Gomoku)
+can copy.
+
+**Room settings.** Before a game, the player picks the board (3×3 with three
+in a row, or 5×5 with four), a limit per move, a total per player, and who
+moves first. In a friend game the room creator's settings apply: the host
+sends `setup {config}` once, the guest's view waits for it, and both build the
+same rules with `makeRules(config)`. The guest normalizes the config, so an
+unknown value falls back to the default. A fixed first player replaces the
+coin toss inside `newState`; the toss still runs, so the protocol is
+unchanged. `setup` has no match number, so the view handles it before handing
+other messages to `matchRouter()`.
+
+**Clocks without a referee.** Each browser times only its own player:
+
+- A move carries `ms`, the time its player spent, measured from when that
+  browser applied the previous move. Both sides deduct the same `ms` from the
+  same clock, so the states stay identical.
+- The rules refuse a move whose `ms` is over the move limit or the clock left.
+- When a player's own time runs out, their browser sends `{ timeout: true }`,
+  and that player loses the round.
+- If the other browser sees the opponent 5 s past their limit with no forfeit
+  (closed laptop, frozen tab), it stops the match.
+
+A modified client could under-report its `ms`. The 5 s check bounds how long it
+can stall, but not small savings on each move. That is the same trade-off as
+everywhere else here: fine between friends, not a referee.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
