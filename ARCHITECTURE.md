@@ -236,6 +236,30 @@ A modified client could under-report its `ms`. The 5 s check bounds how long it
 can stall, but not small savings on each move. That is the same trade-off as
 everywhere else here: fine between friends, not a referee.
 
+## Gomoku in depth
+
+Gomoku is Tic Tac Toe's settings and clocks on a 15×15 board, with no engine
+changes. `public/gomoku/` copies the Tic Tac Toe view patterns (settings panel,
+`setup {config}`, clocks, the 5 s claim) rather than sharing them, so each game
+can change on its own.
+
+- **Rules.** Five or more in a row wins (an overline counts, as on papergames),
+  any empty point may be played from the first move, and a full board is a draw.
+  Only the lines through the new stone are checked.
+- **Robot.** For each empty point near the stones, it looks up the shape one
+  more stone makes along each of the four lines: five, open or closed four,
+  three or two. A line is the 4 points on each side, each empty, own or blocked,
+  so there are 3^8 patterns. They are classified once at load, and every lookup
+  after that is 8 reads. A point's score adds its own shapes to the opponent's
+  shapes it would block, with bonuses for double threats. The robot takes a win,
+  blocks a five, then usually plays the best score. About one move in eight is
+  a random point next to the stones, so it can be beaten. A move takes well under
+  1 ms.
+- **Board.** One button per point over an SVG grid. The board is a single tab
+  stop: arrow keys move between points (roving `tabindex`), and Enter or Space
+  plays. At 360 px a point is about 21 px wide, so the board fills the width with
+  no horizontal scroll.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |
