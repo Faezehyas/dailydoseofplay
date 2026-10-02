@@ -9,12 +9,17 @@
   <g stroke="#ffffff" stroke-opacity=".28" stroke-width="2">
     <path d="M0 40h320M0 80h320M0 120h320M0 160h320M40 0v200M80 0v200M120 0v200M160 0v200M200 0v200M240 0v200M280 0v200"/>
   </g>
-  <rect x="44" y="84" width="152" height="32" rx="16" fill="#3d4a63"/>
-  <rect x="62" y="94" width="116" height="12" rx="6" fill="#6c7d9c"/>
-  <circle cx="85" cy="100" r="4" fill="#cfe0f5"/>
-  <circle cx="120" cy="100" r="4" fill="#cfe0f5"/>
-  <circle cx="155" cy="100" r="4" fill="#cfe0f5"/>
-  <g transform="translate(130 58)">
+  <g transform="translate(22 72) scale(0.56)">
+    <path d="M8 26 Q8 13 21 13 H348 C378 13 394 33 398 50 C394 67 378 87 348 87 H21 Q8 87 8 74 Z" fill="#56657f" stroke="#263042" stroke-width="3"/>
+    <path d="M20 24 H344 C366 24 380 37 386 50 C380 63 366 76 344 76 H20 Z" fill="#b9c3d2"/>
+    <path d="M24 50 H360" stroke="#9aa6b8" stroke-width="2" stroke-dasharray="10 8"/>
+    <rect x="310" y="41.5" width="30" height="5" rx="2.5" fill="#36425a"/><rect x="310" y="53.5" width="30" height="5" rx="2.5" fill="#36425a"/><circle cx="302" cy="50" r="15" fill="#36425a"/>
+    <rect x="258" y="41.5" width="30" height="5" rx="2.5" fill="#36425a"/><rect x="258" y="53.5" width="30" height="5" rx="2.5" fill="#36425a"/><circle cx="250" cy="50" r="15" fill="#36425a"/>
+    <rect x="160" y="31" width="50" height="38" rx="8" fill="#eef2f7" stroke="#263042" stroke-width="2"/><rect x="199" y="36" width="5" height="28" rx="2.5" fill="#5aa7d6"/>
+    <ellipse cx="132" cy="50" rx="13" ry="11" fill="#36425a"/>
+    <rect x="28" y="41.5" width="30" height="5" rx="2.5" fill="#36425a"/><rect x="28" y="53.5" width="30" height="5" rx="2.5" fill="#36425a"/><circle cx="66" cy="50" r="15" fill="#36425a"/>
+  </g>
+  <g transform="translate(150 50)">
     <path d="M20 0c3 12 18 21 18 38a18 18 0 0 1-36 0c0-9 4-15 8-20 1 7 4 11 8 12-2-10-1-20 2-30z" fill="#ff6b2c"/>
     <path d="M20 26c2 6 9 10 9 17a9 9 0 0 1-18 0c0-5 3-9 6-11 0 3 1 5 3 5 0-4-1-8 0-11z" fill="#ffc23a"/>
   </g>
@@ -22,10 +27,9 @@
     <circle cx="250" cy="60" r="10"/>
     <circle cx="250" cy="60" r="22" stroke-opacity=".6"/>
   </g>
-  <g transform="translate(232 128)">
-    <rect x="0" y="14" width="40" height="26" rx="4" fill="#8b5cf6"/>
-    <rect x="-3" y="6" width="46" height="11" rx="3" fill="#a78bfa"/>
-    <rect x="17" y="6" width="6" height="34" fill="#fde68a"/>
-    <path d="M20 6c-6-10-16-8-14-2 2 5 14 2 14 2zM20 6c6-10 16-8 14-2-2 5-14 2-14 2z" fill="#fde68a"/>
+  <g transform="translate(236 128)">
+    <rect x="0" y="0" width="46" height="46" rx="12" fill="#8b5cf6"/>
+    <path d="M15.5 17.5a7.5 7.5 0 1 1 11 6.6c-2.3 1.3-3.8 2.6-3.8 5.2v1.4" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>
+    <circle cx="22.7" cy="38" r="3.2" fill="#fff"/>
   </g>
 </svg>

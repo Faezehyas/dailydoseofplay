@@ -1,0 +1,448 @@
+/* Gomoku view. Uses the shared tokens from /engine/theme.css. */
+.gomoku {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.gmk-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gmk-top > .btn {
+  flex: none;
+}
+
+/* Each name keeps its full width when it fits; long names share what's left. */
+.gmk-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.gmk-players .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.gmk-players .who.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.gmk-players .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gmk-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* A small stone showing which colour each player has. */
+.pill-stone {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+}
+
+.pill-stone[data-v="first"] {
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.pill-stone[data-v="second"] {
+  background: radial-gradient(circle, var(--surface) 0 28%, var(--accent-2) 31%);
+  border-color: transparent;
+}
+
+/* ---------- score ---------- */
+.gmk-score {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.gmk-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.gmk-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gmk-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.gmk-score .mine dd {
+  color: var(--accent);
+}
+
+.gmk-score .theirs dd {
+  color: var(--accent-2);
+}
+
+/* ---------- status ---------- */
+.gmk-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.gmk-status.mine {
+  color: var(--accent);
+}
+
+.gmk-config,
+.gmk-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- clocks ---------- */
+.gmk-clocks {
+  display: grid;
+  grid-template-columns: 4.2em minmax(0, 1fr) 4.2em;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.gmk-clocks .clock {
+  padding: 2px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.gmk-clocks .clock.theirs {
+  grid-column: 3;
+}
+
+.gmk-clocks .clock.active {
+  color: var(--text);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2) inset;
+}
+
+.gmk-clocks .clock.mine.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.gmk-clocks .clock.low {
+  color: var(--danger);
+}
+
+.gmk-clocks .move {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gmk-movebar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.gmk-movebar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  transition: width 0.2s linear;
+}
+
+.gmk-movebar.mine > span {
+  background: var(--accent);
+}
+
+.gmk-movebar.low > span {
+  background: var(--danger);
+}
+
+.move-left {
+  flex: none;
+  min-width: 2.6em;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- settings (lobby) ---------- */
+.gmk-settings {
+  text-align: left;
+}
+
+.gmk-settings h2 {
+  font-size: 1.1rem;
+}
+
+.gmk-settings .hint.board {
+  margin: 0 0 12px;
+}
+
+.gmk-seg {
+  border: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  min-width: 0;
+}
+
+.gmk-seg legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.seg-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seg-opt {
+  position: relative;
+}
+
+.seg-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.seg-opt span {
+  display: inline-grid;
+  align-content: center;
+  min-height: 40px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.seg-opt input:checked + span {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+.seg-opt input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.gmk-settings .hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- board ---------- */
+.gmk-board-wrap {
+  display: grid;
+  justify-items: center;
+}
+
+/* One button per point, centred on a crossing of the grid drawn behind them. */
+.gmk-board {
+  --pad: 6px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  grid-template-rows: repeat(15, minmax(0, 1fr));
+  width: min(100%, 600px, max(300px, 100vh - 250px));
+  aspect-ratio: 1;
+  padding: var(--pad);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  touch-action: manipulation;
+}
+
+.gmk-grid {
+  position: absolute;
+  inset: var(--pad);
+  width: calc(100% - 2 * var(--pad));
+  height: calc(100% - 2 * var(--pad));
+  pointer-events: none;
+}
+
+.gmk-grid line {
+  stroke: var(--muted);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.55;
+}
+
+.gmk-grid circle {
+  fill: var(--muted);
+}
+
+.gmk-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: default;
+}
+
+.gmk-cell::after {
+  content: "";
+  width: 86%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: scale(0);
+  transition: transform 0.15s ease-out;
+}
+
+.gmk-cell[data-v="first"]::after,
+.gmk-board.armed[data-me="first"] .gmk-cell[data-v=""]:is(:hover, :focus-visible)::after {
+  background: var(--accent);
+  transform: none;
+}
+
+.gmk-cell[data-v="second"]::after,
+.gmk-board.armed[data-me="second"] .gmk-cell[data-v=""]:is(:hover, :focus-visible)::after {
+  background: radial-gradient(circle, var(--surface-2) 0 28%, var(--accent-2) 31%);
+  transform: none;
+}
+
+/* A faint stone where yours would go. */
+.gmk-board.armed .gmk-cell[data-v=""]:is(:hover, :focus-visible)::after {
+  opacity: 0.4;
+}
+
+@media (hover: none) {
+  .gmk-board.armed .gmk-cell[data-v=""]:hover:not(:focus-visible)::after {
+    transform: scale(0);
+  }
+}
+
+.gmk-board.armed .gmk-cell[data-v=""] {
+  cursor: pointer;
+}
+
+.gmk-cell:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -1px;
+}
+
+.gmk-cell.last::before {
+  content: "";
+  position: absolute;
+  width: 22%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--text);
+  z-index: 1;
+}
+
+.gmk-cell.win::after {
+  box-shadow: 0 0 0 3px var(--hit-2);
+}
+
+.gmk-board.done.lined .gmk-cell:not(.win)::after {
+  opacity: 0.45;
+}
+
+/* ---------- game over ---------- */
+.gmk-over {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.gmk-over h2 {
+  font-size: 1.6rem;
+}
+
+.gmk-over h2.win {
+  color: var(--accent);
+}
+
+.gmk-over .detail {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.gmk-over .detail.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.gmk-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -65,7 +65,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 
 | Module | Job |
 |---|---|
-| `shell.js` | Header, light/dark toggle (follows the OS until pinned), nickname in `localStorage`, toast, `el()` DOM helper |
+| `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
 | `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
 | `signaling.js` | `RoomClient`: create, join, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
@@ -75,6 +75,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
+| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
 **Session flow.**
@@ -120,10 +121,11 @@ handler is attached.
 ### Rules
 
 - **Board and fleet:** 10×10, fleet of 5, 4, 3, 3 and 2.
-- **Placement:** ships are placed at random; you can shuffle, drag and tap to rotate. Ships may not touch side by side; diagonal contact is allowed.
+- **Placement:** ships are placed at random; you can shuffle, drag them, press R while dragging to rotate, or tap a ship to rotate it. Ships may not touch side by side; diagonal contact is allowed.
 - **Turns:** a hit lets you fire again; a miss passes the turn.
 - **Sinking:** a sunk ship is revealed, and the squares beside it are marked as clear water.
-- **Gifts:** after every 6 moves (one fire action is one move), a gift appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter. A gift whose square becomes cleared water after a sinking disappears.
+- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter; the weapon inside is shown only then. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears.
+- **Turn clock (friend games):** 40 s per shot, like papergames' per-turn clock. When it runs out, that player's own browser fires a random shot. Each browser runs the clock locally, so it is a courtesy against stalling, not an enforced rule.
 
 **Weapons:**
 
@@ -203,7 +205,8 @@ the no-side-contact rule).
 
 It averages about 40 shots to sink a fleet, against about 89 for random fire
 (300 fleets, plain shots only; `robot.test.js` checks it stays under 55). It plays through `startRobot(session)`, the same
-`SeaBattleMatch` that a human uses.
+`SeaBattleMatch` that a human uses, and waits 1.4–2.1 s before each shot so
+its moves are easy to follow.
 
 ## Tic Tac Toe in depth
 
@@ -235,6 +238,30 @@ other messages to `matchRouter()`.
 A modified client could under-report its `ms`. The 5 s check bounds how long it
 can stall, but not small savings on each move. That is the same trade-off as
 everywhere else here: fine between friends, not a referee.
+
+## Gomoku in depth
+
+Gomoku is Tic Tac Toe's settings and clocks on a 15×15 board, with no engine
+changes. `public/gomoku/` copies the Tic Tac Toe view patterns (settings panel,
+`setup {config}`, clocks, the 5 s claim) rather than sharing them, so each game
+can change on its own.
+
+- **Rules.** Five or more in a row wins (an overline counts, as on papergames),
+  any empty point may be played from the first move, and a full board is a draw.
+  Only the lines through the new stone are checked.
+- **Robot.** For each empty point near the stones, it looks up the shape one
+  more stone makes along each of the four lines: five, open or closed four,
+  three or two. A line is the 4 points on each side, each empty, own or blocked,
+  so there are 3^8 patterns. They are classified once at load, and every lookup
+  after that is 8 reads. A point's score adds its own shapes to the opponent's
+  shapes it would block, with bonuses for double threats. The robot takes a win,
+  blocks a five, then usually plays the best score. About one move in eight is
+  a random point next to the stones, so it can be beaten. A move takes well under
+  1 ms.
+- **Board.** One button per point over an SVG grid. The board is a single tab
+  stop: arrow keys move between points (roving `tabindex`), and Enter or Space
+  plays. At 360 px a point is about 21 px wide, so the board fills the width with
+  no horizontal scroll.
 
 ## Chess in depth
 
