@@ -132,7 +132,7 @@ test("startRobot plays a whole match against a scripted human over the session p
     assert.notEqual(me.phase, "aborted");
     if (me.canFire()) {
       const move = chooseMove(me.state, 0, rng);
-      await me.fire(move.weapon, move.target);
+      await me.fire(move.weapon, move.target, undefined, move.dir);
     }
     await new Promise((r) => setTimeout(r, 1));
   }
