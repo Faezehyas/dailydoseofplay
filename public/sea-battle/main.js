@@ -2,7 +2,7 @@
 // All game logic lives in rules.js / match.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
-import { play } from "../engine/sound.js";
+import { play, playSample, preload } from "../engine/sound.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
@@ -67,6 +67,10 @@ const WEAPON_ICON = {
 const AI_DELAY = 650;
 // Seconds a shell is in the air before it lands (sound and visuals wait for it).
 const FLIGHT = { shot: 0.45, missile: 0.45, big: 0.55, rain: 0.6, nuke: 1.0 };
+// Real recordings of heavy objects hitting water (CC0, see sounds/LICENSE.txt).
+const SPLASH_HEAVY = ["splash-heavy-1", "splash-heavy-2"].map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
+const SPLASH_SMALL = ["splash-small-1", "splash-small-2"].map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
+const splashHeavy = (gain = 0.7) => playSample(SPLASH_HEAVY, { gain, fallback: "miss" });
 const LAUNCH_SOUND = { shot: "launch", missile: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke" };
 // Seconds per shot in friend games (papergames uses a per-turn clock too).
 const TURN_SECONDS = 40;
@@ -85,6 +89,7 @@ function shipName(len, sunkCountOfLen) {
 }
 
 function mountSeaBattle(session, root, shell) {
+  preload([...SPLASH_HEAVY, ...SPLASH_SMALL]);
   const me = session.index;
   const opp = R.other(me);
   const oppName = session.opponent.name;
@@ -663,10 +668,15 @@ function mountSeaBattle(session, root, shell) {
     else if (w === "rain") {
       events
         .filter((e) => e.type === "hit" || e.type === "miss")
-        .forEach((e, k) => setTimeout(() => play(e.type === "hit" ? "rain-hit" : "rain-miss"), k * 70));
-    } else if (w === "big") play(hits.length ? "hit-big" : "miss");
-    if (sunk) setTimeout(() => play("sink"), w === "nuke" ? 900 : 0);
-    else if (w === "shot" || w === "missile") play(hits.length ? "hit" : "miss");
+        .forEach((e, k) =>
+          setTimeout(() => (e.type === "hit" ? play("rain-hit") : playSample(SPLASH_SMALL, { gain: 0.45, jitter: 0.12, fallback: "rain-miss" })), k * 70),
+        );
+    } else if (w === "big") hits.length ? play("hit-big") : splashHeavy(0.85);
+    if (sunk) {
+      // The hull blows up, groans, and goes under with a heavy splash.
+      setTimeout(() => play("sink"), w === "nuke" ? 900 : 0);
+      setTimeout(() => splashHeavy(0.45), w === "nuke" ? 1400 : 500);
+    } else if (w === "shot" || w === "missile") hits.length ? play("hit") : splashHeavy();
     if (events.some((e) => e.type === "gift" && e.by === me)) setTimeout(() => play("gift"), 300);
     if (w === "nuke" || w === "big") {
       const shots = events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell);

@@ -1,0 +1,7 @@
+Splash recordings in this folder: Creative Commons CC0 1.0 (public domain).
+Source: BigSoundBank (https://bigsoundbank.com), trimmed, faded and converted to mono MP3.
+
+splash-heavy-1.mp3  <- "Splash big 3"   https://bigsoundbank.com/splash-big-3-s1521.html
+splash-heavy-2.mp3  <- "Splash big 1"   https://bigsoundbank.com/splash-big-1-s1519.html
+splash-small-1.mp3  <- "Splash small 1" https://bigsoundbank.com/splash-small-1-s1529.html
+splash-small-2.mp3  <- "Splash small 2" https://bigsoundbank.com/splash-small-2-s1530.html
