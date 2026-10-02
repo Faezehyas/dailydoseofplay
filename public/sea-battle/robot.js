@@ -9,7 +9,7 @@
 //   * hunt mode: restricted to a parity lattice of the smallest ship left,
 //     and it goes out of its way for gifts;
 //   * weapons: splash weapons are aimed where they cover the most density.
-import { randomFleet, remainingShips, shipCells, orthoNeighbors, aimedCells, other, idx, CELLS, SIZE, UNKNOWN, HIT, MISS, CLEAR, rowOf, colOf } from "./rules.js";
+import { randomFleet, remainingShips, shipCells, orthoNeighbors, aimedCells, patternCells, other, idx, CELLS, SIZE, UNKNOWN, HIT, MISS, CLEAR, rowOf, colOf } from "./rules.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 
@@ -98,7 +98,12 @@ export function chooseMove(state, me, rng = Math.random) {
     }
     if (inv.carpet > 0) {
       // The densest row or column. Line k < SIZE is row k, the rest are columns.
-      const line = (k) => (k < SIZE ? { dir: "row", target: idx(k, 0) } : { dir: "col", target: idx(0, k - SIZE) });
+      // Aimed at a gift on the line, it picks the gift up too.
+      const line = (k) => {
+        const dir = k < SIZE ? "row" : "col";
+        const squares = patternCells("carpet", k < SIZE ? idx(k, 0) : idx(0, k - SIZE), dir);
+        return { dir, target: squares.find((c) => gifts.has(c)) ?? squares[0] };
+      };
       const aim = bestOf(
         [...Array(2 * SIZE).keys()],
         (k) => aimedCells(board, "carpet", line(k).target, line(k).dir).reduce((s, c) => s + density[c] + (gifts.has(c) ? giftBonus : 0), 0),

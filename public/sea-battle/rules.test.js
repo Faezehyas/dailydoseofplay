@@ -276,3 +276,30 @@ test("clocks: each shot spends its time; over the limit is refused; a clock runn
   assert.equal(state.reason, "timeout");
   assert.throws(() => applyTimeout(newMatchState(0, { shotSeconds: 10, gameSeconds: 0 }), 0), RuleError, "no game clock, no timeout loss");
 });
+
+test("a gift is picked up only by aiming at its own square; splashes and rain spare it", () => {
+  const state = newMatchState(0);
+  state.inventory[0] = { big: 2, rain: 0, nuke: 0, carpet: 1 };
+  const board = state.boards[1];
+  const gift = { cell: idx(5, 6), type: "nuke" };
+  board.gifts = [{ ...gift }];
+  // A big missile next to the gift: its square is left alone.
+  const big = fire(state, FLEET_A, 0, "big", idx(5, 5));
+  assert.ok(!big.cells.includes(gift.cell));
+  assert.equal(board.cells[gift.cell], UNKNOWN);
+  assert.ok(!big.events.some((e) => e.type === "gift"));
+  assert.deepEqual(board.gifts, [gift]);
+  // A carpet bomb along the gift's row, aimed elsewhere: spared again.
+  state.turn = 0;
+  const carpet = fire(state, FLEET_A, 0, "carpet", idx(5, 9), undefined, undefined, "row");
+  assert.ok(!carpet.cells.includes(gift.cell));
+  assert.deepEqual(board.gifts, [gift]);
+  // Missile rain never lands on it.
+  for (let k = 0; k < 20; k++) assert.ok(!rainCells(board, rngFromSeed(`spare-${k}`)).includes(gift.cell));
+  // Aiming at the gift's own square picks it up, even with a splash weapon.
+  state.turn = 0;
+  const aimed = fire(state, FLEET_A, 0, "big", gift.cell);
+  assert.ok(aimed.events.some((e) => e.type === "gift" && e.gift === "nuke"));
+  assert.equal(state.inventory[0].nuke, 1);
+  assert.deepEqual(board.gifts, []);
+});

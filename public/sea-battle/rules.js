@@ -15,7 +15,8 @@ export const HIT = 2;
 export const CLEAR = 3; // known water next to a sunk ship (ships never touch side by side)
 
 // Gifts: every GIFT_EVERY moves one gift pops on each board (max MAX_GIFTS
-// waiting per board). Firing at a gift's square collects it for the shooter.
+// waiting per board). Only a shot aimed at a gift's own square collects it:
+// splashes and missile rain spare gift squares, which stay unexplored.
 export const GIFT_EVERY = 6;
 export const MAX_GIFTS = 2;
 export const RAIN_COUNT = 7;
@@ -227,8 +228,11 @@ export function patternCells(weapon, target, dir = "row") {
 }
 
 export function aimedCells(board, weapon, target, dir) {
-  return patternCells(weapon, target, dir).filter((i) => board.cells[i] === UNKNOWN);
+  const gifts = giftCells(board);
+  return patternCells(weapon, target, dir).filter((i) => board.cells[i] === UNKNOWN && (i === target || !gifts.has(i)));
 }
+
+const giftCells = (board) => new Set(board.gifts.map((g) => g.cell));
 
 export function unexplored(board) {
   const out = [];
@@ -238,7 +242,13 @@ export function unexplored(board) {
 
 // Missile rain squares from an rng both peers share.
 export function rainCells(board, rng) {
-  return sample(rng, unexplored(board), RAIN_COUNT).sort((a, b) => a - b);
+  return sample(rng, rainable(board), RAIN_COUNT).sort((a, b) => a - b);
+}
+
+// Rain isn't aimed, so it never lands on a gift.
+function rainable(board) {
+  const gifts = giftCells(board);
+  return unexplored(board).filter((i) => !gifts.has(i));
 }
 
 // Validate a fire request against public state. Returns cells (or null for rain).
@@ -254,7 +264,7 @@ export function checkFire(state, shooter, weapon, target, ms, dir) {
   if (!weaponAvailable(state, shooter, weapon)) throw new RuleError("weapon not available");
   const board = state.boards[other(shooter)];
   if (weapon === "rain") {
-    if (unexplored(board).length === 0) throw new RuleError("nothing left to fire at");
+    if (rainable(board).length === 0) throw new RuleError("nothing left to fire at");
     return null;
   }
   if (!Number.isInteger(target) || target < 0 || target >= CELLS) throw new RuleError("bad target");
@@ -333,8 +343,9 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk, ms = 0) {
     }
     events.push({ type: "sunk", ship: clean });
   }
-  // Gifts under any fired square go to the shooter. A gift whose square just
-  // became cleared water (beside a sunk ship) can't be shot any more: it's removed.
+  // A gift goes to the shooter who aimed at its square (splashes spare the
+  // others). A gift whose square just became cleared water (beside a sunk
+  // ship) can't be shot any more: it's removed.
   const keep = [];
   for (const g of board.gifts) {
     if (cells.includes(g.cell)) {
