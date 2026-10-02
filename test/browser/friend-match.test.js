@@ -128,6 +128,16 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   const winner = await host.evaluate(() => window.ddp.match.state.winner);
   assert.equal(winner, 1, "the guest aimed at ships and wins");
   assert.match(await guest.locator(".sb-over h2").innerText(), /Victory/);
+  // Each player sees only the gifts they can collect, never the opponent's.
+  for (const p of [host, guest]) {
+    const gifts = await p.evaluate(() => {
+      const m = window.ddp.match;
+      return { mine: m.state.boards[m.me].gifts.length, target: m.state.boards[1 - m.me].gifts.length };
+    });
+    assert.equal(await p.locator(".own .cell.gift").count(), 0, `own board hides ${gifts.mine} opponent gift(s)`);
+    assert.equal(await p.locator(".enemy .cell.gift").count(), gifts.target);
+    assert.doesNotMatch(await p.locator("#sb-log").innerText(), /picked up/);
+  }
   // Wins carry across rematches; the latest volley on each board is ringed.
   assert.equal(await guest.locator("#score-me").innerText(), "1");
   assert.equal(await host.locator("#score-opp").innerText(), "1");

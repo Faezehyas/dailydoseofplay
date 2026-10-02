@@ -116,7 +116,7 @@ handler is attached.
 - **Placement:** ships are placed at random; you can shuffle, drag and tap to rotate. Ships may not touch side by side; diagonal contact is allowed.
 - **Turns:** a hit lets you fire again; a miss passes the turn.
 - **Sinking:** a sunk ship is revealed, and the squares beside it are marked as clear water.
-- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter; the weapon inside is shown only then. A gift whose square becomes cleared water after a sinking disappears.
+- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter; the weapon inside is shown only then. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears.
 - **Turn clock (friend games):** 40 s per shot, like papergames' per-turn clock. When it runs out, that player's own browser fires a random shot. Each browser runs the clock locally, so it is a courtesy against stalling, not an enforced rule.
 
 **Weapons:**

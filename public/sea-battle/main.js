@@ -29,6 +29,9 @@ const WEAPON_ICON = {
 };
 
 const AI_DELAY = 650;
+// Seconds a shell is in the air before it lands (sound and visuals wait for it).
+const FLIGHT = { shot: 0.45, missile: 0.45, big: 0.55, rain: 0.6, nuke: 1.0 };
+const LAUNCH_SOUND = { shot: "launch", missile: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke" };
 // Seconds per shot in friend games (papergames uses a per-turn clock too).
 const TURN_SECONDS = 40;
 
@@ -62,6 +65,7 @@ function mountSeaBattle(session, root, shell) {
   const score = [0, 0]; // wins per player across rematches
   let lastShots = [new Set(), new Set()]; // board -> squares of the latest volley at it
   let lastTurnSeen = -1;
+  const landsAt = [0, 0]; // per board: when the shell in flight lands (ms)
   const turnSeconds = session.mode === "friend" ? Number(window.ddpTurnSeconds) || TURN_SECONDS : 0;
   let timerKey = "";
   let timerId = null;
@@ -149,8 +153,9 @@ function mountSeaBattle(session, root, shell) {
     return { r: R.rowOf(s[0]), c: R.colOf(s[0]), len: s.length, vertical: s.length > 1 && s[1] - s[0] === R.SIZE };
   };
 
-  function paintCells(view, board, last = new Set()) {
-    const giftAt = new Map(board ? board.gifts.map((g) => [g.cell, g.type]) : []);
+  // showGifts: only the board you fire at shows gifts (yours to collect).
+  function paintCells(view, board, last = new Set(), showGifts = false) {
+    const giftAt = new Map(board && showGifts ? board.gifts.map((g) => [g.cell, g.type]) : []);
     const sunkAt = new Set(board ? board.sunk.flatMap((x) => x.cells) : []);
     for (let i = 0; i < R.CELLS; i++) {
       const v = board ? board.cells[i] : R.UNKNOWN;
@@ -220,7 +225,9 @@ function mountSeaBattle(session, root, shell) {
       else if (!match.peer) text = `Waiting for ${oppName} to place their ships…`;
       else text = "Tossing a coin to see who starts…";
     } else if (phase === "playing") {
-      if (st.turn === me) text = match.pending ? "Firing…" : lastAgain ? "Hit! Fire again." : "Your turn: fire at the enemy waters.";
+      if (st.turn === me) {
+        text = match.pending ? "Firing…" : lastAgain === "hit" ? "Hit! Fire again." : lastAgain === "bonus" ? "Bonus shot! Fire again." : "Your turn: fire at the enemy waters.";
+      }
       else text = `${oppName} is aiming…`;
     } else if (phase === "over") {
       text = st.winner === me ? "You won! The enemy fleet is sunk." : `${oppName} won this round.`;
@@ -269,7 +276,7 @@ function mountSeaBattle(session, root, shell) {
         }
       }
       enemyBoard.shipsLayer.replaceChildren(...shipNodes);
-      paintCells(enemyBoard, board, lastShots[opp]);
+      paintCells(enemyBoard, board, lastShots[opp], true);
       fleetLeft(enemyBoard, board);
       fleetLeft(ownBoard, st.boards[me]);
     } else {
@@ -382,9 +389,6 @@ function mountSeaBattle(session, root, shell) {
         return btn;
       }),
     );
-    const theirs = st.inventory[opp];
-    const theirCount = R.GIFT_TYPES.reduce((s, w) => s + theirs[w], 0);
-    if (theirCount) weaponsBar.append(el("span", { class: "their-arsenal" }, `${oppName} holds ${theirCount} weapon${theirCount > 1 ? "s" : ""}`));
   }
 
   function renderOver() {
@@ -576,13 +580,40 @@ function mountSeaBattle(session, root, shell) {
         const text = mine ? `You sank ${oppName}'s ${name}!` : `${oppName} sank your ${name}.`;
         addLog(text, "big");
         toast(text);
-      } else if (e.type === "gift") {
-        const text = mine ? `Gift! You got a ${R.WEAPONS[e.gift].label}.` : `${oppName} picked up a ${R.WEAPONS[e.gift].label}.`;
+      } else if (e.type === "gift" && mine) {
+        const text = `Gift! You got a ${R.WEAPONS[e.gift].label}.`;
         addLog(text, "gift");
         toast(text);
       }
     }
-    lastAgain = events.some((e) => e.type === "again" && e.player === me);
+  }
+
+  // The shell lands: impact sounds and, for heavy weapons, a blast on the board.
+  function land(board, w, events) {
+    const view = board === me ? ownBoard : enemyBoard;
+    const sunk = events.some((e) => e.type === "sunk");
+    const hits = events.filter((e) => e.type === "hit");
+    if (w === "nuke") play("nuke");
+    else if (w === "rain") {
+      events
+        .filter((e) => e.type === "hit" || e.type === "miss")
+        .forEach((e, k) => setTimeout(() => play(e.type === "hit" ? "rain-hit" : "rain-miss"), k * 70));
+    } else if (w === "big") play(hits.length ? "hit-big" : "miss");
+    if (sunk) setTimeout(() => play("sink"), w === "nuke" ? 900 : 0);
+    else if (w === "shot" || w === "missile") play(hits.length ? "hit" : "miss");
+    if (events.some((e) => e.type === "gift" && e.by === me)) setTimeout(() => play("gift"), 300);
+    if (w === "nuke" || w === "big") {
+      const shots = events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell);
+      const r = shots.reduce((s, i) => s + R.rowOf(i), 0) / Math.max(1, shots.length);
+      const c = shots.reduce((s, i) => s + R.colOf(i), 0) / Math.max(1, shots.length);
+      view.board.style.setProperty("--bx", `${(c + 0.5) * 10}%`);
+      view.board.style.setProperty("--by", `${(r + 0.5) * 10}%`);
+      const cls = w === "nuke" ? "nuked" : "blasted";
+      view.board.classList.remove(cls);
+      void view.board.offsetWidth; // restart the animation
+      view.board.classList.add(cls);
+      setTimeout(() => view.board.classList.remove(cls), w === "nuke" ? 1800 : 700);
+    }
   }
 
   function newMatch() {
@@ -603,22 +634,37 @@ function mountSeaBattle(session, root, shell) {
       toast(first === me ? "You go first!" : `${oppName} goes first`);
     });
     match.on("fired", ({ by, weapon: w, cells }) => {
+      const target = by === me ? enemyBoard : ownBoard;
       if (by === opp) follow(ownBoard);
-      if (w === "rain") for (const c of cells) (by === me ? enemyBoard : ownBoard).cells[c].classList.add("incoming");
+      const flight = FLIGHT[w] ?? FLIGHT.shot;
+      landsAt[R.other(by)] = performance.now() + flight * 1000;
+      target.board.style.setProperty("--impact-delay", `${flight}s`);
+      for (const c of cells) target.cells[c].classList.add("incoming");
+      play(LAUNCH_SOUND[w] ?? "launch");
     });
     match.on("events", ({ shooter, weapon: w, events }) => {
-      lastShots[R.other(shooter)] = new Set(events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell));
-      play(events.some((e) => e.type === "sunk") ? "sink" : events.some((e) => e.type === "hit") ? "hit" : "miss");
-      if (events.some((e) => e.type === "gift" && e.by === me)) setTimeout(() => play("gift"), 250);
-      describe(shooter, w, events);
+      const board = R.other(shooter);
+      lastShots[board] = new Set(events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell));
+      const again = shooter === me && events.some((e) => e.type === "again");
+      lastAgain = !again ? false : events.some((e) => e.type === "hit") ? "hit" : "bonus";
+      const wait = Math.max(0, landsAt[board] - performance.now());
+      setTimeout(() => {
+        if (destroyed) return;
+        land(board, w, events);
+        describe(shooter, w, events);
+      }, wait);
     });
     match.on("gifts", (spawned) => {
-      addLog("Gifts popped up on both boards. Hit one to win a weapon!", "gift");
+      if (spawned.some((g) => g.board === opp)) addLog(`A mystery gift popped up in ${oppName}'s waters. Hit it to win a weapon!`, "gift");
     });
     match.on("over", ({ winner }) => {
       score[winner] += 1;
-      addLog(winner === me ? "You sank the whole fleet!" : `${oppName} sank your whole fleet.`, "big");
-      setTimeout(() => play(winner === me ? "win" : "lose"), 400);
+      const wait = Math.max(0, ...landsAt.map((t) => t - performance.now()));
+      setTimeout(() => {
+        if (destroyed) return;
+        addLog(winner === me ? "You sank the whole fleet!" : `${oppName} sank your whole fleet.`, "big");
+        play(winner === me ? "win" : "lose");
+      }, wait + 600);
     });
     match.on("verified", () => render());
     match.on("abort", ({ reason }) => {
