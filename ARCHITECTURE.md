@@ -205,6 +205,37 @@ It averages about 40 shots to sink a fleet, against about 89 for random fire
 (300 fleets, plain shots only; `robot.test.js` checks it stays under 55). It plays through `startRobot(session)`, the same
 `SeaBattleMatch` that a human uses.
 
+## Tic Tac Toe in depth
+
+Tic Tac Toe has no hidden information, so it runs on `TurnMatch`. What it adds
+is room settings and clocks, both of which later games (Connect 4, Gomoku)
+can copy.
+
+**Room settings.** Before a game, the player picks the board (3×3 with three
+in a row, or 5×5 with four), a limit per move, a total per player, and who
+moves first. In a friend game the room creator's settings apply: the host
+sends `setup {config}` once, the guest's view waits for it, and both build the
+same rules with `makeRules(config)`. The guest normalizes the config, so an
+unknown value falls back to the default. A fixed first player replaces the
+coin toss inside `newState`; the toss still runs, so the protocol is
+unchanged. `setup` has no match number, so the view handles it before handing
+other messages to `matchRouter()`.
+
+**Clocks without a referee.** Each browser times only its own player:
+
+- A move carries `ms`, the time its player spent, measured from when that
+  browser applied the previous move. Both sides deduct the same `ms` from the
+  same clock, so the states stay identical.
+- The rules refuse a move whose `ms` is over the move limit or the clock left.
+- When a player's own time runs out, their browser sends `{ timeout: true }`,
+  and that player loses the round.
+- If the other browser sees the opponent 5 s past their limit with no forfeit
+  (closed laptop, frozen tab), it stops the match.
+
+A modified client could under-report its `ms`. The 5 s check bounds how long it
+can stall, but not small savings on each move. That is the same trade-off as
+everywhere else here: fine between friends, not a referee.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |
