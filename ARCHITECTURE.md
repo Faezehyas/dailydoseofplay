@@ -126,7 +126,7 @@ handler is attached.
 | Shot | 1 square, unlimited |
 | Simple missile | 1 square; a bonus shot, so the turn continues even on a miss (but not after a sink) |
 | Big missile | 5-square plus shape |
-| Missile rain | 7 random unexplored squares |
+| Missile rain | 7 random unexplored squares; not aimed, so it fires from a Launch rain button rather than a tap on the board |
 | Nuclear missile | 14 squares: a 4×4 block with two opposite corners spared |
 
 Splash squares that were already explored are skipped.

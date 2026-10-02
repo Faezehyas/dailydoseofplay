@@ -298,9 +298,11 @@ button.cell {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
+/* Missile rain isn't aimed: it's launched from the weapons bar. */
 .armed .rain button.cell:not(.hit):not(.miss):not(.clear) {
-  background: rgb(255 107 74 / 12%);
-  cursor: pointer;
+  background: none;
+  box-shadow: none;
+  cursor: default;
 }
 
 .cell svg {
@@ -645,6 +647,10 @@ button.cell {
 
 .weapon:disabled {
   cursor: not-allowed;
+}
+
+.sb-weapons .launch {
+  min-height: 44px;
 }
 
 .w-icon svg {

@@ -437,6 +437,11 @@ function mountSeaBattle(session, root, shell) {
         return btn;
       }),
     );
+    if (weapon === "rain" && myTurn) {
+      weaponsBar.append(
+        el("button", { class: "btn primary launch", type: "button", id: "launch-rain", title: R.WEAPONS.rain.help, onclick: () => match.fire("rain") }, "Launch rain"),
+      );
+    }
   }
 
   function renderOver() {
@@ -631,7 +636,8 @@ function mountSeaBattle(session, root, shell) {
     if (!cell || !match.canFire()) return;
     const i = Number(cell.dataset.i);
     const board = match.state.boards[opp];
-    if (weapon === "rain") return void match.fire("rain");
+    // Rain isn't aimed, so a tap on a square (say, a gift) must not launch it.
+    if (weapon === "rain") return toast("Missile rain falls on 7 random squares. Press Launch rain.");
     if ((weapon === "shot" || weapon === "missile") && board.cells[i] !== R.UNKNOWN) return toast("Already explored. Pick another square.");
     if (weapon !== "shot" && weapon !== "missile" && R.aimedCells(board, weapon, i).length === 0) return toast("Nothing left to hit there.");
     clearAim();

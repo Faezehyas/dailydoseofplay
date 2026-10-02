@@ -332,6 +332,30 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
   }
   assert.ok((await page.locator("#sb-log li").count()) >= 3);
   assert.equal(await page.locator("#sb-clock").isVisible(), false, "no turn clock against the robot");
+
+  // Missile rain isn't aimed: a tap on the board must not launch it (it could
+  // miss the gift you tapped); it fires from its own button.
+  await page.waitForFunction(() => window.ddp.match.canFire() || window.ddp.match.phase !== "playing", null, { timeout: 15_000 });
+  if (await page.evaluate(() => window.ddp.match.phase === "playing")) {
+    const giveRain = (n) => page.evaluate((n) => {
+      const m = window.ddp.match;
+      m.state.inventory[m.me].rain = n; // local only, never fired
+      m.emit("update");
+    }, n);
+    await page.waitForTimeout(1200); // let the robot's last volley land and toast
+    await giveRain(1);
+    await page.click('.weapon[data-w="rain"]');
+    assert.equal(await page.locator("#launch-rain").isVisible(), true);
+    const moves = await page.evaluate(() => window.ddp.match.state.moves);
+    const free = await page.evaluate(() => window.ddp.match.state.boards[1].cells.findIndex((v) => v === 0));
+    await page.click(`.enemy .cell[data-i="${free}"]`);
+    await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => window.ddp.match.state.moves), moves, "a board tap doesn't fire rain");
+    assert.equal(await page.evaluate(() => window.ddp.match.pending), null);
+    assert.match(await page.locator("#toast").innerText(), /Launch rain/);
+    await giveRain(0);
+    assert.equal(await page.locator("#launch-rain").count(), 0);
+  }
   const toastBox = await page.locator("#toast").boundingBox();
   assert.ok(toastBox && toastBox.y < 120, "toasts sit at the top, clear of the boards");
   await page.click("#sound-toggle");
