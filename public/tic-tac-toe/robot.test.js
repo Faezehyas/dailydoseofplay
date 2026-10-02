@@ -2,12 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { rngFromSeed } from "../engine/rng.js";
 import { chooseMove, scoreMoves } from "./robot.js";
-import { newState, applyMove, emptyCells, EMPTY, DRAW } from "./rules.js";
+import { newState as newTimedState, applyMove, emptyCells, EMPTY, DRAW } from "./rules.js";
+
+const newState = (first, size = 3) => newTimedState(first, { size, moveSeconds: 0, gameSeconds: 0 });
 
 // Build a mid-game state from a board string: x = player 0, o = player 1, . = empty.
 function stateFrom(rows, turn) {
-  const s = newState(0);
-  s.board = rows.replace(/\s/g, "").split("").map((ch) => (ch === "x" ? 0 : ch === "o" ? 1 : EMPTY));
+  const cells = rows.replace(/\s/g, "");
+  const s = newState(0, Math.sqrt(cells.length));
+  s.board = cells.split("").map((ch) => (ch === "x" ? 0 : ch === "o" ? 1 : EMPTY));
   s.moves = s.board.flatMap((v, i) => (v === EMPTY ? [] : [i]));
   s.turn = turn;
   return s;
@@ -84,24 +87,57 @@ test("it beats a random player most of the time", () => {
   assert.ok(lost < 20, `lost ${lost}/200`);
 });
 
-test("robot vs robot over 20 seeded games always finishes with legal moves", () => {
-  for (let g = 0; g < 20; g++) {
-    const rng = rngFromSeed(`rvr-${g}`);
-    const s = newState(g % 2);
-    let moves = 0;
-    while (s.winner === -1) {
-      const move = chooseMove(s, s.turn, rng);
-      assert.equal(s.board[move.cell], EMPTY);
-      applyMove(s, s.turn, move);
-      assert.ok(++moves <= 9);
+test("robot vs robot over 20 seeded games always finishes with legal moves, on both boards", () => {
+  for (const size of [3, 5]) {
+    for (let g = 0; g < 20; g++) {
+      const rng = rngFromSeed(`rvr-${size}-${g}`);
+      const s = newState(g % 2, size);
+      let moves = 0;
+      while (s.winner === -1) {
+        const move = chooseMove(s, s.turn, rng);
+        assert.equal(s.board[move.cell], EMPTY);
+        applyMove(s, s.turn, move);
+        assert.ok(++moves <= size * size);
+      }
+      assert.ok([0, 1, DRAW].includes(s.winner));
     }
-    assert.ok([0, 1, DRAW].includes(s.winner));
   }
 });
 
 test("it answers well under 100 ms, even on an empty board", async () => {
   const { chooseMove: fresh } = await import(`./robot.js?cold=${Date.now()}`);
-  const t0 = performance.now();
-  fresh(newState(0), 0, () => 0.99);
-  assert.ok(performance.now() - t0 < 100);
+  for (const size of [3, 5]) {
+    const t0 = performance.now();
+    fresh(newState(0, size), 0, () => 0.99);
+    assert.ok(performance.now() - t0 < 100, `${size}×${size}`);
+  }
+});
+
+// ---------- 5×5, four in a row ----------
+
+test("5×5: it takes a win, then blocks one", () => {
+  const win = stateFrom(". o o o .  x x x . .  . . . . .  . . . . .  . . . . .", 0);
+  for (let seed = 0; seed < 20; seed++) assert.equal(chooseMove(win, 0, rngFromSeed(seed), { randomChance: 1 }).cell, 8);
+  const block = stateFrom("x . . . .  . x . . .  . . x . .  o o . . .  . . . . .", 1);
+  for (let seed = 0; seed < 20; seed++) assert.equal(chooseMove(block, 1, rngFromSeed(seed), { randomChance: 1 }).cell, 18);
+});
+
+test("5×5: it sets up a double threat when it can", () => {
+  // x to move: only the centre gives two ways to make four at once.
+  const s = stateFrom("o . . . o  . . x . .  . x . x .  . . x . .  o . . . o", 0);
+  for (let seed = 0; seed < 20; seed++) assert.equal(chooseMove(s, 0, rngFromSeed(seed), { randomChance: 0 }).cell, 12);
+});
+
+test("5×5: it beats a random player almost always", () => {
+  let won = 0;
+  for (let g = 0; g < 100; g++) {
+    const rng = rngFromSeed(`rand5-${g}`);
+    const s = newState(g % 2, 5);
+    while (s.winner === -1) {
+      const free = emptyCells(s.board);
+      applyMove(s, s.turn, s.turn === 1 ? chooseMove(s, 1, rng) : { cell: free[Math.floor(rng() * free.length)] });
+    }
+    if (s.winner === 1) won++;
+  }
+  assert.ok(won >= 95, `won ${won}/100`);
 });

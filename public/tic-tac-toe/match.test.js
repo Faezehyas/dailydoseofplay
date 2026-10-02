@@ -4,9 +4,10 @@ import { localPair } from "../engine/channel.js";
 import { openSession, matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { rngFromSeed } from "../engine/rng.js";
-import { rules, markOf, DRAW } from "./rules.js";
+import { makeRules, markOf, DRAW } from "./rules.js";
 import { chooseMove } from "./robot.js";
 
+const rules = makeRules({ size: 3, moveSeconds: 0, gameSeconds: 0 });
 const tick = () => new Promise((r) => setTimeout(r, 1));
 async function until(fn, ms = 5000) {
   const t0 = Date.now();
@@ -95,4 +96,34 @@ test("the robot plays whole games over startTurnRobot and accepts a rematch", as
     }
   }
   robot.destroy();
+});
+
+test("timed 5×5 games: move times spend the same clocks on both sides, and a timeout ends the round", async () => {
+  const timed = makeRules({ size: 5, moveSeconds: 10, gameSeconds: 60, first: "host" });
+  const [ha, hb] = await sessions();
+  const a = new TurnMatch({ send: (m) => ha.send(m), me: 0, rules: timed });
+  const b = new TurnMatch({ send: (m) => hb.send(m), me: 1, rules: timed });
+  matchRouter(ha).start(a);
+  matchRouter(hb).start(b);
+  await until(() => a.phase === "playing" && b.phase === "playing");
+  assert.equal(a.state.turn, 0, "the room says the host starts, whatever the coin");
+  assert.equal(a.state.board.length, 25);
+  const rng = rngFromSeed("timed");
+  for (let k = 0; k < 4; k++) {
+    const mover = k % 2 === 0 ? a : b;
+    await until(() => mover.canMove());
+    await mover.play({ ...chooseMove(mover.state, mover.me, rng), ms: 1000 + k });
+    await until(() => a.state.moves.length === k + 1 && b.state.moves.length === k + 1);
+  }
+  assert.deepEqual(a.state.clocks, [60_000 - 1000 - 1002, 60_000 - 1001 - 1003]);
+  // A move slower than the per-move limit is refused before it is sent.
+  await until(() => a.canMove());
+  const invalid = new Promise((r) => a.on("invalid", r));
+  await a.play({ ...chooseMove(a.state, 0, rng), ms: 10_001 });
+  assert.equal(await invalid, "Time ran out");
+  await a.play({ timeout: true });
+  await until(() => b.phase === "over");
+  assert.equal(b.state.winner, 1);
+  assert.equal(b.state.reason, "timeout");
+  assert.deepEqual(a.state, b.state);
 });
