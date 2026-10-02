@@ -496,29 +496,68 @@ button.cell {
 }
 
 /* ---------- ships ---------- */
+.sea-battle {
+  --hull: #56657f;
+  --hull-edge: #263042;
+  --deck: #b9c3d2;
+  --deck-line: #9aa6b8;
+  --detail: #36425a;
+  --bridge: #eef2f7;
+  --wreck: #2a2e37;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sea-battle {
+    --hull: #7183a3;
+    --hull-edge: #0d121b;
+    --deck: #aeb9cc;
+    --deck-line: #8d99ae;
+    --detail: #2b3446;
+    --bridge: #e8edf5;
+    --wreck: #0f1218;
+  }
+}
+
+:root[data-theme="dark"] .sea-battle {
+  --hull: #7183a3;
+  --hull-edge: #0d121b;
+  --deck: #aeb9cc;
+  --deck-line: #8d99ae;
+  --detail: #2b3446;
+  --bridge: #e8edf5;
+  --wreck: #0f1218;
+}
+
 .ship {
-  margin: 0.9cqw;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--ship), var(--ship-edge));
-  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 18%), 0 2px 4px rgb(0 0 0 / 25%);
   position: relative;
+  min-width: 0;
+  min-height: 0;
 }
 
-.ship.v {
-  background: linear-gradient(90deg, var(--ship), var(--ship-edge));
+.ship svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 30%));
+  pointer-events: none;
 }
 
-.ship::after {
-  content: "";
-  position: absolute;
-  inset: 3cqw 2.5cqw;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 22%);
-}
-
-.ship.v::after {
-  inset: 2.5cqw 3cqw;
-}
+.ship .hull { fill: var(--hull); stroke: var(--hull-edge); stroke-width: 3; }
+.ship .deck { fill: var(--deck); }
+.ship .keel { stroke: var(--deck-line); stroke-width: 2; stroke-dasharray: 10 8; fill: none; }
+.ship .flightdeck { fill: var(--detail); }
+.ship .runway { stroke: var(--bridge); stroke-width: 3; stroke-dasharray: 18 12; fill: none; }
+.ship .runway-edge { stroke: #f4c542; stroke-width: 2; fill: none; opacity: 0.8; }
+.ship .plane { fill: var(--bridge); }
+.ship .turret { fill: var(--detail); stroke: var(--hull-edge); stroke-width: 2; }
+.ship .hatch { fill: var(--deck-line); }
+.ship .barrel { fill: var(--detail); }
+.ship .bridge { fill: var(--bridge); stroke: var(--hull-edge); stroke-width: 2; }
+.ship .windows { fill: #5aa7d6; }
+.ship .mast { fill: var(--detail); }
+.ship .funnel { fill: var(--detail); }
+.ship .funnel-top { fill: #1b2130; }
 
 .ship.draggable {
   cursor: grab;
@@ -527,31 +566,48 @@ button.cell {
 
 .ship.dragging {
   cursor: grabbing;
-  opacity: 0.85;
   z-index: 5;
 }
 
-.ship.bad {
-  background: var(--danger);
+.ship.dragging svg {
+  filter: drop-shadow(0 6px 6px rgb(0 0 0 / 35%));
 }
 
-.ship.selected {
-  outline: 3px solid var(--accent);
-  outline-offset: 1px;
+.ship.bad .hull,
+.ship.bad .deck {
+  fill: var(--danger);
 }
 
-.ship.sunk {
-  background: var(--sunk);
-  box-shadow: inset 0 0 0 2px var(--hit);
+.ship.selected svg {
+  filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 3px var(--accent));
 }
 
-.ship.sunk::after {
-  display: none;
-}
+/* Sunk: a charred wreck with a glowing outline. */
+.ship.sunk .hull { fill: var(--wreck); stroke: var(--hit); }
+.ship.sunk .deck,
+.ship.sunk .flightdeck { fill: #3b3f47; }
+.ship.sunk .bridge,
+.ship.sunk .plane,
+.ship.sunk .runway { fill: #555a63; stroke: #555a63; }
+.ship.sunk .turret,
+.ship.sunk .barrel,
+.ship.sunk .funnel { fill: #1c1f25; }
+.ship.sunk .windows,
+.ship.sunk .runway-edge { opacity: 0; }
 
 .ship.revealed {
-  opacity: 0.55;
-  outline: 2px dashed var(--ship-edge);
+  opacity: 0.6;
+}
+
+.ship.revealed .hull {
+  stroke-dasharray: 10 7;
+}
+
+/* On a sunk ship, small embers instead of big markers, so the wreck shows. */
+.cell.sunk svg {
+  width: 44%;
+  height: 44%;
+  opacity: 0.9;
 }
 
 /* ---------- weapons ---------- */

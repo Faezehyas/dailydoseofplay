@@ -20,6 +20,42 @@ const ICON = {
   clear: '<svg viewBox="0 0 24 24" class="mk-clear" aria-hidden="true"><circle cx="12" cy="12" r="2"/></svg>',
 };
 
+// Top-down warship art, drawn bow-right in a len x 1 box (100 units per
+// square); vertical ships are the same drawing turned 90 degrees.
+function turret(x, dir = 1) {
+  const b = dir > 0 ? x + 8 : x - 38;
+  return `<rect class="barrel" x="${b}" y="41.5" width="30" height="5" rx="2.5"/><rect class="barrel" x="${b}" y="53.5" width="30" height="5" rx="2.5"/><circle class="turret" cx="${x}" cy="50" r="15"/><circle class="hatch" cx="${x}" cy="50" r="5"/>`;
+}
+function bridge(x, w = 50) {
+  return `<rect class="bridge" x="${x - w / 2}" y="31" width="${w}" height="38" rx="8"/><rect class="windows" x="${x + w / 2 - 11}" y="36" width="5" height="28" rx="2.5"/><circle class="mast" cx="${x - 5}" cy="50" r="6"/>`;
+}
+const funnel = (x) => `<ellipse class="funnel" cx="${x}" cy="50" rx="13" ry="11"/><ellipse class="funnel-top" cx="${x}" cy="50" rx="8" ry="6"/>`;
+
+function shipSvg(len, vertical) {
+  const W = len * 100;
+  const hull = `M8 26 Q8 13 21 13 H${W - 52} C${W - 22} 13 ${W - 6} 33 ${W - 2} 50 C${W - 6} 67 ${W - 22} 87 ${W - 52} 87 H21 Q8 87 8 74 Z`;
+  const deck = `M20 24 H${W - 56} C${W - 34} 24 ${W - 20} 37 ${W - 14} 50 C${W - 20} 63 ${W - 34} 76 ${W - 56} 76 H20 Z`;
+  let parts;
+  if (len >= 5) {
+    // Carrier: flat flight deck, runway markings and an island on the side.
+    parts = `<path class="flightdeck" d="M15 19 H${W - 80} L${W - 26} 50 L${W - 80} 81 H15 Z"/>
+      <path class="runway" d="M32 50 H${W - 64}"/>
+      <path class="runway-edge" d="M32 31 H${W - 130} M32 69 H${W - 130}"/>
+      <rect class="bridge" x="${W * 0.55}" y="9" width="66" height="22" rx="5"/><circle class="mast" cx="${W * 0.55 + 16}" cy="20" r="5"/>
+      <path class="plane" d="M${W * 0.28} 41 l20 9 -20 9 6 -9z M${W * 0.28 + 44} 41 l20 9 -20 9 6 -9z"/>`;
+  } else if (len === 4) {
+    parts = turret(W - 98) + turret(W - 150) + bridge(W - 215) + funnel(W - 268) + turret(66, -1);
+  } else if (len === 3) {
+    parts = turret(W - 92) + bridge(W - 158, 46) + funnel(W - 208) + turret(58, -1);
+  } else {
+    parts = turret(W - 76) + bridge(76, 44);
+  }
+  const art = `<path class="hull" d="${hull}"/><path class="deck" d="${deck}"/><path class="keel" d="M24 50 H${W - 40}"/>${parts}`;
+  return vertical
+    ? `<svg viewBox="0 0 100 ${W}" aria-hidden="true"><g transform="translate(100 0) rotate(90)">${art}</g></svg>`
+    : `<svg viewBox="0 0 ${W} 100" aria-hidden="true">${art}</svg>`;
+}
+
 const WEAPON_ICON = {
   shot: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>',
   missile: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3l7 7-8 8-4-4 5-11zM9 14l-5 5M7 12l-3 1M12 17l-1 3"/></svg>',
@@ -91,7 +127,7 @@ function mountSeaBattle(session, root, shell) {
   const placeBar = el(
     "div",
     { class: "sb-place" },
-    el("p", { class: "hint" }, "Drag ships to move them, tap a ship to rotate it. Ships can't touch side by side."),
+    el("p", { class: "hint" }, "Drag ships to move them; press R while dragging to rotate. Or tap a ship to rotate it. Ships can't touch side by side."),
     el("div", { class: "sb-actions" }, shuffleBtn, rotateBtn, readyBtn),
   );
   const weaponsBar = el("div", { class: "sb-weapons", role: "toolbar", "aria-label": "Weapons" });
@@ -138,7 +174,8 @@ function mountSeaBattle(session, root, shell) {
   }
 
   function shipEl(ship, cls) {
-    const node = el("div", { class: `ship ${ship.vertical ? "v" : "h"} ${cls || ""}` });
+    const node = el("div", { class: `ship len${ship.len} ${ship.vertical ? "v" : "h"} ${cls || ""}` });
+    node.innerHTML = shipSvg(ship.len, ship.vertical);
     placeShipEl(node, ship);
     return node;
   }
@@ -456,7 +493,7 @@ function mountSeaBattle(session, root, shell) {
   }
 
   function keyMove(e, k) {
-    if (match.locked) return;
+    if (match.locked || dragging) return;
     const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
     if (moves[e.key]) {
       e.preventDefault();
@@ -479,32 +516,60 @@ function mountSeaBattle(session, root, shell) {
     };
   }
 
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
   function startDrag(e, k) {
     if (match.locked || e.button > 0) return;
     e.preventDefault();
     const node = e.currentTarget;
     node.setPointerCapture?.(e.pointerId);
     const origin = fleet[k];
+    const others = fleet.filter((_, j) => j !== k);
     const grab = cellAt(ownBoard, e.clientX, e.clientY);
-    const offR = grab.r - origin.r;
-    const offC = grab.c - origin.c;
+    let vertical = origin.vertical;
+    // Which square of the ship is under the pointer.
+    let off = {
+      r: clamp(grab.r - origin.r, 0, vertical ? origin.len - 1 : 0),
+      c: clamp(grab.c - origin.c, 0, vertical ? 0 : origin.len - 1),
+    };
+    let pointer = { x: e.clientX, y: e.clientY };
     let moved = false;
     let candidate = origin;
     dragging = true;
     node.classList.add("dragging");
-    const onMove = (ev) => {
-      const at = cellAt(ownBoard, ev.clientX, ev.clientY);
-      const next = { ...origin, r: at.r - offR, c: at.c - offC };
-      if (next.r === candidate.r && next.c === candidate.c) return;
-      moved = moved || next.r !== origin.r || next.c !== origin.c;
+    const update = () => {
+      const at = cellAt(ownBoard, pointer.x, pointer.y);
+      const next = {
+        ...origin,
+        vertical,
+        r: clamp(at.r - off.r, 0, R.SIZE - (vertical ? origin.len : 1)),
+        c: clamp(at.c - off.c, 0, R.SIZE - (vertical ? 1 : origin.len)),
+      };
+      if (next.r === candidate.r && next.c === candidate.c && next.vertical === candidate.vertical) return;
+      moved = moved || next.r !== origin.r || next.c !== origin.c || next.vertical !== origin.vertical;
       candidate = next;
-      if (R.shipInBounds(candidate)) placeShipEl(node, candidate);
-      node.classList.toggle("bad", !R.canPlace(fleet.filter((_, j) => j !== k), candidate));
+      placeShipEl(node, candidate);
+      node.classList.toggle("bad", !R.canPlace(others, candidate));
+    };
+    const onMove = (ev) => {
+      pointer = { x: ev.clientX, y: ev.clientY };
+      update();
+    };
+    // R while dragging rotates the ship around the square you're holding.
+    const onKey = (ev) => {
+      if (ev.key !== "r" && ev.key !== "R") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      vertical = !vertical;
+      off = { r: off.c, c: off.r };
+      node.innerHTML = shipSvg(origin.len, vertical);
+      update();
     };
     const onUp = () => {
       node.removeEventListener("pointermove", onMove);
       node.removeEventListener("pointerup", onUp);
       node.removeEventListener("pointercancel", onUp);
+      removeEventListener("keydown", onKey, true);
       dragging = false;
       if (match.locked) return render(); // Ready was pressed mid-drag: snap back
       if (!moved) {
@@ -520,6 +585,7 @@ function mountSeaBattle(session, root, shell) {
     node.addEventListener("pointermove", onMove);
     node.addEventListener("pointerup", onUp);
     node.addEventListener("pointercancel", onUp);
+    addEventListener("keydown", onKey, true);
   }
 
   function onReady() {

@@ -289,6 +289,36 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
   const rotated = await page.evaluate((k) => window.ddp.match.fleet[k].vertical, target.k);
   if (rotated === orientation) await page.locator("#toast.show").waitFor();
 
+  // Drag a ship, press R mid-drag, drop it: it lands rotated.
+  const plan = await page.evaluate(async () => {
+    const R = await import("/sea-battle/rules.js");
+    const fleet = window.ddp.match.fleet;
+    for (let k = 0; k < fleet.length; k++) {
+      const ship = fleet[k];
+      const others = fleet.filter((_, j) => j !== k);
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
+          const turned = { ...ship, r, c, vertical: !ship.vertical };
+          if ((r !== ship.r || c !== ship.c) && R.canPlace(others, turned)) return { k, from: { r: ship.r, c: ship.c }, to: turned };
+        }
+      }
+    }
+    return null;
+  });
+  assert.ok(plan, "some ship can be moved and turned");
+  await page.mouse.move(box.x + (plan.from.c + 0.5) * cell, box.y + (plan.from.r + 0.5) * cell);
+  await page.mouse.down();
+  await page.mouse.move(box.x + (plan.from.c + 0.6) * cell, box.y + (plan.from.r + 0.6) * cell);
+  await page.keyboard.press("r");
+  await page.mouse.move(box.x + (plan.to.c + 0.5) * cell, box.y + (plan.to.r + 0.5) * cell, { steps: 8 });
+  await page.mouse.up();
+  const dropped = await page.evaluate((k) => window.ddp.match.fleet[k], plan.k);
+  assert.deepEqual(
+    { r: dropped.r, c: dropped.c, vertical: dropped.vertical },
+    { r: plan.to.r, c: plan.to.c, vertical: plan.to.vertical },
+    "R while dragging rotates the ship",
+  );
+
   await page.click("#ready");
   await page.waitForFunction(() => window.ddp.match.phase === "playing", null, { timeout: 10_000 });
   for (let shots = 0; shots < 3; ) {
