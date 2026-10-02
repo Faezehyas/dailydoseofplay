@@ -87,17 +87,12 @@ function noise(a, { kind = "white", at = 0, dur = 0.3, gain = 0.2, attack = 0.00
   src.stop(t + dur + 0.05);
 }
 
-// A shell falling: a whistle that drops in pitch, with a slight wobble.
-function whistle(a, { at = 0, dur = 0.45, from = 1900, to = 650, gain = 0.14 }) {
-  const osc = tone(a, { freq: from, to, at, dur, gain, attack: 0.08 });
-  const t = a.currentTime + at;
-  const lfo = a.createOscillator();
-  const depth = a.createGain();
-  lfo.frequency.value = 9;
-  depth.gain.value = from * 0.012;
-  lfo.connect(depth).connect(osc.frequency);
-  lfo.start(t);
-  lfo.stop(t + dur + 0.05);
+// A shell coming in: a muffled launch boom, then rushing air that swells
+// as it nears and cuts off at impact (no cartoon whistle).
+function incoming(a, { at = 0, dur = 0.45, from = 2600, to = 500, gain = 0.32, launch = 0.16 }) {
+  if (launch) noise(a, { at, dur: 0.14, gain: launch, from: 520, to: 110 });
+  noise(a, { at: at + 0.03, dur, gain, type: "bandpass", from, to, q: 1.4, attack: dur * 0.85 });
+  noise(a, { kind: "brown", at: at + 0.03, dur, gain: gain * 0.7, from: 380, to: 120, attack: dur * 0.85 });
 }
 
 // Water: a hollow plop, a spray of hiss, then a few rising bubbles.
@@ -118,15 +113,15 @@ function blast(a, at = 0, size = 1) {
 }
 
 const SOUNDS = {
-  launch: (a) => whistle(a, {}),
-  "launch-big": (a) => whistle(a, { dur: 0.55, from: 1500, to: 380, gain: 0.16 }),
+  launch: (a) => incoming(a, {}),
+  "launch-big": (a) => incoming(a, { dur: 0.55, from: 2000, to: 350, gain: 0.4, launch: 0.22 }),
   "launch-rain": (a) => {
-    for (let k = 0; k < 5; k++) whistle(a, { at: k * 0.07, dur: 0.5, from: 1700 + k * 120, to: 600, gain: 0.06 });
+    for (let k = 0; k < 5; k++) incoming(a, { at: k * 0.06, dur: 0.52, from: 2400 + k * 200, to: 600, gain: 0.12, launch: k === 0 ? 0.14 : 0 });
   },
   "launch-nuke": (a) => {
-    // A heavy bomb falling: long, low, wavering whistle with wind.
-    whistle(a, { dur: 1.0, from: 1300, to: 180, gain: 0.16 });
-    noise(a, { dur: 1.0, gain: 0.1, type: "bandpass", from: 400, to: 1200, q: 1.5, attack: 0.4 });
+    // A heavy bomb falling: a deep, long roar of air building to impact.
+    incoming(a, { dur: 1.0, from: 1400, to: 160, gain: 0.45, launch: 0.25 });
+    noise(a, { kind: "brown", dur: 1.0, gain: 0.3, from: 200, to: 60, attack: 0.9 });
   },
   miss: (a) => splash(a),
   hit: (a) => blast(a),
