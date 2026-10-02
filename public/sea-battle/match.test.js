@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { localPair } from "../engine/channel.js";
-import { openSession } from "../engine/session.js";
+import { openSession, matchRouter } from "../engine/session.js";
 import { rngFromSeed } from "../engine/rng.js";
-import { SeaBattleMatch, matchRouter } from "./match.js";
+import { SeaBattleMatch } from "./match.js";
 import { randomFleet, shipCells, occupancy, CELLS, UNKNOWN, answerShots } from "./rules.js";
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));

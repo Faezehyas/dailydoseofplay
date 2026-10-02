@@ -116,3 +116,22 @@ export function openSession({ channel, mode, index, name, game }) {
     channel.send({ t: "$hello", name, game, v: PROTOCOL_VERSION });
   });
 }
+
+// Routes a session's game messages to the current match by match number `m`
+// and holds messages for a match that does not exist yet (rematch races).
+export function matchRouter(session) {
+  let current = null;
+  let future = [];
+  session.onMessage((msg) => {
+    if (current && msg.m === current.m) current.receive(msg);
+    else if (!current || msg.m > current.m) future.push(msg);
+  });
+  return {
+    start(match) {
+      current = match;
+      const now = future.filter((msg) => msg.m === match.m);
+      future = future.filter((msg) => msg.m > match.m);
+      for (const msg of now) match.receive(msg);
+    },
+  };
+}

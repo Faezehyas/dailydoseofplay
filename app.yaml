@@ -2,6 +2,19 @@ kind: wasmer.io/App.v0
 name: dailydoseofplay
 owner: faezeh_yass
 package: .
+# One region keeps the in-memory room registry on one set of instances, so a
+# friend's join reaches the host's room.
 locality:
   regions:
     - fr-roub1
+health_checks:
+  - http:
+      method: get
+      path: /healthz
+      interval: 60s
+      timeout: 10s
+      unhealthy_threshold: 3
+      healthy_threshold: 1
+      expected_status_codes:
+        - 200
+      expected_body_includes: '"ok":true'

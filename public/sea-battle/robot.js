@@ -10,7 +10,8 @@
 //     and it goes out of its way for gifts;
 //   * weapons: splash weapons are aimed where they cover the most density.
 import { randomFleet, remainingShips, shipCells, orthoNeighbors, aimedCells, other, CELLS, SIZE, UNKNOWN, HIT, MISS, CLEAR, rowOf, colOf } from "./rules.js";
-import { SeaBattleMatch, matchRouter } from "./match.js";
+import { SeaBattleMatch } from "./match.js";
+import { matchRouter } from "../engine/session.js";
 
 export function analyze(board) {
   const sunkCells = new Set(board.sunk.flatMap((s) => s.cells));

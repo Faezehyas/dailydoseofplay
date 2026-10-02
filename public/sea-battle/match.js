@@ -18,6 +18,8 @@
 //   result { hits, sunk }         defender's answer: 0/1 per fired square, newly sunk ships
 //   reveal { fleet, salt }        after game over
 //   abort  { reason }             protocol violation detected
+//
+// For games without hidden information use engine/turn-match.js instead.
 import { Emitter } from "../engine/channel.js";
 import { SharedRandom, commit, verifyCommit, FairPlayError } from "../engine/fair.js";
 import {
@@ -35,25 +37,6 @@ import {
   RuleError,
 } from "./rules.js";
 
-// Routes session messages to the current match by match number and holds
-// messages for a match that has not been created yet (rematch races).
-export function matchRouter(session) {
-  let current = null;
-  let future = [];
-  session.onMessage((msg) => {
-    if (current && msg.m === current.m) current.receive(msg);
-    else if (!current || msg.m > current.m) future.push(msg);
-  });
-  return {
-    start(match) {
-      current = match;
-      const now = future.filter((msg) => msg.m === match.m);
-      future = future.filter((msg) => msg.m > match.m);
-      for (const msg of now) match.receive(msg);
-    },
-  };
-}
-
 export class SeaBattleMatch extends Emitter {
   constructor({ send, me, fleet, m = 1 }) {
     super();
@@ -70,7 +53,8 @@ export class SeaBattleMatch extends Emitter {
     this.salt = null;
     this.peerReveal = null;
     this.verdict = null; // { ok, reason } after the audit
-    this.queue = SharedRandom.create().then((sr) => {
+    this.srReady = SharedRandom.create();
+    this.queue = this.srReady.then((sr) => {
       this.sr = sr;
     });
   }
@@ -126,9 +110,8 @@ export class SeaBattleMatch extends Emitter {
   receive(msg) {
     if (msg.m !== this.m) return;
     if (msg.t === "draw") {
-      // Handled out of band: a queued step may be waiting for it.
-      if (this.sr) this.sr.receive(msg.k, msg.v);
-      else this.queue.then(() => this.sr.receive(msg.k, msg.v));
+      // Out of band: a queued step may be waiting for this very draw.
+      this.srReady.then((sr) => sr.receive(msg.k, msg.v));
       return;
     }
     this.#enqueue(() => this.#handle(msg));

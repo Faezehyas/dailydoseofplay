@@ -2,7 +2,8 @@
 // All game logic lives in rules.js / match.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
 import { el, toast } from "../engine/shell.js";
-import { SeaBattleMatch, matchRouter } from "./match.js";
+import { SeaBattleMatch } from "./match.js";
+import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
 import * as R from "./rules.js";
 
