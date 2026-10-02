@@ -1,0 +1,257 @@
+// One player's side of a Sea Battle match. DOM-free and transport-agnostic:
+// give it send(msg) and feed it the peer's messages with receive(msg).
+//
+// Fair play without a referee:
+//   * each side keeps its fleet private and publishes only a commitment
+//     (sha256 of fleet + salt) when it presses Ready;
+//   * the defender answers every shot itself (hit/miss/sunk);
+//   * at game over both sides reveal fleet + salt, and each side audits every
+//     answer it received against the revealed fleet;
+//   * every random outcome (who starts, gift squares and types, missile rain
+//     squares) comes from SharedRandom, so both peers agree on it and neither
+//     side can pick or predict it.
+//
+// Messages (all carry m = match number, so rematches never mix):
+//   ready  { commit, chain }      fleet commitment + hash-chain tip
+//   draw   { k, v }               SharedRandom reveal for draw k
+//   fire   { w, at }              weapon + aimed square (no `at` for rain)
+//   result { hits, sunk }         defender's answer: 0/1 per fired square, newly sunk ships
+//   reveal { fleet, salt }        after game over
+//   abort  { reason }             protocol violation detected
+import { Emitter } from "../engine/channel.js";
+import { SharedRandom, commit, verifyCommit, FairPlayError } from "../engine/fair.js";
+import {
+  answerShots,
+  applyFire,
+  auditBoard,
+  checkFire,
+  giftsDue,
+  newMatchState,
+  normalizeFleet,
+  other,
+  rainCells,
+  spawnGifts,
+  validateFleet,
+  RuleError,
+} from "./rules.js";
+
+// Routes session messages to the current match by match number and holds
+// messages for a match that has not been created yet (rematch races).
+export function matchRouter(session) {
+  let current = null;
+  let future = [];
+  session.onMessage((msg) => {
+    if (current && msg.m === current.m) current.receive(msg);
+    else if (!current || msg.m > current.m) future.push(msg);
+  });
+  return {
+    start(match) {
+      current = match;
+      const now = future.filter((msg) => msg.m === match.m);
+      future = future.filter((msg) => msg.m > match.m);
+      for (const msg of now) match.receive(msg);
+    },
+  };
+}
+
+export class SeaBattleMatch extends Emitter {
+  constructor({ send, me, fleet, m = 1 }) {
+    super();
+    this.send = (msg) => send({ ...msg, m });
+    this.me = me; // 0 = host, 1 = guest
+    this.m = m;
+    this.fleet = fleet;
+    this.phase = "placing"; // placing -> playing -> over | aborted
+    this.state = null; // public state, identical on both peers
+    this.myReady = false;
+    this.peer = null; // { commit, chain }
+    this.pending = null; // my shot awaiting an answer
+    this.working = false;
+    this.salt = null;
+    this.peerReveal = null;
+    this.verdict = null; // { ok, reason } after the audit
+    this.queue = SharedRandom.create().then((sr) => {
+      this.sr = sr;
+    });
+  }
+
+  // ---------- public API ----------
+  setFleet(fleet) {
+    if (this.myReady) throw new RuleError("fleet already locked");
+    this.fleet = fleet;
+  }
+
+  ready() {
+    return this.#enqueue(async () => {
+      if (this.myReady) return;
+      const v = validateFleet(this.fleet);
+      if (!v.ok) return this.emit("invalid", v.reason);
+      this.fleet = normalizeFleet(this.fleet);
+      const { commitment, salt } = await commit(this.fleet);
+      this.salt = salt;
+      this.myReady = true;
+      this.send({ t: "ready", commit: commitment, chain: this.sr.tip });
+      this.emit("update");
+      if (this.peer) await this.#start();
+    });
+  }
+
+  canFire() {
+    return this.phase === "playing" && this.state.turn === this.me && !this.pending && !this.working;
+  }
+
+  fire(weapon, target) {
+    return this.#enqueue(async () => {
+      if (!this.canFireQueued()) return;
+      let cells;
+      try {
+        cells = checkFire(this.state, this.me, weapon, target);
+      } catch (err) {
+        if (err instanceof RuleError) return this.emit("invalid", err.message);
+        throw err;
+      }
+      this.pending = { weapon, target, cells };
+      this.send({ t: "fire", w: weapon, at: weapon === "rain" ? undefined : target });
+      if (weapon === "rain") {
+        this.pending.cells = rainCells(this.state.boards[other(this.me)], await this.#draw());
+      }
+      this.emit("fired", { by: this.me, weapon, target, cells: this.pending.cells });
+    });
+  }
+
+  canFireQueued() {
+    return this.phase === "playing" && this.state.turn === this.me && !this.pending;
+  }
+
+  receive(msg) {
+    if (msg.m !== this.m) return;
+    if (msg.t === "draw") {
+      // Handled out of band: a queued step may be waiting for it.
+      if (this.sr) this.sr.receive(msg.k, msg.v);
+      else this.queue.then(() => this.sr.receive(msg.k, msg.v));
+      return;
+    }
+    this.#enqueue(() => this.#handle(msg));
+  }
+
+  abort(reason) {
+    if (this.phase === "aborted") return;
+    this.phase = "aborted";
+    this.sr?.abort(new FairPlayError(reason));
+    this.emit("abort", { reason });
+    this.emit("update");
+  }
+
+  // ---------- internals ----------
+  #enqueue(step) {
+    const run = this.queue.then(async () => {
+      if (this.phase === "aborted") return;
+      this.working = true;
+      try {
+        await step();
+      } catch (err) {
+        if (err instanceof RuleError || err instanceof FairPlayError) {
+          this.send({ t: "abort", reason: err.message });
+          this.abort(`Opponent broke the rules: ${err.message}`);
+        } else {
+          console.error(err);
+          this.abort(`Unexpected error: ${err.message}`);
+        }
+      } finally {
+        this.working = false;
+        this.emit("update");
+      }
+    });
+    this.queue = run;
+    return run;
+  }
+
+  #draw() {
+    return this.sr.draw((k, v) => this.send({ t: "draw", k, v }));
+  }
+
+  async #start() {
+    const rng = await this.#draw();
+    const first = rng() < 0.5 ? 0 : 1;
+    this.state = newMatchState(first);
+    this.phase = "playing";
+    this.emit("start", { first });
+  }
+
+  async #handle(msg) {
+    switch (msg.t) {
+      case "ready": {
+        if (this.peer) throw new RuleError("ready sent twice");
+        if (typeof msg.commit !== "string" || msg.commit.length !== 64) throw new RuleError("bad commitment");
+        this.peer = { commit: msg.commit, chain: msg.chain };
+        this.sr.setPeer(msg.chain, this.me);
+        this.emit("peer-ready");
+        if (this.myReady) await this.#start();
+        return;
+      }
+      case "fire": {
+        if (this.phase !== "playing") throw new RuleError("fire outside play");
+        const shooter = other(this.me);
+        const weapon = String(msg.w);
+        let cells = checkFire(this.state, shooter, weapon, msg.at);
+        if (weapon === "rain") cells = rainCells(this.state.boards[this.me], await this.#draw());
+        this.emit("fired", { by: shooter, weapon, target: msg.at, cells });
+        const { hits, sunk } = answerShots(this.fleet, this.state.boards[this.me], cells);
+        this.send({ t: "result", hits, sunk });
+        await this.#advance(shooter, weapon, cells, hits, sunk);
+        return;
+      }
+      case "result": {
+        if (!this.pending) throw new RuleError("unexpected result");
+        const { weapon, cells } = this.pending;
+        this.pending = null;
+        await this.#advance(this.me, weapon, cells, msg.hits, msg.sunk);
+        return;
+      }
+      case "reveal": {
+        this.peerReveal = { fleet: msg.fleet, salt: msg.salt };
+        if (this.phase === "over") await this.#audit();
+        return;
+      }
+      case "abort":
+        this.abort(`Opponent stopped the match: ${String(msg.reason).slice(0, 80)}`);
+        return;
+      default:
+        throw new RuleError(`unknown message ${String(msg.t).slice(0, 20)}`);
+    }
+  }
+
+  async #advance(shooter, weapon, cells, hits, sunk) {
+    const events = applyFire(this.state, shooter, weapon, cells, hits, sunk);
+    this.emit("events", { shooter, weapon, events });
+    if (this.state.winner !== -1) {
+      this.phase = "over";
+      this.send({ t: "reveal", fleet: this.fleet, salt: this.salt });
+      this.emit("over", { winner: this.state.winner });
+      if (this.peerReveal) await this.#audit();
+      return;
+    }
+    if (giftsDue(this.state)) {
+      const spawned = spawnGifts(this.state, await this.#draw());
+      if (spawned.length) this.emit("gifts", spawned);
+    }
+  }
+
+  async #audit() {
+    if (this.verdict) return;
+    const { fleet, salt } = this.peerReveal;
+    let verdict;
+    if (!(await verifyCommit(this.peer.commit, fleet, salt))) {
+      verdict = { ok: false, reason: "their revealed fleet doesn't match the one they locked in" };
+    } else {
+      try {
+        verdict = auditBoard(this.state.boards[other(this.me)], fleet);
+      } catch {
+        verdict = { ok: false, reason: "their revealed fleet is malformed" };
+      }
+    }
+    this.verdict = verdict;
+    this.peerFleet = Array.isArray(fleet) ? fleet : null;
+    this.emit("verified", verdict);
+  }
+}

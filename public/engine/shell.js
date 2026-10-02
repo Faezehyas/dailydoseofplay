@@ -1,0 +1,130 @@
+// UI shell shared by the home page and every game: header, theme toggle,
+// nickname storage, toasts and tiny DOM helpers.
+
+const THEME_KEY = "ddp-theme";
+const NAME_KEY = "ddp-name";
+
+export const $ = (sel, root = document) => root.querySelector(sel);
+
+export function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") node.className = v;
+    else if (k === "dataset") Object.assign(node.dataset, v);
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else if (v === true) node.setAttribute(k, "");
+    else node.setAttribute(k, v);
+  }
+  for (const c of children.flat()) if (c != null && c !== false) node.append(c);
+  return node;
+}
+
+function store(key, value) {
+  try {
+    if (value == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {}
+}
+function load(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function getNickname() {
+  return (load(NAME_KEY) || "").slice(0, 20);
+}
+export function setNickname(name) {
+  const clean = String(name || "").trim().slice(0, 20);
+  store(NAME_KEY, clean || null);
+  return clean;
+}
+export const displayName = (fallback = "Player") => getNickname() || fallback;
+
+// Theme: "system" (default), "light" or "dark", applied as <html data-theme>.
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
+}
+function currentTheme() {
+  const t = load(THEME_KEY);
+  return t === "light" || t === "dark" ? t : "system";
+}
+function effectiveDark() {
+  const t = currentTheme();
+  if (t !== "system") return t === "dark";
+  return matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+const ICONS = {
+  sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>',
+};
+
+export function logoSvg() {
+  return '<svg viewBox="0 0 32 32" aria-hidden="true" class="logo-mark"><rect x="2" y="2" width="28" height="28" rx="8" class="logo-bg"/><circle cx="11" cy="11" r="3" class="logo-dot"/><circle cx="21" cy="21" r="3" class="logo-dot"/><circle cx="21" cy="11" r="3" class="logo-dot2"/><circle cx="11" cy="21" r="3" class="logo-dot2"/></svg>';
+}
+
+export function initShell({ title } = {}) {
+  applyTheme(currentTheme());
+  const header = el("header", { class: "site-header" });
+  const brand = el("a", { class: "brand", href: "/" });
+  brand.innerHTML = `${logoSvg()}<span>Daily Dose <em>of</em> Play</span>`;
+  const themeBtn = el("button", { class: "icon-btn", type: "button", id: "theme-toggle" });
+  const renderThemeBtn = () => {
+    const dark = effectiveDark();
+    themeBtn.innerHTML = dark ? ICONS.sun : ICONS.moon;
+    themeBtn.title = dark ? "Switch to light mode" : "Switch to dark mode";
+    themeBtn.setAttribute("aria-label", themeBtn.title);
+  };
+  themeBtn.addEventListener("click", () => {
+    const next = effectiveDark() ? "light" : "dark";
+    // Back to "system" when the choice matches the OS preference.
+    const osDark = matchMedia("(prefers-color-scheme: dark)").matches;
+    store(THEME_KEY, (next === "dark") === osDark ? null : next);
+    applyTheme(currentTheme());
+    renderThemeBtn();
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", renderThemeBtn);
+  renderThemeBtn();
+  const right = el("div", { class: "header-right" });
+  if (title) right.append(el("span", { class: "header-game" }, title));
+  right.append(themeBtn);
+  header.append(brand, right);
+  document.body.prepend(header);
+  return header;
+}
+
+let toastTimer = null;
+export function toast(message, ms = 2600) {
+  let node = $("#toast");
+  if (!node) {
+    node = el("div", { id: "toast", class: "toast", role: "status", "aria-live": "polite" });
+    document.body.append(node);
+  }
+  node.textContent = message;
+  node.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => node.classList.remove("show"), ms);
+}
+
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = el("textarea", { style: "position:fixed;opacity:0" });
+    ta.value = text;
+    document.body.append(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {}
+    ta.remove();
+    return ok;
+  }
+}

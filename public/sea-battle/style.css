@@ -1,0 +1,560 @@
+/* Sea Battle view. Uses the shared tokens from /engine/theme.css. */
+.sea-battle {
+  display: grid;
+  gap: 12px;
+}
+
+.sb-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sb-players {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.sb-players .who {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40vw;
+}
+
+.sb-players .who.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.sb-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.btn.small {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.sb-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.sb-status.mine {
+  color: var(--accent);
+}
+
+.sb-place,
+.sb-over {
+  text-align: center;
+}
+
+.sb-place .hint {
+  color: var(--muted);
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.sb-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sb-over {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.sb-over h2 {
+  font-size: 1.6rem;
+}
+
+.sb-over h2.win {
+  color: var(--accent);
+}
+
+.verdict {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.verdict.ok {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.verdict.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.rematch-status {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* ---------- boards ---------- */
+.sb-boards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.sb-boards > .own {
+  order: -1;
+}
+
+[data-phase="placing"] .sb-boards {
+  grid-template-columns: minmax(0, 480px);
+  justify-content: center;
+}
+
+.board-wrap {
+  min-width: 0;
+}
+
+.board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.board-title {
+  font-size: 1rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fleet-left {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex: none;
+}
+
+.pip {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ship);
+}
+
+.pip.len5 { width: 30px; }
+.pip.len4 { width: 24px; }
+.pip.len3 { width: 18px; }
+.pip.len2 { width: 12px; }
+
+.pip.gone {
+  background: var(--hit);
+  opacity: 0.35;
+}
+
+.board-frame {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  grid-template-rows: 18px auto;
+  gap: 2px;
+}
+
+.labels {
+  display: grid;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+  user-select: none;
+}
+
+.labels.cols {
+  grid-template-columns: repeat(10, 1fr);
+  align-items: end;
+}
+
+.labels.rows {
+  grid-template-rows: repeat(10, 1fr);
+  align-items: center;
+}
+
+.board {
+  position: relative;
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    linear-gradient(var(--water-line) 1px, transparent 1px) 0 0 / 10% 10%,
+    linear-gradient(90deg, var(--water-line) 1px, transparent 1px) 0 0 / 10% 10%,
+    linear-gradient(160deg, var(--water), var(--water-2));
+  border: 2px solid var(--water-line);
+  touch-action: none;
+  /* cqw lets ships size margins from the board, not their own span */
+  container-type: inline-size;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(10, 1fr);
+}
+
+.layer.cells {
+  z-index: 2;
+}
+
+.layer.ships {
+  z-index: 1;
+}
+
+.placing .layer.cells {
+  pointer-events: none;
+}
+
+.placing .layer.ships {
+  z-index: 3;
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  min-width: 0;
+  min-height: 0;
+}
+
+button.cell {
+  cursor: default;
+}
+
+.armed button.cell:not(.hit):not(.miss):not(.clear) {
+  cursor: crosshair;
+}
+
+.armed button.cell:not(.hit):not(.miss):not(.clear):hover,
+.cell.aim {
+  background: rgb(255 107 74 / 28%);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.armed .rain button.cell:not(.hit):not(.miss):not(.clear) {
+  background: rgb(255 107 74 / 12%);
+  cursor: pointer;
+}
+
+.cell svg {
+  width: 72%;
+  height: 72%;
+}
+
+.cell.clear {
+  background: rgb(255 255 255 / 14%);
+}
+
+.mk-clear circle {
+  fill: var(--miss);
+  opacity: 0.5;
+}
+
+.mk-splash {
+  fill: none;
+  stroke: var(--miss);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.mk-splash circle:first-child {
+  fill: var(--miss);
+  stroke: none;
+}
+
+.mk-splash .ring {
+  opacity: 0.75;
+}
+
+.mk-splash .ring2 {
+  opacity: 0.35;
+  stroke-width: 1.5;
+}
+
+.mk-fire .fl1 {
+  fill: var(--hit);
+}
+
+.mk-fire .fl2 {
+  fill: var(--hit-2);
+}
+
+.cell.hit svg {
+  animation: flicker 1.4s ease-in-out infinite alternate;
+  transform-origin: 50% 90%;
+}
+
+.cell.fresh.hit svg {
+  animation: pop 0.35s ease-out, flicker 1.4s ease-in-out 0.35s infinite alternate;
+}
+
+.cell.fresh.miss svg {
+  animation: ripple 0.5s ease-out;
+}
+
+.cell.incoming {
+  animation: incoming 0.6s ease-out;
+}
+
+@keyframes flicker {
+  from { transform: scale(1) rotate(-2deg); }
+  to { transform: scale(1.08, 0.95) rotate(2deg); }
+}
+
+@keyframes pop {
+  from { transform: scale(0.2); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ripple {
+  from { transform: scale(0.3); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes incoming {
+  from { background: rgb(255 194 58 / 60%); }
+  to { background: transparent; }
+}
+
+.mk-gift .g1 { fill: var(--gift); }
+.mk-gift .g2 { fill: var(--gift); opacity: 0.75; }
+.mk-gift .g3 { fill: #fde68a; }
+
+.cell.gift svg {
+  animation: bob 1.6s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8%); }
+}
+
+/* ---------- ships ---------- */
+.ship {
+  margin: 0.9cqw;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--ship), var(--ship-edge));
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 18%), 0 2px 4px rgb(0 0 0 / 25%);
+  position: relative;
+}
+
+.ship.v {
+  background: linear-gradient(90deg, var(--ship), var(--ship-edge));
+}
+
+.ship::after {
+  content: "";
+  position: absolute;
+  inset: 3cqw 2.5cqw;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 22%);
+}
+
+.ship.v::after {
+  inset: 2.5cqw 3cqw;
+}
+
+.ship.draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.ship.dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+  z-index: 5;
+}
+
+.ship.bad {
+  background: var(--danger);
+}
+
+.ship.selected {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.ship.sunk {
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 2px var(--hit);
+}
+
+.ship.sunk::after {
+  display: none;
+}
+
+.ship.revealed {
+  opacity: 0.55;
+  outline: 2px dashed var(--ship-edge);
+}
+
+/* ---------- weapons ---------- */
+.sb-weapons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.weapon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.weapon.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.weapon.empty {
+  opacity: 0.4;
+}
+
+.weapon:disabled {
+  cursor: not-allowed;
+}
+
+.w-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  display: block;
+}
+
+.w-count {
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 0.8rem;
+}
+
+.their-arsenal {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- log + rules ---------- */
+.sb-log {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 640px;
+  width: 100%;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.sb-log li {
+  padding: 4px 10px;
+  border-left: 3px solid var(--border);
+  margin: 2px 0;
+}
+
+.sb-log li:first-child {
+  color: var(--text);
+}
+
+.sb-log li.mine { border-left-color: var(--accent); }
+.sb-log li.theirs { border-left-color: var(--accent-2); }
+.sb-log li.big { font-weight: 800; }
+.sb-log li.gift { border-left-color: var(--gift); }
+.sb-log li.bad { border-left-color: var(--danger); color: var(--danger); }
+
+.rules {
+  margin-top: 24px;
+}
+
+.rules summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.rules li {
+  margin: 6px 0;
+}
+
+@media (max-width: 760px) {
+  .sb-boards {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 480px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .sb-boards > .own {
+    order: 1;
+  }
+  [data-phase="placing"] .sb-boards > .own {
+    order: -1;
+  }
+  .weapon .w-label {
+    display: none;
+  }
+  .sb-weapons {
+    gap: 6px;
+  }
+  .weapon {
+    padding: 0 8px;
+    gap: 4px;
+  }
+  [data-phase="playing"] .sb-boards > .own,
+  [data-phase="over"] .sb-boards > .own {
+    width: 80%;
+    justify-self: center;
+  }
+}

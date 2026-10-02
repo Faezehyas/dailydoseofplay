@@ -1,0 +1,7 @@
+kind: wasmer.io/App.v0
+name: dailydoseofplay
+owner: faezeh_yass
+package: .
+locality:
+  regions:
+    - fr-roub1

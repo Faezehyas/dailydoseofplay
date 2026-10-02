@@ -1,0 +1,16 @@
+{
+  "name": "dailydoseofplay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Free, no-login browser games: Node signaling on Wasmer Edge, gameplay over WebRTC DataChannels",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "PORT=8080 node --watch server/server.js",
+    "test": "node --test \"public/**/*.test.js\" \"test/*.test.js\"",
+    "test:browser": "node --test test/browser/*.test.js",
+    "test:all": "npm test && npm run test:browser"
+  },
+  "dependencies": { "ws": "^8.18.0" }
+}
