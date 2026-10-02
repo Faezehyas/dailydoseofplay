@@ -68,7 +68,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `shell.js` | Header, light/dark toggle (follows the OS until pinned), nickname in `localStorage`, toast, `el()` DOM helper |
 | `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
 | `signaling.js` | `RoomClient`: create, join, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
-| `peer.js` | `PeerChannel`: one ordered, reliable DataChannel; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
+| `peer.js` | `PeerChannel`: one ordered, reliable DataChannel, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory channel with the same interface as `PeerChannel` (used for the robot and the tests) |
 | `session.js` | `Session`: names exchange (`$hello` with a protocol version), buffering of game messages, rematch votes (`$rematch`), goodbye (`$bye`). No DOM. |
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, and holds messages for a rematch that hasn't started yet |
@@ -84,12 +84,20 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 3. The host starts the WebRTC offer, the guest answers, and ICE goes through `signal`.
 4. The DataChannel opens and both sides send `$hello` → `Session`.
 5. The lobby closes the signaling socket. This frees the room and keeps instance load near zero.
+   The host can get there first, so a guest whose channel is already open ignores `host-left`.
 6. The engine calls `onSession(session, root)` and the game takes over.
 
 In robot mode the engine builds a `localPair()`. It runs the same `$hello`
 on both ends and hands the second `Session` to the game's `createRobot()`.
 **The robot is just another peer**, so robot games use exactly the same
 protocol and rules code as friend games.
+
+**Why a pre-negotiated channel.** With the default in-band handshake, the
+guest's channel opens when the host's open request arrives, and Chrome
+sometimes drops a message the guest sends at that moment. The guest's `$hello`
+was lost about once in 15 local connections, and the host then timed out.
+Both peers now create the same channel (`id: 0`) before the offer, so neither
+side's first message can arrive before the other side has the channel.
 
 Engine messages start with `$`. Everything else belongs to the game. The
 game receives messages through `session.onMessage()`, which buffers until a
