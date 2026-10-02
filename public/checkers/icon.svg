@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4e2"/>
+      <stop offset="1" stop-color="#f6dcc0"/>
+    </linearGradient>
+    <pattern id="squares" width="64" height="64" patternUnits="userSpaceOnUse" x="40" y="4">
+      <rect width="64" height="64" fill="#fffaf2"/>
+      <rect width="32" height="32" fill="#c9b9a6"/>
+      <rect x="32" y="32" width="32" height="32" fill="#c9b9a6"/>
+    </pattern>
+  </defs>
+  <rect width="320" height="200" fill="url(#paper)"/>
+  <rect x="40" y="4" width="256" height="192" rx="10" fill="url(#squares)" stroke="#3b4256" stroke-width="5"/>
+  <g stroke="#b04a33" stroke-width="3" fill="#ff6b4a">
+    <circle cx="56" cy="148" r="12"/>
+    <circle cx="120" cy="148" r="12"/>
+    <circle cx="88" cy="180" r="12"/>
+    <circle cx="152" cy="180" r="12"/>
+    <circle cx="184" cy="20" r="12"/>
+  </g>
+  <path d="M177 24h14l2-11-6 4-4-7-4 7-6-4z" fill="#fff" stroke="#b04a33" stroke-width="1.5" stroke-linejoin="round"/>
+  <g stroke="#1d5f5f" stroke-width="3" fill="#2b8a8a">
+    <circle cx="152" cy="116" r="12" opacity=".4"/>
+    <circle cx="216" cy="52" r="12"/>
+    <circle cx="280" cy="52" r="12"/>
+    <circle cx="248" cy="20" r="12"/>
+    <circle cx="248" cy="84" r="12"/>
+  </g>
+  <g fill="none" stroke="#3b4256" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M126 136q12-52 52-46" stroke-dasharray="2 9"/>
+    <path d="M168 84l10 6-9 7"/>
+  </g>
+  <g fill="#ffc23a">
+    <path d="M22 30l3 7 8 1-6 5 2 8-7-4-7 4 2-8-6-5 8-1z"/>
+    <circle cx="20" cy="160" r="4"/>
+    <circle cx="306" cy="150" r="5"/>
+  </g>
+</svg>
