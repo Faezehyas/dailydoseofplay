@@ -75,7 +75,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
-| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's water splashes are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
+| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
 **Session flow.**
@@ -197,7 +197,8 @@ the no-side-contact rule).
 
 It averages about 40 shots to sink a fleet, against about 89 for random fire
 (300 fleets, plain shots only; `robot.test.js` checks it stays under 55). It plays through `startRobot(session)`, the same
-`SeaBattleMatch` that a human uses.
+`SeaBattleMatch` that a human uses, and waits 1.4–2.1 s before each shot so
+its moves are easy to follow.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 

@@ -64,7 +64,8 @@ const WEAPON_ICON = {
   nuke: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.5"/><path d="M12 3a9 9 0 0 1 7.8 4.5L14.2 10.8M4.2 7.5A9 9 0 0 1 12 3M9.8 10.8 4.2 7.5M8 19.8l2.9-5.6M16 19.8l-2.9-5.6M8 19.8a9 9 0 0 0 8 0"/></svg>',
 };
 
-const AI_DELAY = 650;
+// The robot "thinks" this long (plus up to half again) before each shot.
+const AI_DELAY = 1400;
 // Seconds a shell is in the air before it lands (sound and visuals wait for it).
 const FLIGHT = { shot: 0.45, missile: 0.45, big: 0.55, rain: 0.6, nuke: 1.0 };
 // Real recordings (CC0, see sounds/LICENSE.txt): heavy objects hitting water,
