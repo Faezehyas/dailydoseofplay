@@ -45,6 +45,7 @@ test("HTTP routes: home, games, healthz, ws, 404s", async (t) => {
   assert.match(js.headers.get("content-type"), /javascript/);
   assert.equal((await fetch(`${srv.base}/sea-battle/icon.svg`)).headers.get("content-type"), "image/svg+xml");
   assert.equal((await fetch(`${srv.base}/engine/`)).status, 404, "no directory listings");
+  assert.equal((await fetch(`${srv.base}/sea-battle/sounds/splash-heavy-1.mp3`)).headers.get("content-type"), "audio/mpeg");
 });
 
 test("registry: every entry is well formed and every ready game has a folder", () => {

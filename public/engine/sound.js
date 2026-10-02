@@ -1,5 +1,5 @@
-// Synthesized sound effects (WebAudio, no audio files). Muting is a
-// per-device setting shared by every game.
+// Sound effects: synthesized with WebAudio, plus short recorded samples a
+// game can preload. Muting is a per-device setting shared by every game.
 const KEY = "ddp-sound";
 let ctx = null;
 let bus = null;
@@ -164,6 +164,58 @@ const SOUNDS = {
   win: (a) => [523, 659, 784, 1047].forEach((f, k) => tone(a, { freq: f, type: "triangle", at: k * 0.12, dur: 0.22, gain: 0.12 })),
   lose: (a) => [392, 330, 262].forEach((f, k) => tone(a, { freq: f, type: "triangle", at: k * 0.16, dur: 0.28, gain: 0.1 })),
 };
+
+// ---------- recorded samples ----------
+// Decoded with an OfflineAudioContext so preloading needs no user gesture;
+// AudioBuffers can be played by any context.
+const decoded = new Map();
+const loading = new Map();
+
+export function preload(urls) {
+  return Promise.all(
+    urls.map((url) => {
+      if (!loading.has(url)) {
+        const Offline = globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
+        loading.set(
+          url,
+          !Offline
+            ? Promise.resolve(null)
+            : fetch(url)
+                .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+                .then((bytes) => new Offline(1, 1, 44100).decodeAudioData(bytes))
+                .then((buf) => (decoded.set(url, buf), buf))
+                .catch(() => null),
+        );
+      }
+      return loading.get(url);
+    }),
+  );
+}
+
+// Play one of `urls` (picked at random, pitch nudged for variety). Falls back
+// to the synthesized `fallback` sound until the sample is decoded.
+export function playSample(urls, { gain = 0.6, jitter = 0.06, fallback } = {}) {
+  if (!soundOn()) return;
+  const list = Array.isArray(urls) ? urls : [urls];
+  const url = list[Math.floor(Math.random() * list.length)];
+  const buf = decoded.get(url);
+  if (!buf) {
+    preload(list);
+    if (fallback) play(fallback);
+    return;
+  }
+  try {
+    const a = audio();
+    if (!a) return;
+    const src = a.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * jitter;
+    const g = a.createGain();
+    g.gain.value = gain;
+    src.connect(g).connect(bus);
+    src.start();
+  } catch {}
+}
 
 export function play(name) {
   if (!soundOn() || !SOUNDS[name]) return;

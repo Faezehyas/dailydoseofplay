@@ -21,6 +21,9 @@ const MIME = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".ico": "image/x-icon",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
   ".webmanifest": "application/manifest+json",
   ".txt": "text/plain; charset=utf-8",
 };
