@@ -2,7 +2,7 @@
 import { createApp } from "../server/app.js";
 
 export async function startServer() {
-  const { server, wss } = createApp({ log: () => {} });
+  const { server, wss } = await createApp({ log: () => {} });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   return {

@@ -62,10 +62,12 @@ export class TurnMatch extends Emitter {
 
   receive(msg) {
     if (msg.m !== this.m) return;
+    // draw and abort are handled out of band: a queued step may be waiting on a draw.
     if (msg.t === "draw") {
       this.srReady.then((sr) => sr.receive(msg.k, msg.v));
       return;
     }
+    if (msg.t === "abort") return this.abort(`Opponent stopped the match: ${String(msg.reason).slice(0, 80)}`);
     this.#enqueue(() => this.#handle(msg));
   }
 
@@ -125,9 +127,6 @@ export class TurnMatch extends Emitter {
         await this.#apply(1 - this.me, msg.move);
         return;
       }
-      case "abort":
-        this.abort(`Opponent stopped the match: ${String(msg.reason).slice(0, 80)}`);
-        return;
       default:
         throw new RuleError(`unknown message ${String(msg.t).slice(0, 20)}`);
     }

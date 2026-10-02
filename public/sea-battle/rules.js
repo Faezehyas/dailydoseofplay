@@ -292,7 +292,8 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
     }
     events.push({ type: "sunk", ship: clean });
   }
-  // Gifts under any fired square (or now known water) go to the shooter.
+  // Gifts under any fired square go to the shooter. A gift whose square just
+  // became cleared water (beside a sunk ship) can't be shot any more: it's removed.
   const keep = [];
   for (const g of board.gifts) {
     if (cells.includes(g.cell)) {

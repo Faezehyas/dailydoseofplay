@@ -184,6 +184,14 @@ test("a blocked peer connection shows the no-TURN explanation", { skip: !pw && "
   });
   assert.match(await guest.locator("#connect-error").innerText(), /relay \(TURN\)/);
   assert.equal(await guest.locator("#play-robot").count(), 1, "robot is offered as a fallback");
+
+  // The failed guest left the room; the host's invite must still work for someone else.
+  await host.locator("#lobby-status").filter({ hasText: "Waiting for your friend" }).waitFor({ timeout: 10_000 });
+  assert.equal((await host.locator("#room-code").innerText()).trim(), code);
+  const friend = await (await browser.newContext()).newPage();
+  await friend.goto(`${srv.base}/sea-battle/?room=${code}`);
+  await friend.locator("#ready").waitFor({ timeout: 20_000 });
+  await host.locator("#ready").waitFor();
 });
 
 test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {

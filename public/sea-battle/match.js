@@ -46,7 +46,8 @@ export class SeaBattleMatch extends Emitter {
     this.fleet = fleet;
     this.phase = "placing"; // placing -> playing -> over | aborted
     this.state = null; // public state, identical on both peers
-    this.myReady = false;
+    this.locked = false; // fleet frozen (set synchronously by ready())
+    this.myReady = false; // commitment sent
     this.peer = null; // { commit, chain }
     this.pending = null; // my shot awaiting an answer
     this.working = false;
@@ -61,16 +62,23 @@ export class SeaBattleMatch extends Emitter {
 
   // ---------- public API ----------
   setFleet(fleet) {
-    if (this.myReady) throw new RuleError("fleet already locked");
+    if (this.locked) throw new RuleError("fleet already locked");
     this.fleet = fleet;
   }
 
+  // Locks a private copy of the fleet synchronously, so later UI edits can't
+  // make the committed fleet differ from the one that answers shots.
   ready() {
+    if (this.locked) return this.queue;
+    const v = validateFleet(this.fleet);
+    if (!v.ok) {
+      this.emit("invalid", v.reason);
+      return this.queue;
+    }
+    this.locked = true;
+    this.fleet = normalizeFleet(this.fleet);
+    this.emit("update");
     return this.#enqueue(async () => {
-      if (this.myReady) return;
-      const v = validateFleet(this.fleet);
-      if (!v.ok) return this.emit("invalid", v.reason);
-      this.fleet = normalizeFleet(this.fleet);
       const { commitment, salt } = await commit(this.fleet);
       this.salt = salt;
       this.myReady = true;
@@ -109,11 +117,12 @@ export class SeaBattleMatch extends Emitter {
 
   receive(msg) {
     if (msg.m !== this.m) return;
+    // draw and abort are handled out of band: a queued step may be waiting on a draw.
     if (msg.t === "draw") {
-      // Out of band: a queued step may be waiting for this very draw.
       this.srReady.then((sr) => sr.receive(msg.k, msg.v));
       return;
     }
+    if (msg.t === "abort") return this.abort(`Opponent stopped the match: ${String(msg.reason).slice(0, 80)}`);
     this.#enqueue(() => this.#handle(msg));
   }
 
@@ -197,9 +206,6 @@ export class SeaBattleMatch extends Emitter {
         if (this.phase === "over") await this.#audit();
         return;
       }
-      case "abort":
-        this.abort(`Opponent stopped the match: ${String(msg.reason).slice(0, 80)}`);
-        return;
       default:
         throw new RuleError(`unknown message ${String(msg.t).slice(0, 20)}`);
     }

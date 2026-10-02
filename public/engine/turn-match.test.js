@@ -102,3 +102,17 @@ test("startTurnRobot plays a whole game and accepts rematches", async () => {
   await until(() => me.phase === "playing" && robot.match.m === 2);
   robot.destroy();
 });
+
+test("an abort reaches a peer that is waiting on the coin toss", async () => {
+  const [ha, hb] = await sessions();
+  const a = new TurnMatch({ send: (m) => ha.send(m), me: 0, rules: race });
+  matchRouter(ha).start(a);
+  // b is a silent peer: it publishes a chain tip but never reveals its draw.
+  const { SharedRandom } = await import("./fair.js");
+  const sr = await SharedRandom.create(4);
+  hb.send({ t: "chain", tip: sr.tip, m: 1 });
+  await until(() => a.sr?.k === 1);
+  const aborted = new Promise((r) => a.on("abort", r));
+  hb.send({ t: "abort", reason: "bye", m: 1 });
+  assert.match((await aborted).reason, /bye/);
+});

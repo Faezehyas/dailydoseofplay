@@ -4,7 +4,7 @@ import { localPair } from "../engine/channel.js";
 import { openSession, matchRouter } from "../engine/session.js";
 import { rngFromSeed } from "../engine/rng.js";
 import { SeaBattleMatch } from "./match.js";
-import { randomFleet, shipCells, occupancy, CELLS, UNKNOWN, answerShots } from "./rules.js";
+import { randomFleet, shipCells, occupancy, CELLS, UNKNOWN, answerShots, RuleError } from "./rules.js";
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 
@@ -177,4 +177,36 @@ test("defender answers never depend on anything but its own fleet", () => {
   const all = [...Array(CELLS).keys()];
   const { hits } = answerShots(fleet, board, all);
   assert.deepEqual(hits, all.map((i) => (grid[i] === -1 ? 0 : 1)));
+});
+
+test("the fleet locks the instant Ready is pressed, so the commitment always matches", async () => {
+  const [host, guest] = await sessions();
+  const fleets = [randomFleet(rngFromSeed("h5")), randomFleet(rngFromSeed("g5"))];
+  const [a, b] = pair(host, guest, fleets);
+  matchRouter(host).start(a);
+  matchRouter(guest).start(b);
+  const readying = a.ready(); // not awaited: the commitment is still being hashed
+  assert.equal(a.locked, true);
+  assert.throws(() => a.setFleet(randomFleet(rngFromSeed("late edit"))), RuleError);
+  await Promise.all([readying, b.ready()]);
+  await until(() => a.phase === "playing" && b.phase === "playing", "start");
+  await playOut([a, b], [a.fleet, b.fleet], { skipRain: true });
+  await until(() => a.verdict && b.verdict, "verdicts");
+  assert.deepEqual(b.verdict, { ok: true }, "the host's answers match its commitment");
+});
+
+test("an abort reaches a peer that is waiting on a shared draw", async () => {
+  const [host, guest] = await sessions();
+  const fleets = [randomFleet(rngFromSeed("h6")), randomFleet(rngFromSeed("g6"))];
+  const [a, b] = pair(host, guest, fleets);
+  matchRouter(host).start(a);
+  matchRouter(guest).start(b);
+  const realSend = b.send;
+  b.send = (msg) => (msg.t === "draw" ? true : realSend(msg)); // b never reveals its draw
+  await Promise.all([a.ready(), b.ready()]);
+  await until(() => a.sr.k === 1, "a waits on the coin toss");
+  const aborted = new Promise((r) => a.on("abort", r));
+  realSend({ t: "abort", reason: "gave up" });
+  assert.match((await aborted).reason, /gave up/);
+  assert.equal(a.phase, "aborted");
 });

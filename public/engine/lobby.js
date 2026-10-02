@@ -154,9 +154,16 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // (e.g. a create that resolves after Cancel) must not touch the UI.
   function cleanupConnection() {
     state.attempt += 1;
-    state.peer?.close();
-    state.peer = null;
+    dropPeer();
     closeLobbySocket();
+  }
+
+  // Detach first: close() emits "failed" synchronously, and its handler only
+  // acts on the current peer.
+  function dropPeer() {
+    const peer = state.peer;
+    state.peer = null;
+    peer?.close();
   }
 
   function closeLobbySocket() {
@@ -219,8 +226,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       });
       rooms.on("leave", ({ id }) => {
         if (state.peer && state.peer.peerId === id && !state.peer.open) {
-          state.peer.close();
-          state.peer = null;
+          dropPeer();
           showWaiting(room);
           toast("Your friend left. The invite link still works.");
         }
@@ -235,8 +241,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     const name = currentName("Guest");
     // Keep ?room= until the join settles so a reload retries it.
     state.attempt += 1;
-    state.peer?.close();
-    state.peer = null;
+    dropPeer();
     state.rooms?.close();
     state.rooms = null;
     const attempt = state.attempt;

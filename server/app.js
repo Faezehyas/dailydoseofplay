@@ -32,17 +32,30 @@ const SECURITY_HEADERS = {
     "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
 };
 
-export function loadRegistry(publicDir = PUBLIC_DIR) {
-  const raw = JSON.parse(fs.readFileSync(path.join(publicDir, "games.json"), "utf8"));
+export function parseRegistry(text) {
   const games = new Map();
-  for (const g of raw.games) {
+  for (const g of JSON.parse(text).games) {
     games.set(g.slug, { maxPlayers: Math.min(8, Math.max(2, Number(g.maxPlayers) || 2)), status: g.status });
   }
   return games;
 }
 
-export function createApp({ publicDir = PUBLIC_DIR, log = console.log } = {}) {
-  const games = loadRegistry(publicDir);
+// Callback fs.readFile only: it is on EdgeJS's proven API list.
+function readText(file) {
+  return new Promise((resolve, reject) => fs.readFile(file, "utf8", (err, text) => (err ? reject(err) : resolve(text))));
+}
+
+// Path of a request target, or null when it can't be parsed (e.g. "//[").
+function pathOf(rawUrl) {
+  try {
+    return new URL(rawUrl || "/", "http://localhost").pathname;
+  } catch {
+    return null;
+  }
+}
+
+export async function createApp({ publicDir = PUBLIC_DIR, log = console.log } = {}) {
+  const games = parseRegistry(await readText(path.join(publicDir, "games.json")));
   const signaling = createSignaling({ games, log });
   const notFoundPage = path.join(publicDir, "404.html");
 
@@ -91,7 +104,11 @@ export function createApp({ publicDir = PUBLIC_DIR, log = console.log } = {}) {
   }
 
   const server = http.createServer((req, res) => {
-    const { pathname } = new URL(req.url, "http://localhost");
+    const pathname = pathOf(req.url);
+    if (pathname === null) {
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      return res.end("Bad Request");
+    }
     if (pathname === "/healthz") {
       res.writeHead(200, {
         "Content-Type": "application/json",
@@ -114,8 +131,7 @@ export function createApp({ publicDir = PUBLIC_DIR, log = console.log } = {}) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
   wss.on("connection", (ws) => signaling.handleConnection(ws));
   server.on("upgrade", (req, socket, head) => {
-    const { pathname } = new URL(req.url, "http://localhost");
-    if (pathname !== "/ws") return socket.destroy();
+    if (pathOf(req.url) !== "/ws") return socket.destroy();
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });
 

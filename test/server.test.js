@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import net from "node:net";
 import { startServer } from "./helpers.js";
 
 const registry = JSON.parse(fs.readFileSync(new URL("../public/games.json", import.meta.url)));
@@ -60,4 +61,29 @@ test("registry: every entry is well formed and every ready game has a folder", (
       assert.ok(fs.existsSync(new URL(`../public/${g.slug}/icon.svg`, import.meta.url)), `${g.slug}/icon.svg`);
     }
   }
+});
+
+// Raw request so the client library can't normalise the target away.
+function rawRequest(base, text) {
+  const { port } = new URL(base);
+  return new Promise((resolve) => {
+    const sock = net.connect(port, "127.0.0.1", () => sock.write(text));
+    let out = "";
+    sock.on("data", (d) => (out += d));
+    sock.on("close", () => resolve(out));
+    sock.on("error", () => resolve(out));
+    setTimeout(() => sock.destroy(), 1000);
+  });
+}
+
+test("unparseable request targets get 400 and never crash the server", async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
+  const reply = await rawRequest(srv.base, "GET //[ HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+  assert.match(reply, /^HTTP\/1\.1 400/);
+  await rawRequest(
+    srv.base,
+    "GET //[ HTTP/1.1\r\nHost: x\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
+  );
+  assert.equal((await fetch(`${srv.base}/healthz`)).status, 200, "still alive");
 });

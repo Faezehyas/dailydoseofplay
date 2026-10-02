@@ -185,7 +185,7 @@ function mountSeaBattle(session, root, shell) {
     // Status line
     let text = "";
     if (phase === "placing") {
-      if (!match.myReady) text = match.peer ? `${oppName} is ready. Place your fleet and press Ready.` : "Place your fleet, then press Ready.";
+      if (!match.locked) text = match.peer ? `${oppName} is ready. Place your fleet and press Ready.` : "Place your fleet, then press Ready.";
       else if (!match.peer) text = `Waiting for ${oppName} to place their ships…`;
       else text = "Tossing a coin to see who starts…";
     } else if (phase === "playing") {
@@ -201,10 +201,10 @@ function mountSeaBattle(session, root, shell) {
 
     // Placement controls
     placeBar.hidden = !placing;
-    readyBtn.disabled = match.myReady;
-    shuffleBtn.disabled = match.myReady;
-    rotateBtn.disabled = match.myReady || selectedShip < 0;
-    readyBtn.textContent = match.myReady ? "Ready ✓" : "Ready";
+    readyBtn.disabled = match.locked;
+    shuffleBtn.disabled = match.locked;
+    rotateBtn.disabled = match.locked || selectedShip < 0;
+    readyBtn.textContent = match.locked ? "Ready ✓" : "Ready";
     enemyBoard.wrap.hidden = placing;
 
     // Own board: ships + incoming fire (left alone while a ship is being dragged)
@@ -212,7 +212,7 @@ function mountSeaBattle(session, root, shell) {
       ...fleet.map((ship, k) => {
         const node = shipEl(ship, k === selectedShip && placing ? "selected" : "");
         node.dataset.k = k;
-        if (placing && !match.myReady) {
+        if (placing && !match.locked) {
           node.classList.add("draggable");
           node.tabIndex = 0;
           node.setAttribute("role", "button");
@@ -330,7 +330,7 @@ function mountSeaBattle(session, root, shell) {
 
   // ---------- placement ----------
   function shuffle() {
-    if (match.myReady) return;
+    if (match.locked) return;
     fleet = R.randomFleet(Math.random);
     selectedShip = -1;
     match.setFleet(fleet);
@@ -338,6 +338,7 @@ function mountSeaBattle(session, root, shell) {
   }
 
   function tryMove(k, candidate) {
+    if (match.locked) return false;
     const others = fleet.filter((_, j) => j !== k);
     if (!R.canPlace(others, candidate)) return false;
     fleet = fleet.map((s, j) => (j === k ? candidate : s));
@@ -346,7 +347,7 @@ function mountSeaBattle(session, root, shell) {
   }
 
   function rotateShip(k) {
-    if (k < 0 || match.myReady) return;
+    if (k < 0 || match.locked) return;
     const ship = fleet[k];
     const turned = { ...ship, vertical: !ship.vertical };
     // Try in place, then nudged back inside the board.
@@ -357,6 +358,7 @@ function mountSeaBattle(session, root, shell) {
   }
 
   function keyMove(e, k) {
+    if (match.locked) return;
     const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
     if (moves[e.key]) {
       e.preventDefault();
@@ -380,7 +382,7 @@ function mountSeaBattle(session, root, shell) {
   }
 
   function startDrag(e, k) {
-    if (match.myReady || e.button > 0) return;
+    if (match.locked || e.button > 0) return;
     e.preventDefault();
     const node = e.currentTarget;
     node.setPointerCapture?.(e.pointerId);
@@ -406,6 +408,7 @@ function mountSeaBattle(session, root, shell) {
       node.removeEventListener("pointerup", onUp);
       node.removeEventListener("pointercancel", onUp);
       dragging = false;
+      if (match.locked) return render(); // Ready was pressed mid-drag: snap back
       if (!moved) {
         if (selectedShip === k) rotateShip(k);
         selectedShip = k;
@@ -423,6 +426,7 @@ function mountSeaBattle(session, root, shell) {
 
   function onReady() {
     match.ready();
+    if (match.locked) fleet = match.fleet; // show exactly the fleet that was locked in
     selectedShip = -1;
     render();
   }
