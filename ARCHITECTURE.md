@@ -126,7 +126,7 @@ handler is attached.
 - **Turns:** a hit lets you fire again; a miss, or a hit that sinks a ship, passes the turn.
 - **Sinking:** a sunk ship is revealed, and the squares beside it are marked as clear water.
 - **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter; the weapon inside is shown only then. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears.
-- **Turn clock (friend games):** 40 s per shot, like papergames' per-turn clock. When it runs out, that player's own browser fires a random shot. Each browser runs the clock locally, so it is a courtesy against stalling, not an enforced rule.
+- **Time limits (room settings):** like papergames, games are timed. Under **Game settings** the player picks a time per shot (10, 20, 30 or 40 s, or none) and a time for each player (3, 5 or 10 min, or none); the default is 30 s a shot and 10 min each. When the time for a shot runs out, that player's browser fires a random shot; when a player's own clock runs out, they lose. In a friend game the room creator's settings apply (the host sends `setup {config}` before the first match, as in Tic Tac Toe). Against the robot only the human's clock runs: the robot reports no time spent. Fleet placement isn't timed.
 
 **Weapons:**
 
@@ -182,8 +182,9 @@ friends with no server-side referee.
 |---|---|---|
 | `ready {commit, chain}` | each | Fleet commitment and `SharedRandom` chain tip |
 | `draw {k, v}` | each | Reveal for shared draw *k*. Handled outside the step queue, because a queued step may be waiting for it. |
-| `fire {w, at}` | shooter | Weapon and aimed square (rain has no `at`) |
+| `fire {w, at, ms}` | shooter | Weapon, aimed square (rain has no `at`) and the time spent on the shot. Both peers deduct `ms` from the shooter's clock. |
 | `result {hits, sunk}` | defender | 0 or 1 per fired square, plus newly sunk ships |
+| `timeout {}` | player on turn | Their own clock ran out: they lose, and the reveal follows |
 | `reveal {fleet, salt}` | each | After the game ends |
 | `abort {reason}` | either | A protocol violation was detected |
 
@@ -192,7 +193,14 @@ promise queue. Both peers therefore take the same steps in the same order:
 apply the shot, check gift timing, draw. The draw counter stays in step.
 
 The `m` field and `matchRouter()` keep a rematch from mixing with the
-previous match.
+previous match. `setup {config}` (the room's time limits) has no match
+number: the view handles it before handing other messages to
+`matchRouter()`.
+
+Clocks follow Tic Tac Toe's rules (below): each browser times only its own
+player, measured from when the previous volley landed on its screen. The
+rules refuse a shot whose `ms` is over the time left, and a browser that sees
+the opponent 5 s past their limit with no shot stops the match.
 
 ### Robot (`robot.js`)
 

@@ -210,3 +210,37 @@ test("an abort reaches a peer that is waiting on a shared draw", async () => {
   assert.match((await aborted).reason, /gave up/);
   assert.equal(a.phase, "aborted");
 });
+
+test("room clocks: shot times reach both peers, and a player whose clock runs out loses", async () => {
+  const [host, guest] = await sessions();
+  const fleets = [randomFleet(rngFromSeed("h-clock")), randomFleet(rngFromSeed("g-clock"))];
+  const config = { shotSeconds: 10, gameSeconds: 180 };
+  const a = new SeaBattleMatch({ send: (msg) => host.send(msg), me: 0, fleet: fleets[0], config });
+  const b = new SeaBattleMatch({ send: (msg) => guest.send(msg), me: 1, fleet: fleets[1], config });
+  matchRouter(host).start(a);
+  matchRouter(guest).start(b);
+  const invalid = [];
+  a.on("invalid", (r) => invalid.push(r));
+  b.on("invalid", (r) => invalid.push(r));
+  await Promise.all([a.ready(), b.ready()]);
+  await until(() => a.phase === "playing" && b.phase === "playing", "start");
+  const shooter = [a, b].find((m) => m.canFire());
+  const other = shooter === a ? b : a;
+  const water = [...Array(CELLS).keys()].find((i) => occupancy(fleets[1 - shooter.me])[i] === -1);
+  await shooter.fire("shot", water);
+  assert.deepEqual(invalid, ["shot time missing"], "a timed room needs the shot's time");
+  await shooter.fire("shot", water, 2_500);
+  await until(() => other.state.moves === 1 && !shooter.pending, "shot answered");
+  assert.equal(shooter.state.clocks[shooter.me], 177_500);
+  assert.deepEqual(a.state.clocks, b.state.clocks, "both peers spent the same time");
+  // Now the other player sits until their clock runs out.
+  await until(() => other.canFire(), "other's turn");
+  await other.timeout();
+  await until(() => a.phase === "over" && b.phase === "over" && a.verdict && b.verdict, "over and audited");
+  for (const m of [a, b]) {
+    assert.equal(m.state.winner, shooter.me);
+    assert.equal(m.state.reason, "timeout");
+  }
+  assert.deepEqual(a.verdict, { ok: true });
+  assert.deepEqual(b.verdict, { ok: true });
+});

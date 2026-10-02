@@ -101,8 +101,10 @@ export function chooseMove(state, me, rng = Math.random) {
   return { weapon: "shot", target: single.cell };
 }
 
-// Drive the robot's side of a session. Returns { destroy }.
-export function startRobot(session, { delay = 650, rng = Math.random } = {}) {
+// Drive the robot's side of a session. Returns { destroy }. config: the
+// room's time limits; the robot reports no time spent, so only the human's
+// clock runs.
+export function startRobot(session, { delay = 650, rng = Math.random, config = null } = {}) {
   let match = null;
   let timer = null;
   let destroyed = false;
@@ -114,12 +116,12 @@ export function startRobot(session, { delay = 650, rng = Math.random } = {}) {
       timer = null;
       if (destroyed || !match.canFire()) return;
       const { weapon, target } = chooseMove(match.state, match.me, rng);
-      match.fire(weapon, target);
+      match.fire(weapon, target, 0);
     }, delay + Math.floor(rng() * delay * 0.5));
   }
 
   function newMatch(m) {
-    match = new SeaBattleMatch({ send: (msg) => session.send(msg), me: session.index, fleet: randomFleet(rng), m });
+    match = new SeaBattleMatch({ send: (msg) => session.send(msg), me: session.index, fleet: randomFleet(rng), m, config });
     match.on("update", schedule);
     router.start(match);
     match.ready();

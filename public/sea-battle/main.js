@@ -7,6 +7,7 @@ import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
 import * as R from "./rules.js";
+import { mountSettings } from "./settings.js";
 
 const ICON = {
   fire:
@@ -81,16 +82,28 @@ const RAIN_STEP = 0.17;
 const splashHeavy = (gain = 0.7) => playSample(SPLASH_HEAVY, { gain, fallback: "miss" });
 const explode = (gain = 0.65, opts) => playSample(EXPLOSION, { gain, fallback: "hit", ...opts });
 const LAUNCH_SOUND = { shot: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke" };
-// Seconds per shot in friend games (papergames uses a per-turn clock too).
-const TURN_SECONDS = 40;
+const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their shot
+
+const settings = mountSettings(document.getElementById("sb-settings"), document.getElementById("lobby"));
 
 startGameShell({
   slug: "sea-battle",
   title: "Sea Battle",
   tagline: "Hide your fleet, find theirs. Grab gifts for heavy weapons.",
-  createRobot: (session) => startRobot(session, { delay: AI_DELAY }),
+  createRobot: (session) => startRobot(session, { delay: AI_DELAY, config: settings.get() }),
   onSession: (session, root, shell) => mountSeaBattle(session, root, shell),
 });
+
+const clockText = (ms) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+
+function describeConfig(c) {
+  const shot = c.shotSeconds ? `${c.shotSeconds} s a shot` : "no shot limit";
+  const game = c.gameSeconds ? `${c.gameSeconds / 60} min each` : "no game clock";
+  return `${shot} · ${game}`;
+}
 
 function shipName(len, sunkCountOfLen) {
   if (len === 3) return sunkCountOfLen > 1 ? "second Cruiser" : "Cruiser";
@@ -102,7 +115,13 @@ function mountSeaBattle(session, root, shell) {
   const me = session.index;
   const opp = R.other(me);
   const oppName = session.opponent.name;
-  const router = matchRouter(session);
+  const offs = [];
+  // One session handler: "setup" (the room's settings) is for this view,
+  // everything else goes to the matches.
+  let route = () => {};
+  const router = matchRouter({ onMessage: (fn) => (route = fn) });
+  offs.push(session.onMessage((msg) => (msg.t === "setup" ? onSetup(msg) : route(msg))));
+  let config = null;
   let match = null;
   let m = 0;
   let fleet = null;
@@ -116,19 +135,20 @@ function mountSeaBattle(session, root, shell) {
   let lastShots = [new Set(), new Set()]; // board -> squares of the latest volley at it
   let lastTurnSeen = -1;
   const landsAt = [0, 0]; // per board: when the shell in flight lands (ms)
-  const turnSeconds = session.mode === "friend" ? Number(window.ddpTurnSeconds) || TURN_SECONDS : 0;
-  let timerKey = "";
-  let timerId = null;
-  let deadline = 0;
+  let turnStart = 0; // when the current shot began (once the last volley landed)
   let lastTick = -1;
-  const offs = [];
+  let timedOut = false; // my time ran out: the random shot or forfeit is on its way
+  let claimed = false;
 
   // ---------- layout ----------
   const status = el("p", { class: "sb-status", id: "sb-status", role: "status", "aria-live": "polite" });
   const players = el("div", { class: "sb-players" });
   const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: confirmLeave }, "Leave");
   const top = el("div", { class: "sb-top" }, players, leaveBtn);
-  const clock = el("span", { class: "sb-clock", id: "sb-clock", hidden: true, "aria-live": "off" });
+  const clock = el("span", { class: "sb-clock", id: "sb-clock", role: "timer", hidden: true, "aria-live": "off" });
+  const myClock = el("span", { class: "game-clock mine", id: "clock-me", role: "timer", "aria-label": "Your clock", hidden: true });
+  const oppClock = el("span", { class: "game-clock", id: "clock-opp", role: "timer", "aria-label": `${oppName}'s clock`, hidden: true });
+  const configLine = el("p", { class: "sb-config", id: "sb-config" });
 
   const ownBoard = createBoard("Your fleet", false);
   const enemyBoard = createBoard(`${oppName}'s waters`, true);
@@ -153,7 +173,9 @@ function mountSeaBattle(session, root, shell) {
       "div",
       { class: "sea-battle" },
       top,
-      el("div", { class: "sb-statusrow" }, status, clock),
+      el("div", { class: "sb-statusrow" }, status),
+      el("div", { class: "sb-clocks" }, myClock, clock, oppClock),
+      configLine,
       placeBar,
       overBox,
       el("div", { class: "sb-boards" }, enemyBoard.wrap, ownBoard.wrap),
@@ -247,7 +269,11 @@ function mountSeaBattle(session, root, shell) {
 
   // ---------- render ----------
   function render() {
-    if (destroyed || !match) return;
+    if (destroyed) return;
+    if (!match) {
+      status.textContent = "Getting the room's settings…";
+      return;
+    }
     const phase = match.phase;
     const st = match.state;
     const placing = phase === "placing";
@@ -281,7 +307,8 @@ function mountSeaBattle(session, root, shell) {
       }
       else text = `${oppName} is aiming…`;
     } else if (phase === "over") {
-      text = st.winner === me ? "You won! The enemy fleet is sunk." : `${oppName} won this round.`;
+      if (st.reason === "timeout") text = st.winner === me ? `${oppName} ran out of time. You win!` : "You ran out of time.";
+      else text = st.winner === me ? "You won! The enemy fleet is sunk." : `${oppName} won this round.`;
     } else if (phase === "aborted") {
       text = "Match stopped.";
     }
@@ -344,50 +371,74 @@ function mountSeaBattle(session, root, shell) {
         follow(enemyBoard);
       }
     }
-    syncTimer();
+    renderClocks();
 
     renderWeapons();
     renderOver();
   }
 
-  // ---------- turn clock (friend games) ----------
-  function syncTimer() {
-    const st = match.state;
-    const active = turnSeconds && match.phase === "playing" ? st.turn : -1;
-    // A new clock for every shot opportunity, including "hit, fire again".
-    const key = active === -1 ? "" : `${match.m}:${st.moves}:${active}`;
-    if (key === timerKey) return;
-    timerKey = key;
-    clearInterval(timerId);
-    if (active === -1) {
-      clock.hidden = true;
-      return;
-    }
-    deadline = Date.now() + turnSeconds * 1000;
+  // ---------- clocks ----------
+  // Each browser times only its own player: a shot carries the time spent,
+  // measured from when the previous volley landed here.
+  const elapsed = () => Math.max(0, performance.now() - turnStart);
+  // Against the robot only your clock runs (it reports no time).
+  const timesPlayer = (player) => player === me || session.mode === "friend";
+  const spent = () => (R.isTimed(match.state) ? Math.min(Math.round(elapsed()), R.timeLeft(match.state, me)) : undefined);
+
+  function newShot() {
+    turnStart = Math.max(performance.now(), ...landsAt);
     lastTick = -1;
-    clock.hidden = false;
-    tickClock(active);
-    timerId = setInterval(() => tickClock(active), 250);
+    timedOut = false;
   }
 
-  function tickClock(active) {
-    const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-    clock.textContent = `${active === me ? "Your shot" : `${oppName}`}: ${left}s`;
+  function renderClocks() {
+    const st = match?.state;
+    const playing = match?.phase === "playing";
+    for (const [player, node] of [[me, myClock], [opp, oppClock]]) {
+      const show = !!st?.clocks && timesPlayer(player);
+      node.hidden = !show;
+      if (!show) continue;
+      const running = playing && st.turn === player;
+      const ms = st.clocks[player] - (running ? elapsed() : 0);
+      node.textContent = `${player === me ? "You" : oppName} ${clockText(ms)}`;
+      node.classList.toggle("active", running);
+      node.classList.toggle("low", ms < 30_000);
+    }
+    const active = playing && st.shotMs && timesPlayer(st.turn) ? st.turn : -1;
+    clock.hidden = active === -1;
+    if (active === -1) return;
+    const left = Math.max(0, Math.ceil((R.timeLeft(st, active) - elapsed()) / 1000));
+    clock.textContent = `${active === me ? "Your shot" : oppName}: ${left}s`;
     clock.classList.toggle("mine", active === me);
     clock.classList.toggle("low", left <= 10);
-    if (active === me && left <= 5 && left > 0 && left !== lastTick) {
-      lastTick = left;
-      play("tick");
-    }
-    if (left > 0) return;
-    clearInterval(timerId);
-    if (active === me && match.canFire()) {
-      const free = R.unexplored(match.state.boards[opp]);
-      if (!free.length) return;
+  }
+
+  function tick() {
+    if (destroyed || match?.phase !== "playing" || !R.isTimed(match.state)) return;
+    renderClocks();
+    const st = match.state;
+    const left = R.timeLeft(st, st.turn) - elapsed();
+    if (st.turn === me) {
+      if (!match.canFire() || timedOut) return;
+      const secs = Math.ceil(left / 1000);
+      if (secs <= 5 && secs > 0 && secs !== lastTick) {
+        lastTick = secs;
+        play("tick");
+      }
+      if (left > 0) return;
+      timedOut = true;
+      if (st.clocks && st.clocks[me] - elapsed() <= 0) return void match.timeout();
+      const free = R.unexplored(st.boards[opp]);
       toast("Time's up! A random shot was fired for you.");
-      match.fire("shot", free[Math.floor(Math.random() * free.length)]);
+      match.fire("shot", free[Math.floor(Math.random() * free.length)], R.timeLeft(st, me));
+    } else if (session.mode === "friend" && left <= -CLAIM_GRACE_MS && !claimed) {
+      // Their browser should have fired or forfeited by now (closed laptop, frozen tab).
+      claimed = true;
+      match.send({ t: "abort", reason: "your time ran out" });
+      match.abort(`${oppName}'s time ran out and their browser stopped answering.`);
     }
   }
+  const ticker = setInterval(tick, 200);
 
   // On phones the two boards don't fit on one screen: keep the action in view.
   function follow(view) {
@@ -442,7 +493,7 @@ function mountSeaBattle(session, root, shell) {
     );
     if (weapon === "rain" && myTurn) {
       weaponsBar.append(
-        el("button", { class: "btn primary launch", type: "button", id: "launch-rain", title: R.WEAPONS.rain.help, onclick: () => match.fire("rain") }, "Launch rain"),
+        el("button", { class: "btn primary launch", type: "button", id: "launch-rain", title: R.WEAPONS.rain.help, onclick: () => match.fire("rain", undefined, spent()) }, "Launch rain"),
       );
     }
   }
@@ -466,6 +517,9 @@ function mountSeaBattle(session, root, shell) {
     else if (rematchVotes.them) rematchText = `${oppName} wants a rematch!`;
     overBox.replaceChildren(
       el("h2", { class: won ? "win" : "" }, phase === "aborted" ? "Match stopped" : won ? "Victory!" : "Defeat"),
+      ...(phase === "over" && match.state.reason === "timeout"
+        ? [el("p", { class: "detail", id: "sb-detail" }, won ? `${oppName}'s clock ran out.` : "Your clock ran out.")]
+        : []),
       verdict,
       el(
         "div",
@@ -644,7 +698,7 @@ function mountSeaBattle(session, root, shell) {
     if (weapon === "shot" && board.cells[i] !== R.UNKNOWN) return toast("Already explored. Pick another square.");
     if (weapon !== "shot" && R.aimedCells(board, weapon, i).length === 0) return toast("Nothing left to hit there.");
     clearAim();
-    match.fire(weapon, i);
+    match.fire(weapon, i, spent());
   });
 
   // ---------- match lifecycle ----------
@@ -727,11 +781,14 @@ function mountSeaBattle(session, root, shell) {
     lastShots = [new Set(), new Set()];
     lastTurnSeen = -1;
     rematchVotes = { me: false, them: false };
-    match = new SeaBattleMatch({ send: (msg) => session.send(msg), me, fleet, m });
+    timedOut = false;
+    claimed = false;
+    match = new SeaBattleMatch({ send: (msg) => session.send(msg), me, fleet, m, config });
     window.ddp.match = match; // for debugging and browser tests
     match.on("update", render);
     match.on("peer-ready", () => toast(`${oppName} is ready`));
     match.on("start", ({ first }) => {
+      newShot();
       addLog(`Coin toss (drawn by both browsers): ${first === me ? "you start" : `${oppName} starts`}.`);
       toast(first === me ? "You go first!" : `${oppName} goes first`);
     });
@@ -754,6 +811,7 @@ function mountSeaBattle(session, root, shell) {
       lastShots[board] = new Set(events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell));
       lastAgain = shooter === me && events.some((e) => e.type === "again");
       const wait = Math.max(0, landsAt[board] - performance.now());
+      newShot(); // the next shot's time starts once this volley has landed
       const current = match;
       setTimeout(() => {
         if (destroyed || match !== current) return; // a rematch started meanwhile
@@ -764,13 +822,14 @@ function mountSeaBattle(session, root, shell) {
     match.on("gifts", (spawned) => {
       if (spawned.some((g) => g.board === opp)) addLog(`A mystery gift popped up in ${oppName}'s waters. Hit it to win a weapon!`, "gift");
     });
-    match.on("over", ({ winner }) => {
+    match.on("over", ({ winner, reason }) => {
       score[winner] += 1;
       const wait = Math.max(0, ...landsAt.map((t) => t - performance.now()));
       const current = match;
       setTimeout(() => {
         if (destroyed || match !== current) return;
-        addLog(winner === me ? "You sank the whole fleet!" : `${oppName} sank your whole fleet.`, "big");
+        if (reason === "timeout") addLog(winner === me ? `${oppName}'s clock ran out. You win!` : "Your clock ran out.", "big");
+        else addLog(winner === me ? "You sank the whole fleet!" : `${oppName} sank your whole fleet.`, "big");
         play(winner === me ? "win" : "lose");
       }, wait + 600);
     });
@@ -792,14 +851,29 @@ function mountSeaBattle(session, root, shell) {
       if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
       render();
     }),
-    session.on("rematch-start", newMatch),
+    session.on("rematch-start", () => config && newMatch()),
   );
-  newMatch();
+  // The room's settings come from whoever created it (the robot uses ours).
+  function begin(c) {
+    if (config) return;
+    config = R.normalizeConfig(c);
+    configLine.textContent = describeConfig(config);
+    newMatch();
+  }
+  function onSetup(msg) {
+    if (me === 1) begin(msg.config);
+  }
+  if (session.mode === "robot") begin(settings.get());
+  else if (me === 0) {
+    const c = settings.get();
+    session.send({ t: "setup", config: c });
+    begin(c);
+  } else render();
 
   return {
     destroy() {
       destroyed = true;
-      clearInterval(timerId);
+      clearInterval(ticker);
       setTabAlert(null);
       for (const off of offs) off();
     },

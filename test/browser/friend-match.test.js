@@ -123,6 +123,7 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   }
   await wait(host, () => window.ddp.match.verdict);
   await wait(guest, () => window.ddp.match.verdict);
+  for (const p of pages) assert.doesNotMatch(await p.locator("#sb-over").innerText(), /false|undefined/);
   assert.match(await host.locator("#verdict").innerText(), /Fair play verified/);
   assert.match(await guest.locator("#verdict").innerText(), /Fair play verified/);
   const winner = await host.evaluate(() => window.ddp.match.state.winner);
@@ -248,9 +249,13 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
 
   await page.click('.game-card[data-slug="sea-battle"]');
   await page.fill("#nickname", "Cleo");
+  assert.ok(await page.locator("#sb-settings").isVisible(), "game settings on the home screen");
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "settings fit on a phone");
   await page.click("#play-robot");
   await page.locator("#ready").waitFor();
+  assert.ok(await page.locator("#sb-settings").isHidden(), "settings only on the home screen");
   assert.match(await page.locator(".sb-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.equal(await page.locator("#sb-config").innerText(), "30 s a shot · 10 min each", "default settings");
 
   // Drag the destroyer to the first free legal spot, in its current orientation.
   const target = await page.evaluate(() => {
@@ -331,7 +336,8 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
     shots++;
   }
   assert.ok((await page.locator("#sb-log li").count()) >= 3);
-  assert.equal(await page.locator("#sb-clock").isVisible(), false, "no turn clock against the robot");
+  assert.match(await page.locator("#clock-me").innerText(), /You \d+:\d\d/);
+  assert.equal(await page.locator("#clock-opp").isVisible(), false, "the robot's clock doesn't run");
 
   // Missile rain isn't aimed: a tap on the board must not launch it (it could
   // miss the gift you tapped); it fires from its own button.
@@ -366,33 +372,73 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
   assert.deepEqual(errors, []);
 });
 
-test("the turn clock fires a random shot when time runs out (friend game)", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+const pick = (page, name, value) => page.click(`#sb-settings label:has(input[name="sb-${name}"][value="${value}"])`);
+
+test("the host's time settings apply to both friends; a shot's time running out fires a random shot", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
   const srv = await startServer();
   const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-background-timer-throttling"] });
   t.after(async () => {
     await browser.close();
     await srv.close();
   });
-  const open = async () => {
-    const ctx = await browser.newContext();
-    await ctx.addInitScript(() => (window.ddpTurnSeconds = 2));
-    return ctx.newPage();
-  };
-  const host = await open();
+  const host = await (await browser.newContext()).newPage();
   await host.goto(`${srv.base}/sea-battle/`);
+  await pick(host, "shotSeconds", 10);
+  await pick(host, "gameSeconds", 180);
   await host.click("#play-friend");
   const invite = await host.locator("#invite-link").inputValue();
-  const guest = await open();
+  // The guest's own (different) settings must not matter.
+  const guestCtx = await browser.newContext();
+  await guestCtx.addInitScript(() => localStorage.setItem("ddp-sb-settings", JSON.stringify({ shotSeconds: 40, gameSeconds: 0 })));
+  const guest = await guestCtx.newPage();
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  for (const p of [host, guest]) assert.equal(await p.locator("#sb-config").innerText(), "10 s a shot · 3 min each");
   await host.click("#ready");
   await guest.click("#ready");
   for (const p of [host, guest]) await p.waitForFunction(() => window.ddp.match.phase === "playing", null, { timeout: 20_000 });
   const shooter = (await host.evaluate(() => window.ddp.match.canFire())) ? host : guest;
   const watcher = shooter === host ? guest : host;
-  assert.match(await shooter.locator("#sb-clock").innerText(), /Your shot: \ds/);
-  assert.match(await watcher.locator("#sb-clock").innerText(), /: \ds/);
-  // Nobody clicks: after 2 s the shooter's browser fires on its own.
-  await shooter.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 10_000 });
-  await watcher.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 10_000 });
+  assert.match(await shooter.locator("#sb-clock").innerText(), /Your shot: \d+s/);
+  assert.match(await watcher.locator("#sb-clock").innerText(), /: \d+s/);
+  for (const p of [host, guest]) {
+    assert.match(await p.locator("#clock-me").innerText(), /You [23]:\d\d/);
+    assert.match(await p.locator("#clock-opp").innerText(), /[23]:\d\d/);
+  }
+  // Nobody clicks: after 10 s the shooter's browser fires on its own.
+  await shooter.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 15_000 });
+  await watcher.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 15_000 });
   assert.match(await shooter.locator("#toast").innerText(), /Time's up/);
+  const clocks = await Promise.all([host, guest].map((p) => p.evaluate(() => window.ddp.match.state.clocks)));
+  assert.deepEqual(clocks[0], clocks[1], "both browsers deducted the same time");
+  assert.ok(Math.min(...clocks[0]) === 170_000, `the shooter spent its whole 10 s: ${clocks[0]}`);
+});
+
+test("against the robot, running out of your own clock loses the game", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const page = await (await browser.newContext()).newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.clock.install();
+  await page.goto(`${srv.base}/sea-battle/`);
+  await pick(page, "shotSeconds", 0);
+  await pick(page, "gameSeconds", 180);
+  await page.click("#play-robot");
+  await page.click("#ready");
+  await page.waitForFunction(() => window.ddp.match.phase === "playing", null, { timeout: 10_000 });
+  assert.equal(await page.locator("#sb-config").innerText(), "no shot limit · 3 min each");
+  assert.equal(await page.locator("#sb-clock").isVisible(), false, "no shot clock");
+  await page.waitForFunction(() => window.ddp.match.canFire(), null, { timeout: 15_000 });
+  await page.clock.fastForward("03:01");
+  await page.waitForFunction(() => window.ddp.match.phase === "over", null, { timeout: 10_000 });
+  assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
+  assert.equal(await page.evaluate(() => window.ddp.match.state.winner), 1);
+  assert.equal(await page.locator("#sb-status").innerText(), "You ran out of time.");
+  assert.equal(await page.locator("#sb-detail").innerText(), "Your clock ran out.");
+  await page.locator("#verdict.ok").waitFor({ timeout: 10_000 });
+  assert.deepEqual(errors, []);
 });

@@ -28,6 +28,11 @@ import {
   rainCells,
   auditBoard,
   normalizeFleet,
+  normalizeConfig,
+  applyTimeout,
+  isTimed,
+  timeLeft,
+  DEFAULT_CONFIG,
   RuleError,
 } from "./rules.js";
 
@@ -43,11 +48,11 @@ const FLEET_A = [
 ];
 
 // Simulate a full fire step: defender answers from its fleet, then apply.
-function fire(state, fleet, shooter, weapon, target, rng) {
-  let cells = checkFire(state, shooter, weapon, target);
+function fire(state, fleet, shooter, weapon, target, rng, ms) {
+  let cells = checkFire(state, shooter, weapon, target, ms);
   if (weapon === "rain") cells = rainCells(state.boards[1 - shooter], rng);
   const { hits, sunk } = answerShots(fleet, state.boards[1 - shooter], cells);
-  return { cells, events: applyFire(state, shooter, weapon, cells, hits, sunk) };
+  return { cells, events: applyFire(state, shooter, weapon, cells, hits, sunk, ms) };
 }
 
 test("random fleets are always legal and never touch side by side", () => {
@@ -229,4 +234,28 @@ test("audit catches every kind of lie", () => {
   const touching = FLEET_A.map((s) => ({ ...s }));
   touching[1] = { r: 1, c: 0, len: 4, vertical: false };
   assert.equal(auditBoard(newMatchState(0).boards[1], touching).ok, false);
+});
+
+test("room settings: unknown values fall back to the defaults", () => {
+  assert.deepEqual(normalizeConfig(null), DEFAULT_CONFIG);
+  assert.deepEqual(normalizeConfig({ shotSeconds: 7, gameSeconds: "600" }), DEFAULT_CONFIG);
+  assert.deepEqual(normalizeConfig({ shotSeconds: 0, gameSeconds: 180 }), { shotSeconds: 0, gameSeconds: 180 });
+  assert.equal(isTimed(newMatchState(0)), false, "no config, no clocks");
+});
+
+test("clocks: each shot spends its time; over the limit is refused; a clock running out loses", () => {
+  const state = newMatchState(0, { shotSeconds: 10, gameSeconds: 180 });
+  assert.equal(timeLeft(state, 0), 10_000, "the shot limit binds first");
+  assert.throws(() => checkFire(state, 0, "shot", idx(9, 9)), RuleError, "time is required");
+  assert.throws(() => checkFire(state, 0, "shot", idx(9, 9), 10_001), RuleError, "over the shot limit");
+  fire(state, FLEET_A, 0, "shot", idx(9, 9), undefined, 4_000);
+  assert.deepEqual(state.clocks, [176_000, 180_000]);
+  state.clocks[1] = 3_000;
+  assert.equal(timeLeft(state, 1), 3_000, "the game clock binds when it's lower");
+  assert.throws(() => checkFire(state, 1, "shot", idx(9, 9), 3_500), RuleError);
+  assert.throws(() => applyTimeout(state, 0), RuleError, "only the player on turn");
+  assert.deepEqual(applyTimeout(state, 1), [{ type: "timeout", player: 1 }, { type: "win", winner: 0 }]);
+  assert.equal(state.winner, 0);
+  assert.equal(state.reason, "timeout");
+  assert.throws(() => applyTimeout(newMatchState(0, { shotSeconds: 10, gameSeconds: 0 }), 0), RuleError, "no game clock, no timeout loss");
 });

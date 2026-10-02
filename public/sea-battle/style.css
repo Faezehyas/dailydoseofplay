@@ -59,6 +59,49 @@
   gap: 6px 12px;
 }
 
+.sb-clocks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 10px;
+}
+
+.sb-clocks:not(:has(:not([hidden]))) {
+  display: none;
+}
+
+.sb-config {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.game-clock {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.game-clock.active {
+  color: var(--text);
+  border-color: var(--accent-2);
+}
+
+.game-clock.mine.active {
+  border-color: var(--accent);
+}
+
+.game-clock.low {
+  color: var(--danger);
+}
+
 .sb-clock {
   padding: 2px 10px;
   border-radius: 999px;
@@ -728,4 +771,9 @@ button.cell {
     width: 80%;
     justify-self: center;
   }
+}
+
+.sb-over .detail {
+  margin: 0;
+  font-weight: 700;
 }

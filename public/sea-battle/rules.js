@@ -28,6 +28,24 @@ export const WEAPONS = {
 };
 export const GIFT_TYPES = Object.keys(WEAPONS).filter((w) => WEAPONS[w].gift);
 
+// Time limits a room picks (0 = no limit). A shot carries the time its player
+// spent ("ms"), and both peers deduct it from that player's clock. When the
+// time for a shot runs out, a random shot is fired; when a player's clock runs
+// out, they lose.
+export const SHOT_SECONDS = [10, 20, 30, 40, 0];
+export const GAME_SECONDS = [180, 300, 600, 0];
+export const DEFAULT_CONFIG = { shotSeconds: 30, gameSeconds: 600 };
+
+// Any unknown or missing value falls back to the default.
+export function normalizeConfig(raw) {
+  const c = raw && typeof raw === "object" ? raw : {};
+  const pick = (v, allowed, fallback) => (allowed.includes(v) ? v : fallback);
+  return {
+    shotSeconds: pick(c.shotSeconds, SHOT_SECONDS, DEFAULT_CONFIG.shotSeconds),
+    gameSeconds: pick(c.gameSeconds, GAME_SECONDS, DEFAULT_CONFIG.gameSeconds),
+  };
+}
+
 // Splash patterns as [dRow, dCol] around the aimed square.
 export const PATTERNS = {
   shot: [[0, 0]],
@@ -154,16 +172,27 @@ export function newInventory() {
   return { big: 0, rain: 0, nuke: 0 };
 }
 
-// boards[p] is player p's waters (fired at by the other player).
-export function newMatchState(first) {
+// boards[p] is player p's waters (fired at by the other player). Without a
+// config there are no clocks.
+export function newMatchState(first, { shotSeconds = 0, gameSeconds = 0 } = {}) {
   return {
     boards: [newBoard(), newBoard()],
     inventory: [newInventory(), newInventory()],
     turn: first,
     moves: 0,
     winner: -1,
+    reason: null, // "fleet" | "timeout" once over
     giftsSpawned: 0,
+    shotMs: shotSeconds * 1000,
+    clocks: gameSeconds ? [gameSeconds * 1000, gameSeconds * 1000] : null,
   };
+}
+
+export const isTimed = (state) => state.shotMs > 0 || state.clocks !== null;
+
+// Milliseconds `player` may still spend on this shot (Infinity without clocks).
+export function timeLeft(state, player) {
+  return Math.min(state.shotMs || Infinity, state.clocks ? state.clocks[player] : Infinity);
 }
 
 export const other = (p) => 1 - p;
@@ -208,9 +237,14 @@ export function rainCells(board, rng) {
 }
 
 // Validate a fire request against public state. Returns cells (or null for rain).
-export function checkFire(state, shooter, weapon, target) {
+// ms is the time the shooter spent on this shot (required when timed).
+export function checkFire(state, shooter, weapon, target, ms) {
   if (state.winner !== -1) throw new RuleError("game is over");
   if (state.turn !== shooter) throw new RuleError("not your turn");
+  if (isTimed(state)) {
+    if (!Number.isInteger(ms) || ms < 0) throw new RuleError("shot time missing");
+    if (ms > timeLeft(state, shooter)) throw new RuleError("time ran out");
+  }
   if (!weaponAvailable(state, shooter, weapon)) throw new RuleError("weapon not available");
   const board = state.boards[other(shooter)];
   if (weapon === "rain") {
@@ -260,8 +294,9 @@ function sunkShipValid(board, ship, hitNow) {
 }
 
 // Apply a resolved fire to the shared public state (both peers run this).
-// Throws RuleError on an impossible answer. Returns a list of events.
-export function applyFire(state, shooter, weapon, cells, hits, sunk) {
+// ms was checked by checkFire. Throws RuleError on an impossible answer.
+// Returns a list of events.
+export function applyFire(state, shooter, weapon, cells, hits, sunk, ms = 0) {
   const defender = other(shooter);
   const board = state.boards[defender];
   if (!Array.isArray(hits) || hits.length !== cells.length || !hits.every((h) => h === 0 || h === 1)) {
@@ -269,6 +304,7 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
   }
   if (!Array.isArray(sunk)) throw new RuleError("malformed sunk list");
   const events = [];
+  if (state.clocks) state.clocks[shooter] -= ms;
   if (weapon !== "shot") state.inventory[shooter][weapon] -= 1;
   const hitNow = new Set(board.cells.flatMap((v, i) => (v === HIT ? [i] : [])));
   cells.forEach((i, k) => {
@@ -305,6 +341,7 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
   state.moves += 1;
   if (board.sunk.length === FLEET.length) {
     state.winner = shooter;
+    state.reason = "fleet";
     events.push({ type: "win", winner: shooter });
   } else if (sunk.length === 0 && hits.some(Boolean)) {
     // A hit fires again; sinking a ship always ends the turn.
@@ -316,6 +353,17 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
   // Out of squares to explore without a winner can only mean a lie; stop.
   if (state.winner === -1 && unexplored(board).length === 0) throw new RuleError("board exhausted without a sinking");
   return events;
+}
+
+// A player whose own clock ran out says so, and loses.
+export function applyTimeout(state, player) {
+  if (state.winner !== -1) throw new RuleError("game is over");
+  if (state.turn !== player) throw new RuleError("not your turn");
+  if (!state.clocks) throw new RuleError("this game has no clock");
+  state.clocks[player] = 0;
+  state.winner = other(player);
+  state.reason = "timeout";
+  return [{ type: "timeout", player }, { type: "win", winner: other(player) }];
 }
 
 export function giftsDue(state) {
