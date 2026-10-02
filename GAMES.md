@@ -5,7 +5,7 @@ is in `CONTRIBUTING.md`. Each game's slug is already in `public/games.json` with
 `"status": "soon"`.
 
 - [x] **Sea Battle** (`sea-battle`): Battleship with gifts and special weapons. Hidden information, so it uses its own commit-and-audit protocol.
-- [ ] **Tic Tac Toe** (`tic-tac-toe`): 3×3, three in a row. `TurnMatch`; a minimax robot is trivial.
+- [x] **Tic Tac Toe** (`tic-tac-toe`): 3×3, three in a row. `TurnMatch`; a minimax robot is trivial.
 - [ ] **Connect 4** (`connect-4`): 7×6, discs drop into columns, four in a row. `TurnMatch`; shallow minimax with a threat heuristic.
 - [ ] **Gomoku** (`gomoku`): 15×15, exactly five in a row. `TurnMatch`; pattern-scoring robot.
 - [ ] **Chess** (`chess`): standard rules, including castling, en passant, promotion, and stalemate and repetition draws. `TurnMatch`; small alpha-beta robot.

@@ -31,14 +31,14 @@ export class PeerChannel extends Emitter {
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === "failed") this.#fail("ice_failed");
     };
-    pc.ondatachannel = (e) => this.#attach(e.channel);
     this.offSignal = rooms.on("signal", ({ from, data }) => {
       if (from === peerId) this.#onSignal(data).catch((err) => this.#fail("negotiation_failed", err));
     });
     this.timer = setTimeout(() => this.#fail("timeout"), timeoutMs);
+    // Pre-negotiated on both sides; see ARCHITECTURE.md (Engine).
+    this.#attach(pc.createDataChannel("game", { ordered: true, negotiated: true, id: 0 }));
 
     if (initiator) {
-      this.#attach(pc.createDataChannel("game", { ordered: true }));
       pc.createOffer()
         .then((offer) => pc.setLocalDescription(offer))
         .then(() => rooms.signal(peerId, { sdp: pc.localDescription.toJSON() }))
