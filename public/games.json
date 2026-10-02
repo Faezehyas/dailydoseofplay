@@ -51,7 +51,7 @@
     {
       "slug": "backgammon",
       "name": "Backgammon",
-      "status": "soon",
+      "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Race your checkers home with a little luck and a lot of tactics."
