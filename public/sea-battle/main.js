@@ -756,8 +756,9 @@ function mountSeaBattle(session, root, shell) {
       const again = shooter === me && events.some((e) => e.type === "again");
       lastAgain = !again ? false : events.some((e) => e.type === "hit") ? "hit" : "bonus";
       const wait = Math.max(0, landsAt[board] - performance.now());
+      const current = match;
       setTimeout(() => {
-        if (destroyed) return;
+        if (destroyed || match !== current) return; // a rematch started meanwhile
         land(board, w, events);
         describe(shooter, w, events);
       }, wait);
@@ -768,8 +769,9 @@ function mountSeaBattle(session, root, shell) {
     match.on("over", ({ winner }) => {
       score[winner] += 1;
       const wait = Math.max(0, ...landsAt.map((t) => t - performance.now()));
+      const current = match;
       setTimeout(() => {
-        if (destroyed) return;
+        if (destroyed || match !== current) return;
         addLog(winner === me ? "You sank the whole fleet!" : `${oppName} sank your whole fleet.`, "big");
         play(winner === me ? "win" : "lose");
       }, wait + 600);
