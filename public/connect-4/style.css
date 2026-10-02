@@ -63,7 +63,7 @@
   height: 22px;
   border-radius: 50%;
   background: var(--surface-2);
-  border: 2px dashed var(--border);
+  border: 2px dashed var(--muted);
 }
 
 .pill-disc[data-c="coral"],
@@ -330,7 +330,8 @@
 .c4-frame {
   --cols: 7;
   --rows: 6;
-  --board: color-mix(in srgb, var(--focus) 58%, var(--surface));
+  --board: color-mix(in srgb, var(--focus) 85%, var(--surface));
+  --hole: var(--bg);
   width: 100%;
   max-width: min(480px, max(260px, calc((100svh - 260px) * var(--cols) / var(--rows))));
   padding: 6px;
@@ -360,9 +361,9 @@
 }
 
 .c4-col:focus-visible {
-  outline: 3px solid var(--accent-ink);
+  outline: 3px solid var(--text);
   outline-offset: -3px;
-  box-shadow: inset 0 0 0 6px var(--focus);
+  box-shadow: inset 0 0 0 6px var(--hole);
 }
 
 .c4-board.armed .c4-col:not([aria-disabled="true"]) {
@@ -387,7 +388,7 @@
   position: absolute;
   inset: 9%;
   border-radius: 50%;
-  background: var(--bg);
+  background: var(--hole);
   box-shadow: inset 0 3px 4px color-mix(in srgb, var(--sunk) 35%, transparent);
 }
 
@@ -395,20 +396,20 @@
 .c4-board.armed .c4-col:focus-visible .c4-cell.next::after {
   content: "";
   position: absolute;
-  inset: 9%;
+  inset: 15%;
   border-radius: 50%;
-  background: var(--disc);
-  opacity: 0.35;
+  background: color-mix(in srgb, var(--disc) 30%, transparent);
+  box-shadow: inset 0 0 0 3px var(--disc);
 }
 
 @media (hover: hover) {
   .c4-board.armed .c4-col:hover .c4-cell.next::after {
     content: "";
     position: absolute;
-    inset: 9%;
+    inset: 15%;
     border-radius: 50%;
-    background: var(--disc);
-    opacity: 0.35;
+    background: color-mix(in srgb, var(--disc) 30%, transparent);
+    box-shadow: inset 0 0 0 3px var(--disc);
   }
 }
 
@@ -419,12 +420,13 @@
   animation: c4-drop calc(0.12s + var(--fall) * 0.05s) cubic-bezier(0.5, 0, 1, 1) both;
 }
 
+/* Smaller than the hole, so a rim of the hole always frames the disc. */
 .c4-disc::before {
   content: "";
   position: absolute;
-  inset: 9%;
+  inset: 15%;
   border-radius: 50%;
-  background: var(--disc);
+  background: var(--disc-fill, var(--disc));
   box-shadow: inset 0 0 0 4px var(--disc-ring);
 }
 
@@ -439,15 +441,15 @@
   position: absolute;
   inset: 38%;
   border-radius: 50%;
-  background: var(--disc-ring);
+  background: var(--sunk);
 }
 
-.c4-cell.win .c4-disc::before {
-  box-shadow: inset 0 0 0 4px var(--disc-ring), 0 0 0 3px var(--accent-ink), 0 0 0 6px var(--disc);
+.c4-cell.win::before {
+  box-shadow: inset 0 3px 4px color-mix(in srgb, var(--sunk) 35%, transparent), 0 0 0 3px var(--text);
 }
 
 .c4-board.done .c4-cell:not(.win) .c4-disc {
-  opacity: 0.45;
+  --disc-fill: color-mix(in srgb, var(--disc) 65%, var(--sunk));
 }
 
 @media (prefers-reduced-motion: reduce) {
