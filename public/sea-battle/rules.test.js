@@ -113,9 +113,10 @@ test("a hit fires again, a miss passes the turn", () => {
   assert.throws(() => checkFire(state, 1, "nuke", idx(5, 5)), RuleError, "weapon not owned");
 });
 
-test("sinking a ship reveals it and clears the water beside it", () => {
+test("sinking a ship reveals it, clears the water beside it and ends the turn", () => {
   const state = newMatchState(0);
   for (const c of [0, 1]) fire(state, FLEET_A, 0, "shot", idx(8, c));
+  assert.equal(state.turn, 1, "a sink passes the turn even though it was a hit");
   const board = state.boards[1];
   assert.equal(board.sunk.length, 1);
   assert.deepEqual(board.sunk[0], { len: 2, cells: [idx(8, 0), idx(8, 1)] });
@@ -129,7 +130,12 @@ test("sinking a ship reveals it and clears the water beside it", () => {
 test("sinking the whole fleet wins", () => {
   const state = newMatchState(0);
   let last;
-  for (const ship of FLEET_A) for (const i of shipCells(ship)) last = fire(state, FLEET_A, 0, "shot", i);
+  for (const ship of FLEET_A) {
+    for (const i of shipCells(ship)) {
+      state.turn = 0; // each sink passes the turn; keep firing as player 0
+      last = fire(state, FLEET_A, 0, "shot", i);
+    }
+  }
   assert.equal(state.winner, 0);
   assert.ok(last.events.some((e) => e.type === "win"));
   assert.throws(() => checkFire(state, 0, "shot", idx(9, 9)), RuleError);
@@ -186,6 +192,11 @@ test("simple missile keeps the turn, big/nuke splash, rain hits 7 agreed squares
   fire(state, FLEET_A, 0, "missile", idx(9, 9));
   assert.equal(state.turn, 0, "bonus shot keeps the turn on a miss");
   assert.equal(state.inventory[0].missile, 0);
+  state.inventory[0].missile = 1;
+  fire(state, FLEET_A, 0, "shot", idx(8, 0));
+  fire(state, FLEET_A, 0, "missile", idx(8, 1));
+  assert.equal(state.turn, 1, "a bonus missile that sinks a ship still ends the turn");
+  state.turn = 0;
   const big = fire(state, FLEET_A, 0, "big", idx(5, 5));
   assert.equal(big.cells.length, 5);
   const rainA = rainCells(state.boards[1], rngFromSeed("rain"));

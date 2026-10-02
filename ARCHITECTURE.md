@@ -114,7 +114,7 @@ handler is attached.
 
 - **Board and fleet:** 10×10, fleet of 5, 4, 3, 3 and 2.
 - **Placement:** ships are placed at random; you can shuffle, drag them, press R while dragging to rotate, or tap a ship to rotate it. Ships may not touch side by side; diagonal contact is allowed.
-- **Turns:** a hit lets you fire again; a miss passes the turn.
+- **Turns:** a hit lets you fire again; a miss, or a hit that sinks a ship, passes the turn (a bonus missile too).
 - **Sinking:** a sunk ship is revealed, and the squares beside it are marked as clear water.
 - **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter; the weapon inside is shown only then. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears.
 - **Turn clock (friend games):** 40 s per shot, like papergames' per-turn clock. When it runs out, that player's own browser fires a random shot. Each browser runs the clock locally, so it is a courtesy against stalling, not an enforced rule.
@@ -124,7 +124,7 @@ handler is attached.
 | Weapon | Effect |
 |---|---|
 | Shot | 1 square, unlimited |
-| Simple missile | 1 square; a bonus shot, so the turn continues even on a miss |
+| Simple missile | 1 square; a bonus shot, so the turn continues even on a miss (but not after a sink) |
 | Big missile | 5-square plus shape |
 | Missile rain | 7 random unexplored squares |
 | Nuclear missile | 14 squares: a 4×4 block with two opposite corners spared |

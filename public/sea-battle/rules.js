@@ -21,8 +21,8 @@ export const MAX_GIFTS = 2;
 export const RAIN_COUNT = 7;
 
 export const WEAPONS = {
-  shot: { label: "Shot", gift: false, help: "1 square. Hit to fire again." },
-  missile: { label: "Simple missile", gift: true, weight: 40, help: "1 square. A bonus shot: your turn continues even on a miss." },
+  shot: { label: "Shot", gift: false, help: "1 square. Hit to fire again; sinking a ship ends your turn." },
+  missile: { label: "Simple missile", gift: true, weight: 40, help: "1 square. A bonus shot: your turn continues even on a miss, unless it sinks a ship." },
   big: { label: "Big missile", gift: true, weight: 30, help: "5-square splash (plus shape)." },
   rain: { label: "Missile rain", gift: true, weight: 20, help: "7 random unexplored squares, agreed by both players." },
   nuke: { label: "Nuclear missile", gift: true, weight: 10, help: "14-square splash." },
@@ -308,7 +308,8 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
   if (board.sunk.length === FLEET.length) {
     state.winner = shooter;
     events.push({ type: "win", winner: shooter });
-  } else if (weapon === "missile" || hits.some(Boolean)) {
+  } else if (sunk.length === 0 && (weapon === "missile" || hits.some(Boolean))) {
+    // A hit (or a bonus missile) fires again; sinking a ship always ends the turn.
     events.push({ type: "again", player: shooter });
   } else {
     state.turn = defender;
