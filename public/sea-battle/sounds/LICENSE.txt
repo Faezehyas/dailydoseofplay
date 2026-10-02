@@ -15,3 +15,9 @@ explosion-hit-1.mp3  <- ExplosionMetal.wav
 explosion-hit-2.mp3  <- ExplosionMetalGverb.wav
 explosion-big-1.mp3  <- WaterSurfaceExplosion08.wav
 explosion-big-2.mp3  <- WaterSurfaceExplosion02.wav
+
+carpet-bomb.mp3  <- seven booms 0.17 s apart, mixed from BigSoundBank (CC0)
+  "Explosion #1"          https://bigsoundbank.com/explosion-1-s1807.html
+  "Explosion #2"          https://bigsoundbank.com/explosion-2-s1808.html
+  "Explosion far away #2" https://bigsoundbank.com/explosion-far-away-2-s1806.html
+  (pitched down), layered over WaterSurfaceExplosion01-05, 07 and 08.wav above.

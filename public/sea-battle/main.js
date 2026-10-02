@@ -75,6 +75,10 @@ const SPLASH_HEAVY = sounds("splash-heavy-1", "splash-heavy-2");
 const SPLASH_SMALL = sounds("splash-small-1", "splash-small-2");
 const EXPLOSION = sounds("explosion-hit-1", "explosion-hit-2");
 const BLAST = sounds("explosion-big-1", "explosion-big-2");
+// Carpet bombing for missile rain: 7 booms, one every RAIN_STEP seconds, and
+// each rain square lands on its boom.
+const CARPET = sounds("carpet-bomb");
+const RAIN_STEP = 0.17;
 const splashHeavy = (gain = 0.7) => playSample(SPLASH_HEAVY, { gain, fallback: "miss" });
 const explode = (gain = 0.65, opts) => playSample(EXPLOSION, { gain, fallback: "hit", ...opts });
 const LAUNCH_SOUND = { shot: "launch", missile: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke" };
@@ -95,7 +99,7 @@ function shipName(len, sunkCountOfLen) {
 }
 
 function mountSeaBattle(session, root, shell) {
-  preload([...SPLASH_HEAVY, ...SPLASH_SMALL, ...EXPLOSION, ...BLAST]);
+  preload([...SPLASH_HEAVY, ...SPLASH_SMALL, ...EXPLOSION, ...BLAST, ...CARPET]);
   const me = session.index;
   const opp = R.other(me);
   const oppName = session.opponent.name;
@@ -680,16 +684,15 @@ function mountSeaBattle(session, root, shell) {
       play("nuke");
       playSample(BLAST, { gain: 0.7, rate: 0.5, jitter: 0.03 }); // slowed down: a deep, real roar
     } else if (w === "rain") {
+      // No pitch jitter: it would pull the booms off their squares.
+      const carpet = playSample(CARPET, { gain: 0.8, jitter: 0 });
       events
         .filter((e) => e.type === "hit" || e.type === "miss")
         .forEach((e, k) =>
-          setTimeout(
-            () =>
-              e.type === "hit"
-                ? explode(0.45, { rate: 1.15, jitter: 0.12, fallback: "rain-hit" })
-                : playSample(SPLASH_SMALL, { gain: 0.45, jitter: 0.12, fallback: "rain-miss" }),
-            k * 70,
-          ),
+          setTimeout(() => {
+            if (e.type === "hit") explode(0.4, { rate: 1.15, jitter: 0.12, fallback: "rain-hit" });
+            else if (!carpet) playSample(SPLASH_SMALL, { gain: 0.45, jitter: 0.12, fallback: "rain-miss" });
+          }, k * RAIN_STEP * 1000),
         );
     } else if (w === "big") {
       if (hits.length && playSample(BLAST, { gain: 0.7, fallback: "hit-big" })) explode(0.4, { fallback: null });
@@ -739,7 +742,12 @@ function mountSeaBattle(session, root, shell) {
       const flight = FLIGHT[w] ?? FLIGHT.shot;
       landsAt[R.other(by)] = performance.now() + flight * 1000;
       target.board.style.setProperty("--impact-delay", `${flight}s`);
-      for (const c of cells) target.cells[c].classList.add("incoming");
+      for (const c of target.cells) c.style.removeProperty("--impact-delay");
+      cells.forEach((c, k) => {
+        // Missile rain lands square by square, in step with its carpet of booms.
+        if (w === "rain") target.cells[c].style.setProperty("--impact-delay", `${flight + k * RAIN_STEP}s`);
+        target.cells[c].classList.add("incoming");
+      });
       play(LAUNCH_SOUND[w] ?? "launch");
     });
     match.on("events", ({ shooter, weapon: w, events }) => {
