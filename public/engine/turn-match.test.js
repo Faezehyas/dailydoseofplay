@@ -116,3 +116,34 @@ test("an abort reaches a peer that is waiting on the coin toss", async () => {
   hb.send({ t: "abort", reason: "bye", m: 1 });
   assert.match((await aborted).reason, /bye/);
 });
+
+test("rules.draws lengthens the shared random chain for games with many rolls", async () => {
+  // Every move is a roll; the 300th roll wins. The default chain has 256 draws.
+  const rolls = (draws) => ({
+    draws,
+    newState: (first) => ({ turn: first, winner: -1, rolls: 0 }),
+    needsRandom: () => true,
+    applyMove(state, player) {
+      if (state.turn !== player) throw new RuleError("not your turn");
+      if (++state.rolls === 300) state.winner = player;
+      else state.turn = 1 - player;
+      return [];
+    },
+  });
+  for (const [draws, end] of [[undefined, "aborted"], [400, "over"]]) {
+    const [ha, hb] = await sessions();
+    const a = new TurnMatch({ send: (m) => ha.send(m), me: 0, rules: rolls(draws) });
+    const b = new TurnMatch({ send: (m) => hb.send(m), me: 1, rules: rolls(draws) });
+    matchRouter(ha).start(a);
+    matchRouter(hb).start(b);
+    await until(() => a.phase === "playing" && b.phase === "playing");
+    while (a.phase === "playing" && b.phase === "playing") {
+      const mover = a.canMove() ? a : b.canMove() ? b : null;
+      if (mover) await mover.play({ type: "roll" });
+      else await tick();
+    }
+    await until(() => a.phase === end && b.phase === end);
+    if (end === "aborted") assert.match(a.abortReason + b.abortReason, /hash chain exhausted/);
+    else assert.equal(a.state.rolls, 300);
+  }
+});
