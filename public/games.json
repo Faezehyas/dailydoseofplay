@@ -19,7 +19,7 @@
     {
       "slug": "connect-4",
       "name": "Connect 4",
-      "status": "soon",
+      "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Drop discs, line up four before your friend does."

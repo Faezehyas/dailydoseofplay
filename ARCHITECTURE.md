@@ -236,6 +236,32 @@ A modified client could under-report its `ms`. The 5 s check bounds how long it
 can stall, but not small savings on each move. That is the same trade-off as
 everywhere else here: fine between friends, not a referee.
 
+## Connect 4 in depth
+
+Connect 4 copies Tic Tac Toe's room settings, `setup {config}` handshake and
+clocks, with no engine change. The config adds the board (7×6, 8×7, 8×8, 9×7
+or 9×9, always four in a row) and the robot level; the rules ignore the level.
+A move is `{ col }`, and the disc lands on the lowest free square, so a full
+column is the only illegal drop. The state keeps `heights` per column next to
+the board, so both peers find the landing square the same way.
+
+**Robot** (`robot.js`). It takes a win, blocks a loss, and otherwise runs a
+negamax search with alpha-beta:
+
+- Before expanding a node it plays forced moves: win now, block the only threat, and never drop under the opponent's winning square. Two threats at once count as a loss.
+- Leaves are scored by open lines (weighted by how full they are), a bonus for threes whose gap sits on the row that suits the owner (odd rows for the first player, even for the second), and centre discs. Line counts and the score are updated on each drop, so scoring a leaf is a lookup.
+- Moves are tried centre first, then by their static score, so alpha-beta cuts more.
+
+| Level | Depth | Random column | Random column can lose at once? |
+|---|---|---|---|
+| Easy | 4 | 30% | yes |
+| Medium | 5 | 10% | no |
+| Hard | 6 | 3% | no |
+
+Over 200 games on 7×6, Hard beats Easy 93% of the time and Medium beats Easy
+83%. Hard answers in 3 ms at the median and under 50 ms at worst on 9×9.
+`robot.test.js` checks the order of the levels and the 100 ms limit.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |
