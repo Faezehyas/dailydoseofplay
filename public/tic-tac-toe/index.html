@@ -13,18 +13,19 @@
   <body>
     <main class="page">
       <section id="lobby" aria-live="polite"></section>
+      <section id="ttt-settings" class="card lobby-card ttt-settings" aria-label="Game settings" hidden></section>
       <section id="game" hidden></section>
       <details class="card rules">
         <summary>How to play</summary>
         <ul>
-          <li>Two players share a 3×3 grid. One plays X, the other plays O.</li>
-          <li>A coin toss drawn by both browsers decides who starts. Whoever starts plays X.</li>
-          <li>Take turns marking one empty square. A marked square stays put for the rest of the round.</li>
-          <li>Line up three of your marks across, down or corner to corner to win.</li>
-          <li>If all nine squares fill up with no line of three, the round is a draw.</li>
-          <li>Press <strong>Rematch</strong> for another round with a fresh coin toss. The score counts your wins, draws and losses while you both stay.</li>
+          <li>Two players share a grid. One plays X, the other plays O, and X always moves first.</li>
+          <li>Before a game, pick the board: <strong>3 × 3</strong>, where three in a row wins, or <strong>5 × 5</strong>, where you need four in a row.</li>
+          <li>Pick who moves first: a coin toss drawn by both browsers, you, or your opponent. When you play a friend, the settings of whoever creates the room apply to both of you.</li>
+          <li>Take turns marking one empty square. Line up your marks across, down or corner to corner to win. A full board with no line is a draw.</li>
+          <li>Clocks (optional): a limit for each move, and a total for each player's whole game. Whoever runs out of time loses the round.</li>
+          <li>Press <strong>Rematch</strong> for another round with the same settings. The score counts your wins, draws and losses while you both stay.</li>
           <li>On a keyboard, move between squares with the arrow keys and press Enter or Space to play.</li>
-          <li>Fair play: both browsers check every move with the same rules, so a move that breaks them stops the match.</li>
+          <li>Fair play: both browsers check every move with the same rules, so a move that breaks them stops the match. Each browser keeps its own player's clock.</li>
         </ul>
       </details>
     </main>

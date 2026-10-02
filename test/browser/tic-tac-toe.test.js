@@ -1,6 +1,7 @@
 // Headless-browser test for Tic Tac Toe: two browser contexts play a friend
-// match through the invite link over a real WebRTC DataChannel, then a
-// rematch; and a robot game on a phone. Skips if Playwright is missing.
+// match on the host's settings (5×5, clocks) through the invite link over a
+// real WebRTC DataChannel, then a rematch; and robot games on a phone,
+// including a loss on the move clock. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -31,8 +32,9 @@ const pw = await loadPlaywright();
 const wait = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 20_000 });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+const pick = (page, name, value) => page.click(`#ttt-settings label:has(input[name="ttt-${name}"][value="${value}"])`);
 
-test("two friends play Tic Tac Toe through the invite link, then a rematch", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
+test("two friends play Tic Tac Toe on the host's settings through the invite link, then a rematch", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
   const srv = await startServer();
   const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-background-timer-throttling"] });
@@ -49,10 +51,15 @@ test("two friends play Tic Tac Toe through the invite link, then a rematch", { s
     return page;
   }
 
-  // Host (desktop, light) creates a room; the friend (360 px phone, dark) opens the link.
+  // Host (desktop, light) picks 5×5 and to start, keeps the default clocks
+  // (30 s a move, 2 min each), and creates a room; the friend (360 px phone,
+  // dark) opens the link.
   const host = await open("host", "Ada", { colorScheme: "light" });
   await host.goto(`${srv.base}/tic-tac-toe/`);
+  await pick(host, "size", 5);
+  await pick(host, "first", "host");
   await host.click("#play-friend");
+  assert.ok(await host.locator("#ttt-settings").isHidden(), "settings are only on the home screen");
   await host.locator("#room-code").waitFor();
   const invite = await host.locator("#invite-link").inputValue();
   const code = (await host.locator("#room-code").innerText()).trim();
@@ -60,8 +67,11 @@ test("two friends play Tic Tac Toe through the invite link, then a rematch", { s
 
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
-  await host.locator("#ttt-board").waitFor();
-  await guest.locator("#ttt-board").waitFor();
+  await host.locator("#ttt-board .ttt-cell").first().waitFor();
+  await guest.locator("#ttt-board .ttt-cell").first().waitFor();
+  assert.equal(await guest.locator(".ttt-cell").count(), 25, "the host's board size reaches the friend");
+  assert.equal(await guest.locator("#ttt-config").innerText(), "5 × 5, four in a row · 30 s a move · 2 min each");
+  assert.equal(await host.locator("#ttt-config").innerText(), await guest.locator("#ttt-config").innerText());
   assert.match(await host.locator(".ttt-players").innerText(), /Ada[\s\S]*Bo/);
   assert.match(await guest.locator(".ttt-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
@@ -69,14 +79,15 @@ test("two friends play Tic Tac Toe through the invite link, then a rematch", { s
   assert.equal(await bg(guest), "rgb(18, 21, 28)", "the phone follows its dark OS theme");
   assert.notEqual(await bg(host), await bg(guest));
 
-  // Both browsers agree on the coin toss; the starter plays X.
+  // Both browsers agree who starts (the host, by the room's setting) and it plays X.
   async function startedGame(m) {
     await wait(host, (n) => window.ddp.match.m === n && window.ddp.match.phase === "playing", m);
     await wait(guest, (n) => window.ddp.match.m === n && window.ddp.match.phase === "playing", m);
     const first = await host.evaluate(() => window.ddp.match.state.first);
     assert.equal(await guest.evaluate(() => window.ddp.match.state.first), first, "both browsers agree who starts");
-    const x = first === 0 ? host : guest;
-    const o = x === host ? guest : host;
+    assert.equal(first, 0);
+    const x = host;
+    const o = guest;
     assert.match(await x.locator("#ttt-status").innerText(), /Your turn\. Place your X/);
     assert.match(await o.locator("#ttt-status").innerText(), /is thinking/);
     return [x, o];
@@ -90,7 +101,7 @@ test("two friends play Tic Tac Toe through the invite link, then a rematch", { s
       await wait(page, () => window.ddp.match.canMove());
       if (k === keyboardAt) {
         // Arrow from the square to the left (wrapping), then Enter.
-        const from = cells[k] % 3 === 0 ? cells[k] + 2 : cells[k] - 1;
+        const from = cells[k] % 5 === 0 ? cells[k] + 4 : cells[k] - 1;
         await page.locator(`.ttt-cell[data-i="${from}"]`).focus();
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("Enter");
@@ -105,42 +116,48 @@ test("two friends play Tic Tac Toe through the invite link, then a rematch", { s
     assert.deepEqual(await host.evaluate(() => window.ddp.match.state), await guest.evaluate(() => window.ddp.match.state));
   }
 
-  // Game 1: X takes the top row; O plays 3 and 4. O also tries a taken square.
+  // Game 1: X takes four along the top row; O plays 5, 6 and 7. O also tries a taken square.
   let [x, o] = await startedGame(1);
+  assert.ok(await host.locator("#ttt-clocks").isVisible());
+  assert.match(await host.locator("#ttt-clocks").innerText(), /\d:\d\d[\s\S]*\d+ s[\s\S]*\d:\d\d/);
   await wait(x, () => window.ddp.match.canMove());
   await x.click('.ttt-cell[data-i="0"]');
   await wait(o, () => window.ddp.match.canMove());
   await o.click('.ttt-cell[data-i="0"]', { force: true }); // aria-disabled, but a tap still lands
   await o.locator("#toast.show").filter({ hasText: "taken" }).waitFor();
   assert.equal(await moveCount(o), 1, "a taken square is refused locally");
-  await playOut([o, x], [3, 1, 4, 2], { keyboardAt: 1 });
-  assert.deepEqual(await host.evaluate(() => window.ddp.match.state.line), [0, 1, 2]);
-  assert.equal(await x.locator(".ttt-cell.win").count(), 3);
+  await playOut([o, x], [5, 1, 6, 2, 7, 3], { keyboardAt: 1 });
+  assert.deepEqual(await host.evaluate(() => window.ddp.match.state.line), [0, 1, 2, 3]);
+  assert.equal(await x.locator(".ttt-cell.win").count(), 4);
   assert.equal(await x.locator("#ttt-result").innerText(), "Victory!");
   assert.equal(await o.locator("#ttt-result").innerText(), "Defeat");
+  assert.match(await o.locator("#ttt-detail").innerText(), /Ada lined up four Xs/);
   assert.match(await x.locator("#ttt-score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
   assert.match(await o.locator("#ttt-score").innerText(), /You\s+0\s+Draws\s+0\s+\S+\s+1/);
+  const clocks = await host.evaluate(() => window.ddp.match.state.clocks);
+  assert.ok(clocks.every((ms) => ms < 120_000 && ms > 60_000), `both clocks were spent: ${clocks}`);
   await host.waitForTimeout(500); // let the last mark finish drawing
   await host.screenshot({ path: `${ARTIFACTS}/ttt-1-win.png`, fullPage: true });
   await guest.screenshot({ path: `${ARTIFACTS}/ttt-2-over-mobile-dark.png`, fullPage: true });
 
-  // Rematch: host asks, the friend accepts, a new coin toss starts game 2.
+  // Rematch: host asks, the friend accepts; same settings, fresh board and clocks.
   await host.click("#rematch");
   await host.locator("#rematch-status").filter({ hasText: "Waiting for Bo" }).waitFor();
   await guest.locator("#rematch-status").filter({ hasText: "wants a rematch" }).waitFor();
   await guest.click("#rematch");
   [x, o] = await startedGame(2);
   assert.equal(await host.locator(".ttt-cell .mark").count(), 0, "a fresh board");
+  assert.deepEqual(await guest.evaluate(() => window.ddp.match.state.clocks), [120_000, 120_000]);
 
-  // Game 2 is a draw, each move blocking the last threat: O X X / X X O / O O X.
-  await playOut([x, o], [4, 0, 2, 6, 3, 5, 1, 7, 8]);
-  assert.equal(await host.evaluate(() => window.ddp.match.state.winner), 2);
-  assert.equal(await host.locator("#ttt-result").innerText(), "Draw");
-  assert.equal(await guest.locator("#ttt-result").innerText(), "Draw");
-  assert.match(await host.locator("#ttt-score").innerText(), /Draws\s+1/);
+  // Game 2: the friend lines up four along the bottom row.
+  await playOut([x, o], [0, 20, 6, 21, 12, 22, 4, 23]);
+  assert.deepEqual(await host.evaluate(() => window.ddp.match.state.line), [20, 21, 22, 23]);
+  assert.equal(await guest.locator("#ttt-result").innerText(), "Victory!");
+  assert.equal(await host.locator("#ttt-result").innerText(), "Defeat");
+  assert.match(await host.locator("#ttt-score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
   assert.ok(await noHorizontalScroll(guest));
   await guest.waitForTimeout(500);
-  await guest.screenshot({ path: `${ARTIFACTS}/ttt-3-draw-mobile-dark.png`, fullPage: true });
+  await guest.screenshot({ path: `${ARTIFACTS}/ttt-3-rematch-mobile-dark.png`, fullPage: true });
 
   // The friend closes the tab: the host is told.
   await guest.close();
@@ -149,7 +166,7 @@ test("two friends play Tic Tac Toe through the invite link, then a rematch", { s
   assert.deepEqual(errors, []);
 });
 
-test("a full Tic Tac Toe game vs the robot on a 360 px phone, light then dark", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on the move clock", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
   const srv = await startServer();
   const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
@@ -164,9 +181,17 @@ test("a full Tic Tac Toe game vs the robot on a 360 px phone, light then dark", 
   await page.goto(`${srv.base}/`);
   await page.click('.game-card[data-slug="tic-tac-toe"]');
   await page.fill("#nickname", "Cleopatra Philopator"); // 20 characters, the longest allowed
+  await pick(page, "size", 3);
+  await pick(page, "moveSeconds", 5);
+  await pick(page, "gameSeconds", 0);
+  await pick(page, "first", "host");
+  assert.ok(await noHorizontalScroll(page), "settings fit at 360 px");
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
   assert.match(await page.locator(".ttt-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator("#ttt-config").innerText(), /3 × 3, three in a row · 5 s a move · no game clock/);
+  assert.equal(await page.evaluate(() => window.ddp.match.state.turn), 0, "the room setting says I start");
+  assert.ok(await page.locator("#ttt-move-left").isVisible());
   assert.ok(await noHorizontalScroll(page));
 
   // Take a winning square if there is one, else the first free one.
@@ -194,15 +219,19 @@ test("a full Tic Tac Toe game vs the robot on a 360 px phone, light then dark", 
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${ARTIFACTS}/ttt-4-robot-light.png`, fullPage: true });
 
-  // The robot accepts a rematch, then switch to dark mode.
+  // The robot accepts a rematch. This time let the 5 s move clock run out.
   await page.click("#rematch");
   await wait(page, () => window.ddp.match.m === 2 && window.ddp.match.phase === "playing");
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
   assert.ok(await noHorizontalScroll(page));
-  await wait(page, () => window.ddp.match.state.moves.length > 0 || window.ddp.match.canMove());
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: `${ARTIFACTS}/ttt-5-robot-dark.png`, fullPage: true });
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${ARTIFACTS}/ttt-5-robot-dark-clock.png`, fullPage: true });
+  await wait(page, () => window.ddp.match.phase === "over");
+  assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
+  assert.equal(await page.locator("#ttt-result").innerText(), "Defeat");
+  assert.equal(await page.locator("#ttt-detail").innerText(), "Your clock ran out.");
+  assert.match(await page.locator("#ttt-score").innerText(), /Robot\s+[1-2]/);
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
   assert.deepEqual(errors, []);

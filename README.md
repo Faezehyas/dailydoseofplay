@@ -7,7 +7,7 @@ text and code are original.
 **Games:**
 
 - Sea Battle: Battleship rules, with gifts and special weapons.
-- Tic Tac Toe: the classic 3×3 grid, three in a row wins.
+- Tic Tac Toe: 3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks.
 
 More are coming, one at a time; see [GAMES.md](GAMES.md).
 
