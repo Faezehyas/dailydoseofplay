@@ -128,6 +128,22 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   const winner = await host.evaluate(() => window.ddp.match.state.winner);
   assert.equal(winner, 1, "the guest aimed at ships and wins");
   assert.match(await guest.locator(".sb-over h2").innerText(), /Victory/);
+  // Each player sees only the gifts they can collect, never the opponent's.
+  for (const p of [host, guest]) {
+    const gifts = await p.evaluate(() => {
+      const m = window.ddp.match;
+      return { mine: m.state.boards[m.me].gifts.length, target: m.state.boards[1 - m.me].gifts.length };
+    });
+    assert.equal(await p.locator(".own .cell.gift").count(), 0, `own board hides ${gifts.mine} opponent gift(s)`);
+    assert.equal(await p.locator(".enemy .cell.gift").count(), gifts.target);
+    assert.doesNotMatch(await p.locator("#sb-log").innerText(), /picked up/);
+  }
+  // Wins carry across rematches; the latest volley on each board is ringed.
+  assert.equal(await guest.locator("#score-me").innerText(), "1");
+  assert.equal(await host.locator("#score-opp").innerText(), "1");
+  assert.equal(await host.locator("#score-me").innerText(), "0");
+  assert.ok((await guest.locator(".enemy .cell.last").count()) >= 1);
+  assert.ok((await host.locator(".own .cell.last").count()) >= 1);
   assert.match(await host.locator(".sb-over h2").innerText(), /Defeat/);
   await host.screenshot({ path: `${ARTIFACTS}/3-game-over.png`, fullPage: true });
 
@@ -140,6 +156,16 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   await host.click("#ready");
   await guest.click("#ready");
   await wait(host, () => window.ddp.match.phase === "playing");
+
+  // Leaving a live friend game asks first; dismissing keeps the game.
+  let asked = "";
+  host.once("dialog", (d) => {
+    asked = d.message();
+    d.dismiss();
+  });
+  await host.click("#leave");
+  assert.match(asked, /Leave the game\?/);
+  assert.equal(await host.evaluate(() => window.ddp.match.phase), "playing");
 
   // Friend closes the tab: host is told.
   await guest.close();
@@ -263,6 +289,36 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
   const rotated = await page.evaluate((k) => window.ddp.match.fleet[k].vertical, target.k);
   if (rotated === orientation) await page.locator("#toast.show").waitFor();
 
+  // Drag a ship, press R mid-drag, drop it: it lands rotated.
+  const plan = await page.evaluate(async () => {
+    const R = await import("/sea-battle/rules.js");
+    const fleet = window.ddp.match.fleet;
+    for (let k = 0; k < fleet.length; k++) {
+      const ship = fleet[k];
+      const others = fleet.filter((_, j) => j !== k);
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
+          const turned = { ...ship, r, c, vertical: !ship.vertical };
+          if ((r !== ship.r || c !== ship.c) && R.canPlace(others, turned)) return { k, from: { r: ship.r, c: ship.c }, to: turned };
+        }
+      }
+    }
+    return null;
+  });
+  assert.ok(plan, "some ship can be moved and turned");
+  await page.mouse.move(box.x + (plan.from.c + 0.5) * cell, box.y + (plan.from.r + 0.5) * cell);
+  await page.mouse.down();
+  await page.mouse.move(box.x + (plan.from.c + 0.6) * cell, box.y + (plan.from.r + 0.6) * cell);
+  await page.keyboard.press("r");
+  await page.mouse.move(box.x + (plan.to.c + 0.5) * cell, box.y + (plan.to.r + 0.5) * cell, { steps: 8 });
+  await page.mouse.up();
+  const dropped = await page.evaluate((k) => window.ddp.match.fleet[k], plan.k);
+  assert.deepEqual(
+    { r: dropped.r, c: dropped.c, vertical: dropped.vertical },
+    { r: plan.to.r, c: plan.to.c, vertical: plan.to.vertical },
+    "R while dragging rotates the ship",
+  );
+
   await page.click("#ready");
   await page.waitForFunction(() => window.ddp.match.phase === "playing", null, { timeout: 10_000 });
   for (let shots = 0; shots < 3; ) {
@@ -275,7 +331,44 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
     shots++;
   }
   assert.ok((await page.locator("#sb-log li").count()) >= 3);
+  assert.equal(await page.locator("#sb-clock").isVisible(), false, "no turn clock against the robot");
+  const toastBox = await page.locator("#toast").boundingBox();
+  assert.ok(toastBox && toastBox.y < 120, "toasts sit at the top, clear of the boards");
+  await page.click("#sound-toggle");
+  assert.equal(await page.evaluate(() => localStorage.getItem("ddp-sound")), "off");
+  assert.equal(await page.locator("#sound-toggle").getAttribute("aria-pressed"), "true");
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
   assert.deepEqual(errors, []);
+});
+
+test("the turn clock fires a random shot when time runs out (friend game)", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-background-timer-throttling"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const open = async () => {
+    const ctx = await browser.newContext();
+    await ctx.addInitScript(() => (window.ddpTurnSeconds = 2));
+    return ctx.newPage();
+  };
+  const host = await open();
+  await host.goto(`${srv.base}/sea-battle/`);
+  await host.click("#play-friend");
+  const invite = await host.locator("#invite-link").inputValue();
+  const guest = await open();
+  await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await host.click("#ready");
+  await guest.click("#ready");
+  for (const p of [host, guest]) await p.waitForFunction(() => window.ddp.match.phase === "playing", null, { timeout: 20_000 });
+  const shooter = (await host.evaluate(() => window.ddp.match.canFire())) ? host : guest;
+  const watcher = shooter === host ? guest : host;
+  assert.match(await shooter.locator("#sb-clock").innerText(), /Your shot: \ds/);
+  assert.match(await watcher.locator("#sb-clock").innerText(), /: \ds/);
+  // Nobody clicks: after 2 s the shooter's browser fires on its own.
+  await shooter.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 10_000 });
+  await watcher.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 10_000 });
+  assert.match(await shooter.locator("#toast").innerText(), /Time's up/);
 });
