@@ -8,7 +8,7 @@ is in `CONTRIBUTING.md`. Each game's slug is already in `public/games.json` with
 - [x] **Tic Tac Toe** (`tic-tac-toe`): 3×3 with three in a row, or 5×5 with four; optional clocks; the room picks who starts. `TurnMatch`; minimax robot on 3×3, threat heuristic on 5×5.
 - [ ] **Connect 4** (`connect-4`): 7×6, discs drop into columns, four in a row. `TurnMatch`; shallow minimax with a threat heuristic.
 - [ ] **Gomoku** (`gomoku`): 15×15, exactly five in a row. `TurnMatch`; pattern-scoring robot.
-- [ ] **Chess** (`chess`): standard rules, including castling, en passant, promotion, and stalemate and repetition draws. `TurnMatch`; small alpha-beta robot.
+- [x] **Chess** (`chess`): FIDE rules with castling, en passant and promotion; automatic draws on stalemate, threefold repetition, the 50-move rule and insufficient material; optional clocks; resign. `TurnMatch`; alpha-beta robot with Easy, Medium and Hard levels.
 - [ ] **Checkers** (`checkers`): 8×8, mandatory captures, multi-jumps, kings. `TurnMatch`, where a move is a full jump path.
 - [ ] **Backgammon** (`backgammon`): dice via `needsRandom` (a `{type: "roll"}` move drawn by both peers), bearing off, hitting, the bar. `TurnMatch`.
 

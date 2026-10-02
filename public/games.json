@@ -35,7 +35,7 @@
     {
       "slug": "chess",
       "name": "Chess",
-      "status": "soon",
+      "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
       "description": "The king of board games, played straight from the browser."

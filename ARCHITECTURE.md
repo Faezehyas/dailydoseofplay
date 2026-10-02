@@ -236,6 +236,44 @@ A modified client could under-report its `ms`. The 5 s check bounds how long it
 can stall, but not small savings on each move. That is the same trade-off as
 everywhere else here: fine between friends, not a referee.
 
+## Chess in depth
+
+Chess is a `TurnMatch` game with Tic Tac Toe's room settings and clocks: a
+limit per move (30 to 120 s), a total per player (3 to 60 min), who plays
+White, and a robot level. All default to papergames' values (no clocks, coin
+toss, Easy). The engine is unchanged.
+
+**Moves.** A move is `{ from, to, promo?, ms }` in square indexes (a1 = 0,
+h8 = 63), `{ timeout: true }`, or `{ resign: true }`. `rules.js` generates
+pseudo-legal moves and drops those that leave the king in check, so it can
+explain a refusal ("That would leave your king in check"). Perft counts on
+the standard test positions pin this down in `rules.test.js`. Resigning is a
+move, so it is only possible on your own turn: TurnMatch accepts nothing from
+a player out of turn, and an out-of-band message could race the other
+player's move.
+
+**Draws are automatic.** papergames' client uses chess.js, whose game-over
+check ends the game on stalemate, threefold repetition, 100 half-moves without
+a capture or pawn move, and insufficient material (bare kings, a single minor
+piece, or bishops all on one colour). Here the rules do the same after each
+move, so neither peer has to claim anything. The repetition key is the board,
+side to move, castling rights, and the en passant square only when a capture
+there is legal. The list of keys restarts after a pawn move or capture.
+
+**Robot.** `robot.js` takes a mate in one, never allows a mate in one when it
+can avoid it, then runs alpha-beta with captures searched to a quiet position,
+MVV-LVA and killer-move ordering, and material plus piece-square tables (with
+a "drive the king to the edge" term for won endgames). Levels set the depth
+(2, 3 or 4 plies), how far below its best score a move may be and still be
+picked (150, 40 or 0 centipawns), and how often it plays a random safe move
+(20 %, 5 % or never). A node budget keeps answers bounded and deterministic in
+tests; in the browser a 250 ms time cap also applies, so a slow phone gets a
+shallower search instead of a frozen page.
+
+**Colours.** The board and pieces have their own light and dark tokens at the
+top of `chess/style.css`, because a white piece must stay white in both
+themes. Everything else uses the theme tokens.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |
