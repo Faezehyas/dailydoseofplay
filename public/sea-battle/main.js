@@ -62,12 +62,13 @@ const WEAPON_ICON = {
   big: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.2 5.3L20 6l-3.5 4.6L21 14l-5.6.6L14 21l-2-5-2 5-1.4-6.4L3 14l4.5-3.4L4 6l5.8 1.3z"/></svg>',
   rain: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v6M12 6v6M18 3v6M9 12v6M15 14v6M4 15v4M20 13v4"/></svg>',
   nuke: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.5"/><path d="M12 3a9 9 0 0 1 7.8 4.5L14.2 10.8M4.2 7.5A9 9 0 0 1 12 3M9.8 10.8 4.2 7.5M8 19.8l2.9-5.6M16 19.8l-2.9-5.6M8 19.8a9 9 0 0 0 8 0"/></svg>',
+  carpet: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5h20M5 8.5v2M10 8.5v2M15 8.5v2M20 8.5v2"/><circle cx="5" cy="15" r="2"/><circle cx="10" cy="15" r="2"/><circle cx="15" cy="15" r="2"/><circle cx="20" cy="15" r="2"/><path d="M3 20h18"/></svg>',
 };
 
 // The robot "thinks" this long (plus up to half again) before each shot.
 const AI_DELAY = 1400;
 // Seconds a shell is in the air before it lands (sound and visuals wait for it).
-const FLIGHT = { shot: 0.45, big: 0.55, rain: 0.6, nuke: 1.0 };
+const FLIGHT = { shot: 0.45, big: 0.55, rain: 0.6, nuke: 1.0, carpet: 0.6 };
 // Real recordings (CC0, see sounds/LICENSE.txt): heavy objects hitting water,
 // shells exploding on a steel hull, and bigger blasts at the waterline.
 const sounds = (...names) => names.map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
@@ -75,13 +76,15 @@ const SPLASH_HEAVY = sounds("splash-heavy-1", "splash-heavy-2");
 const SPLASH_SMALL = sounds("splash-small-1", "splash-small-2");
 const EXPLOSION = sounds("explosion-hit-1", "explosion-hit-2");
 const BLAST = sounds("explosion-big-1", "explosion-big-2");
-// Carpet bombing for missile rain: 7 booms, one every RAIN_STEP seconds, and
-// each rain square lands on its boom.
+// Rolling booms, one every BOOM_STEP seconds: 7 for missile rain (one per
+// square) and 10 for the carpet bomb (one per square along its line). Each
+// square lands on its boom.
+const BARRAGE = sounds("barrage");
 const CARPET = sounds("carpet-bomb");
-const RAIN_STEP = 0.17;
+const BOOM_STEP = 0.17;
 const splashHeavy = (gain = 0.7) => playSample(SPLASH_HEAVY, { gain, fallback: "miss" });
 const explode = (gain = 0.65, opts) => playSample(EXPLOSION, { gain, fallback: "hit", ...opts });
-const LAUNCH_SOUND = { shot: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke" };
+const LAUNCH_SOUND = { shot: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke", carpet: "launch-rain" };
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their shot
 
 const settings = mountSettings(document.getElementById("sb-settings"), document.getElementById("lobby"));
@@ -111,7 +114,7 @@ function shipName(len, sunkCountOfLen) {
 }
 
 function mountSeaBattle(session, root, shell) {
-  preload([...SPLASH_HEAVY, ...SPLASH_SMALL, ...EXPLOSION, ...BLAST, ...CARPET]);
+  preload([...SPLASH_HEAVY, ...SPLASH_SMALL, ...EXPLOSION, ...BLAST, ...BARRAGE, ...CARPET]);
   const me = session.index;
   const opp = R.other(me);
   const oppName = session.opponent.name;
@@ -126,6 +129,9 @@ function mountSeaBattle(session, root, shell) {
   let m = 0;
   let fleet = null;
   let weapon = "shot";
+  let carpetDir = "row"; // the carpet bomb's aim: a "row" or a "col"
+  let aimAt = -1; // the enemy square under the pointer, for re-aiming
+  const volleyDir = [null, null]; // per board: the carpet direction of the volley in flight
   let destroyed = false;
   let lastAgain = false;
   let selectedShip = -1;
@@ -496,7 +502,27 @@ function mountSeaBattle(session, root, shell) {
         el("button", { class: "btn primary launch", type: "button", id: "launch-rain", title: R.WEAPONS.rain.help, onclick: () => match.fire("rain", undefined, spent()) }, "Launch rain"),
       );
     }
+    if (weapon === "carpet" && myTurn) {
+      weaponsBar.append(
+        el("button", { class: "btn launch", type: "button", id: "carpet-dir", title: "Switch between a row and a column (R)", onclick: turnCarpet }, carpetDir === "row" ? "↔ Row" : "↕ Column"),
+      );
+    }
   }
+
+  function turnCarpet() {
+    carpetDir = carpetDir === "row" ? "col" : "row";
+    if (aimAt >= 0) showAim(aimAt);
+    renderWeapons();
+  }
+  // R switches the carpet bomb between a row and a column while it's selected.
+  const onCarpetKey = (e) => {
+    if ((e.key !== "r" && e.key !== "R") || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.("input, textarea")) return;
+    if (weapon !== "carpet" || !match?.canFire()) return;
+    e.preventDefault();
+    turnCarpet();
+  };
+  addEventListener("keydown", onCarpetKey);
+  offs.push(() => removeEventListener("keydown", onCarpetKey));
 
   function renderOver() {
     const phase = match.phase;
@@ -674,9 +700,10 @@ function mountSeaBattle(session, root, shell) {
   }
   function showAim(i) {
     clearAim();
+    aimAt = i;
     if (!match.canFire() || weapon === "rain") return;
     const board = match.state.boards[opp];
-    const cells = weapon === "shot" ? (board.cells[i] === R.UNKNOWN ? [i] : []) : R.aimedCells(board, weapon, i);
+    const cells = weapon === "shot" ? (board.cells[i] === R.UNKNOWN ? [i] : []) : R.aimedCells(board, weapon, i, carpetDir);
     for (const c of cells) enemyBoard.cells[c].classList.add("aim");
   }
   enemyBoard.cellsLayer.addEventListener("pointerover", (e) => {
@@ -687,7 +714,10 @@ function mountSeaBattle(session, root, shell) {
     const cell = e.target.closest(".cell");
     if (cell) showAim(Number(cell.dataset.i));
   });
-  enemyBoard.cellsLayer.addEventListener("pointerleave", clearAim);
+  enemyBoard.cellsLayer.addEventListener("pointerleave", () => {
+    aimAt = -1;
+    clearAim();
+  });
   enemyBoard.cellsLayer.addEventListener("click", (e) => {
     const cell = e.target.closest(".cell");
     if (!cell || !match.canFire()) return;
@@ -696,9 +726,9 @@ function mountSeaBattle(session, root, shell) {
     // Rain isn't aimed, so a tap on a square (say, a gift) must not launch it.
     if (weapon === "rain") return toast("Missile rain falls on 7 random squares. Press Launch rain.");
     if (weapon === "shot" && board.cells[i] !== R.UNKNOWN) return toast("Already explored. Pick another square.");
-    if (weapon !== "shot" && R.aimedCells(board, weapon, i).length === 0) return toast("Nothing left to hit there.");
+    if (weapon !== "shot" && R.aimedCells(board, weapon, i, carpetDir).length === 0) return toast("Nothing left to hit there.");
     clearAim();
-    match.fire(weapon, i, spent());
+    match.fire(weapon, i, spent(), weapon === "carpet" ? carpetDir : undefined);
   });
 
   // ---------- match lifecycle ----------
@@ -728,6 +758,13 @@ function mountSeaBattle(session, root, shell) {
     }
   }
 
+  // Which boom of a rolling volley a square lands on: rain squares in order,
+  // carpet squares by their place along the line.
+  function boomOf(w, dir, cell, k) {
+    if (w !== "carpet") return k;
+    return dir === "col" ? R.rowOf(cell) : R.colOf(cell);
+  }
+
   // The shell lands: impact sounds and, for heavy weapons, a blast on the board.
   function land(board, w, events) {
     const view = board === me ? ownBoard : enemyBoard;
@@ -736,16 +773,16 @@ function mountSeaBattle(session, root, shell) {
     if (w === "nuke") {
       play("nuke");
       playSample(BLAST, { gain: 0.7, rate: 0.5, jitter: 0.03 }); // slowed down: a deep, real roar
-    } else if (w === "rain") {
+    } else if (w === "rain" || w === "carpet") {
       // No pitch jitter: it would pull the booms off their squares.
-      const carpet = playSample(CARPET, { gain: 0.8, jitter: 0 });
+      const rolled = w === "rain" ? playSample(BARRAGE, { gain: 0.8, jitter: 0 }) : playSample(CARPET, { gain: 0.85, jitter: 0 });
       events
         .filter((e) => e.type === "hit" || e.type === "miss")
         .forEach((e, k) =>
           setTimeout(() => {
             if (e.type === "hit") explode(0.4, { rate: 1.15, jitter: 0.12, fallback: "rain-hit" });
-            else if (!carpet) playSample(SPLASH_SMALL, { gain: 0.45, jitter: 0.12, fallback: "rain-miss" });
-          }, k * RAIN_STEP * 1000),
+            else if (!rolled) playSample(SPLASH_SMALL, { gain: 0.45, jitter: 0.12, fallback: "rain-miss" });
+          }, boomOf(w, volleyDir[board], e.cell, k) * BOOM_STEP * 1000),
         );
     } else if (w === "big") {
       if (hits.length && playSample(BLAST, { gain: 0.7, fallback: "hit-big" })) explode(0.4, { fallback: null });
@@ -758,7 +795,7 @@ function mountSeaBattle(session, root, shell) {
       setTimeout(() => splashHeavy(0.45), at + 500);
     }
     if (events.some((e) => e.type === "gift" && e.by === me)) setTimeout(() => play("gift"), 300);
-    if (w === "nuke" || w === "big") {
+    if (w === "nuke" || w === "big" || w === "carpet") {
       const shots = events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell);
       const r = shots.reduce((s, i) => s + R.rowOf(i), 0) / Math.max(1, shots.length);
       const c = shots.reduce((s, i) => s + R.colOf(i), 0) / Math.max(1, shots.length);
@@ -792,16 +829,17 @@ function mountSeaBattle(session, root, shell) {
       addLog(`Coin toss (drawn by both browsers): ${first === me ? "you start" : `${oppName} starts`}.`);
       toast(first === me ? "You go first!" : `${oppName} goes first`);
     });
-    match.on("fired", ({ by, weapon: w, cells }) => {
+    match.on("fired", ({ by, weapon: w, dir, cells }) => {
       const target = by === me ? enemyBoard : ownBoard;
       if (by === opp) follow(ownBoard);
       const flight = FLIGHT[w] ?? FLIGHT.shot;
       landsAt[R.other(by)] = performance.now() + flight * 1000;
+      volleyDir[R.other(by)] = dir;
       target.board.style.setProperty("--impact-delay", `${flight}s`);
       for (const c of target.cells) c.style.removeProperty("--impact-delay");
       cells.forEach((c, k) => {
-        // Missile rain lands square by square, in step with its carpet of booms.
-        if (w === "rain") target.cells[c].style.setProperty("--impact-delay", `${flight + k * RAIN_STEP}s`);
+        // Rain and carpet bombs land square by square, in step with their booms.
+        if (w === "rain" || w === "carpet") target.cells[c].style.setProperty("--impact-delay", `${flight + boomOf(w, dir, c, k) * BOOM_STEP}s`);
         target.cells[c].classList.add("incoming");
       });
       play(LAUNCH_SOUND[w] ?? "launch");

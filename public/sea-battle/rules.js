@@ -25,7 +25,10 @@ export const WEAPONS = {
   big: { label: "Big missile", gift: true, weight: 30, help: "5-square splash (plus shape)." },
   rain: { label: "Missile rain", gift: true, weight: 20, help: "7 random unexplored squares, agreed by both players." },
   nuke: { label: "Nuclear missile", gift: true, weight: 10, help: "14-square splash." },
+  carpet: { label: "Carpet bomb", gift: true, weight: 10, help: "A whole row or column. Press R to switch." },
 };
+// A carpet bomb covers the row or the column of the aimed square.
+export const DIRS = ["row", "col"];
 export const GIFT_TYPES = Object.keys(WEAPONS).filter((w) => WEAPONS[w].gift);
 
 // Time limits a room picks (0 = no limit). A shot carries the time its player
@@ -169,7 +172,7 @@ export function newBoard() {
 }
 
 export function newInventory() {
-  return { big: 0, rain: 0, nuke: 0 };
+  return { big: 0, rain: 0, nuke: 0, carpet: 0 };
 }
 
 // boards[p] is player p's waters (fired at by the other player). Without a
@@ -211,18 +214,20 @@ export function weaponAvailable(state, shooter, weapon) {
   return weapon === "shot" || state.inventory[shooter][weapon] > 0;
 }
 
-// Squares a fired weapon covers, for every weapon except rain. Only squares
-// that are still unexplored are fired at.
-export function patternCells(weapon, target) {
+// Squares a fired weapon covers, for every weapon except rain (dir is the
+// carpet bomb's "row" or "col"). Only squares that are still unexplored are
+// fired at.
+export function patternCells(weapon, target, dir = "row") {
   const r = rowOf(target);
   const c = colOf(target);
+  if (weapon === "carpet") return Array.from({ length: SIZE }, (_, k) => (dir === "col" ? idx(k, c) : idx(r, k)));
   const out = [];
   for (const [dr, dc] of PATTERNS[weapon]) if (inBounds(r + dr, c + dc)) out.push(idx(r + dr, c + dc));
   return out;
 }
 
-export function aimedCells(board, weapon, target) {
-  return patternCells(weapon, target).filter((i) => board.cells[i] === UNKNOWN);
+export function aimedCells(board, weapon, target, dir) {
+  return patternCells(weapon, target, dir).filter((i) => board.cells[i] === UNKNOWN);
 }
 
 export function unexplored(board) {
@@ -237,8 +242,9 @@ export function rainCells(board, rng) {
 }
 
 // Validate a fire request against public state. Returns cells (or null for rain).
-// ms is the time the shooter spent on this shot (required when timed).
-export function checkFire(state, shooter, weapon, target, ms) {
+// ms is the time the shooter spent on this shot (required when timed); dir is
+// the carpet bomb's direction.
+export function checkFire(state, shooter, weapon, target, ms, dir) {
   if (state.winner !== -1) throw new RuleError("game is over");
   if (state.turn !== shooter) throw new RuleError("not your turn");
   if (isTimed(state)) {
@@ -253,7 +259,8 @@ export function checkFire(state, shooter, weapon, target, ms) {
   }
   if (!Number.isInteger(target) || target < 0 || target >= CELLS) throw new RuleError("bad target");
   if (weapon === "shot" && board.cells[target] !== UNKNOWN) throw new RuleError("square already explored");
-  const cells = aimedCells(board, weapon, target);
+  if (weapon === "carpet" && !DIRS.includes(dir)) throw new RuleError("bad direction");
+  const cells = aimedCells(board, weapon, target, dir);
   if (cells.length === 0) throw new RuleError("nothing to hit there");
   return cells;
 }

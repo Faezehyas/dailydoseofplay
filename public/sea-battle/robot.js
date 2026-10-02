@@ -9,7 +9,7 @@
 //   * hunt mode: restricted to a parity lattice of the smallest ship left,
 //     and it goes out of its way for gifts;
 //   * weapons: splash weapons are aimed where they cover the most density.
-import { randomFleet, remainingShips, shipCells, orthoNeighbors, aimedCells, other, CELLS, SIZE, UNKNOWN, HIT, MISS, CLEAR, rowOf, colOf } from "./rules.js";
+import { randomFleet, remainingShips, shipCells, orthoNeighbors, aimedCells, other, idx, CELLS, SIZE, UNKNOWN, HIT, MISS, CLEAR, rowOf, colOf } from "./rules.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 
@@ -67,7 +67,7 @@ function bestOf(candidates, score, rng) {
   return { cell: best[Math.floor(rng() * best.length)], score: bestScore };
 }
 
-// Pick { weapon, target } for `me` in public match state.
+// Pick { weapon, target, dir? } for `me` in public match state (dir: carpet bomb).
 export function chooseMove(state, me, rng = Math.random) {
   const board = state.boards[other(me)];
   const inv = state.inventory[me];
@@ -96,6 +96,16 @@ export function chooseMove(state, me, rng = Math.random) {
         if (aim.score > 0) return { weapon, target: aim.cell };
       }
     }
+    if (inv.carpet > 0) {
+      // The densest row or column. Line k < SIZE is row k, the rest are columns.
+      const line = (k) => (k < SIZE ? { dir: "row", target: idx(k, 0) } : { dir: "col", target: idx(0, k - SIZE) });
+      const aim = bestOf(
+        [...Array(2 * SIZE).keys()],
+        (k) => aimedCells(board, "carpet", line(k).target, line(k).dir).reduce((s, c) => s + density[c] + (gifts.has(c) ? giftBonus : 0), 0),
+        rng,
+      );
+      if (aim.score > 0) return { weapon: "carpet", ...line(aim.cell) };
+    }
     if (inv.rain > 0) return { weapon: "rain" };
   }
   return { weapon: "shot", target: single.cell };
@@ -115,8 +125,8 @@ export function startRobot(session, { delay = 650, rng = Math.random, config = n
     timer = setTimeout(() => {
       timer = null;
       if (destroyed || !match.canFire()) return;
-      const { weapon, target } = chooseMove(match.state, match.me, rng);
-      match.fire(weapon, target, 0);
+      const { weapon, target, dir } = chooseMove(match.state, match.me, rng);
+      match.fire(weapon, target, 0, dir);
     }, delay + Math.floor(rng() * delay * 0.5));
   }
 

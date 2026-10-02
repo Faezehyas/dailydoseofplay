@@ -14,7 +14,8 @@
 // Messages (all carry m = match number, so rematches never mix):
 //   ready  { commit, chain }      fleet commitment + hash-chain tip
 //   draw   { k, v }               SharedRandom reveal for draw k
-//   fire   { w, at, ms }          weapon + aimed square (no `at` for rain) + time spent
+//   fire   { w, at, ms, dir }     weapon + aimed square (no `at` for rain) + time spent
+//                                 (+ "row" | "col" for the carpet bomb)
 //   result { hits, sunk }         defender's answer: 0/1 per fired square, newly sunk ships
 //   timeout {}                    the sender's own clock ran out: they lose
 //   reveal { fleet, salt }        after game over
@@ -98,22 +99,24 @@ export class SeaBattleMatch extends Emitter {
   }
 
   // ms: time spent on this shot (required when the room has clocks).
-  fire(weapon, target, ms) {
+  // dir: the carpet bomb's "row" or "col".
+  fire(weapon, target, ms, dir) {
     return this.#enqueue(async () => {
       if (!this.canFireQueued()) return;
       let cells;
       try {
-        cells = checkFire(this.state, this.me, weapon, target, ms);
+        cells = checkFire(this.state, this.me, weapon, target, ms, dir);
       } catch (err) {
         if (err instanceof RuleError) return this.emit("invalid", err.message);
         throw err;
       }
+      if (weapon !== "carpet") dir = undefined;
       this.pending = { weapon, target, cells, ms };
-      this.send({ t: "fire", w: weapon, at: weapon === "rain" ? undefined : target, ms });
+      this.send({ t: "fire", w: weapon, at: weapon === "rain" ? undefined : target, ms, dir });
       if (weapon === "rain") {
         this.pending.cells = rainCells(this.state.boards[other(this.me)], await this.#draw());
       }
-      this.emit("fired", { by: this.me, weapon, target, cells: this.pending.cells });
+      this.emit("fired", { by: this.me, weapon, target, dir, cells: this.pending.cells });
     });
   }
 
@@ -202,9 +205,9 @@ export class SeaBattleMatch extends Emitter {
         if (this.phase !== "playing") throw new RuleError("fire outside play");
         const shooter = other(this.me);
         const weapon = String(msg.w);
-        let cells = checkFire(this.state, shooter, weapon, msg.at, msg.ms);
+        let cells = checkFire(this.state, shooter, weapon, msg.at, msg.ms, msg.dir);
         if (weapon === "rain") cells = rainCells(this.state.boards[this.me], await this.#draw());
-        this.emit("fired", { by: shooter, weapon, target: msg.at, cells });
+        this.emit("fired", { by: shooter, weapon, target: msg.at, dir: msg.dir, cells });
         const { hits, sunk } = answerShots(this.fleet, this.state.boards[this.me], cells);
         this.send({ t: "result", hits, sunk });
         await this.#advance(shooter, weapon, cells, hits, sunk, msg.ms);

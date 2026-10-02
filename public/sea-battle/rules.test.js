@@ -30,6 +30,7 @@ import {
   normalizeFleet,
   normalizeConfig,
   applyTimeout,
+  WEAPONS,
   isTimed,
   timeLeft,
   DEFAULT_CONFIG,
@@ -48,8 +49,8 @@ const FLEET_A = [
 ];
 
 // Simulate a full fire step: defender answers from its fleet, then apply.
-function fire(state, fleet, shooter, weapon, target, rng, ms) {
-  let cells = checkFire(state, shooter, weapon, target, ms);
+function fire(state, fleet, shooter, weapon, target, rng, ms, dir) {
+  let cells = checkFire(state, shooter, weapon, target, ms, dir);
   if (weapon === "rain") cells = rainCells(state.boards[1 - shooter], rng);
   const { hits, sunk } = answerShots(fleet, state.boards[1 - shooter], cells);
   return { cells, events: applyFire(state, shooter, weapon, cells, hits, sunk, ms) };
@@ -189,6 +190,22 @@ test("gifts pop every few moves, the shooter collects them, and weapons work", (
   assert.equal(state.inventory[0][gift.type], before + 1);
   assert.ok(events.some((e) => e.type === "gift" && e.gift === gift.type));
   assert.ok(!state.boards[1].gifts.some((g) => g.cell === gift.cell));
+});
+
+test("a carpet bomb hits the whole row or column of the aimed square", () => {
+  assert.deepEqual(patternCells("carpet", idx(3, 7), "row"), [...Array(10).keys()].map((c) => idx(3, c)));
+  assert.deepEqual(patternCells("carpet", idx(3, 7), "col"), [...Array(10).keys()].map((r) => idx(r, 7)));
+  const state = newMatchState(0);
+  state.inventory[0].carpet = 1;
+  assert.throws(() => checkFire(state, 0, "carpet", idx(0, 0)), RuleError, "a direction is required");
+  assert.throws(() => checkFire(state, 0, "carpet", idx(0, 0), undefined, "diagonal"), RuleError);
+  fire(state, FLEET_A, 0, "shot", idx(0, 0)); // carrier square: hit, fire again
+  const { cells, events } = fire(state, FLEET_A, 0, "carpet", idx(5, 0), undefined, undefined, "col");
+  assert.equal(cells.length, 9, "the square already hit is skipped");
+  assert.ok(cells.every((i) => i % 10 === 0));
+  assert.equal(events.filter((e) => e.type === "hit").length, 4, "the battleship, both cruisers and the destroyer");
+  assert.equal(state.inventory[0].carpet, 0);
+  assert.equal(WEAPONS.carpet.weight, WEAPONS.nuke.weight, "as rare as the nuclear missile");
 });
 
 test("big/nuke splash, rain hits 7 agreed squares", () => {

@@ -136,6 +136,10 @@ handler is attached.
 | Big missile | 5-square plus shape |
 | Missile rain | 7 random unexplored squares; not aimed, so it fires from a Launch rain button rather than a tap on the board |
 | Nuclear missile | 14 squares: a 4×4 block with two opposite corners spared |
+| Carpet bomb | The whole row or column through the aimed square (`dir` is `row` or `col`) |
+
+Gift odds are 3 : 2 : 1 : 1 for big missile, missile rain, nuclear missile and
+carpet bomb.
 
 Splash squares that were already explored are skipped.
 
@@ -182,7 +186,7 @@ friends with no server-side referee.
 |---|---|---|
 | `ready {commit, chain}` | each | Fleet commitment and `SharedRandom` chain tip |
 | `draw {k, v}` | each | Reveal for shared draw *k*. Handled outside the step queue, because a queued step may be waiting for it. |
-| `fire {w, at, ms}` | shooter | Weapon, aimed square (rain has no `at`) and the time spent on the shot. Both peers deduct `ms` from the shooter's clock. |
+| `fire {w, at, ms, dir}` | shooter | Weapon, aimed square (rain has no `at`), the time spent on the shot, and the carpet bomb's `row` or `col`. Both peers deduct `ms` from the shooter's clock. |
 | `result {hits, sunk}` | defender | 0 or 1 per fired square, plus newly sunk ships |
 | `timeout {}` | player on turn | Their own clock ran out: they lose, and the reveal follows |
 | `reveal {fleet, salt}` | each | After the game ends |

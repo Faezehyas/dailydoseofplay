@@ -244,3 +244,23 @@ test("room clocks: shot times reach both peers, and a player whose clock runs ou
   assert.deepEqual(a.verdict, { ok: true });
   assert.deepEqual(b.verdict, { ok: true });
 });
+
+test("a carpet bomb's direction crosses the wire and both peers bomb the same column", async () => {
+  const [host, guest] = await sessions();
+  const fleets = [randomFleet(rngFromSeed("h-carpet")), randomFleet(rngFromSeed("g-carpet"))];
+  const [a, b] = pair(host, guest, fleets);
+  matchRouter(host).start(a);
+  matchRouter(guest).start(b);
+  await Promise.all([a.ready(), b.ready()]);
+  await until(() => a.phase === "playing" && b.phase === "playing", "start");
+  const shooter = [a, b].find((m) => m.canFire());
+  for (const m of [a, b]) m.state.inventory[shooter.me].carpet = 1; // as if picked up from a gift
+  const fired = [];
+  for (const m of [a, b]) m.on("fired", (f) => fired.push(f));
+  await shooter.fire("carpet", 34, undefined, "col");
+  await until(() => !shooter.pending && a.state.moves === 1 && b.state.moves === 1, "carpet answered");
+  const column = [...Array(10).keys()].map((r) => r * 10 + 4);
+  assert.deepEqual(fired.map((f) => f.cells), [column, column]);
+  assert.deepEqual(fired.map((f) => f.dir), ["col", "col"]);
+  assert.deepEqual(JSON.parse(JSON.stringify(a.state)), JSON.parse(JSON.stringify(b.state)));
+});

@@ -112,7 +112,7 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
     // Host plays hopelessly (water first) so the guest's answers get exercised too.
     const water = [...Array(100).keys()].filter((i) => view.cells[i] === 0 && !shipSquares[1 - k].includes(i));
     let target = k === 0 && water.length > 40 ? water[0] : targets[0] ?? water[0];
-    const owned = ["big", "nuke"].find((w) => view.inv[w] > 0);
+    const owned = ["big", "nuke", "carpet"].find((w) => view.inv[w] > 0);
     if (owned && !usedWeapon) {
       await page.click(`.weapon[data-w="${owned}"]`);
       usedWeapon = true;
@@ -361,6 +361,30 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
     assert.match(await page.locator("#toast").innerText(), /Launch rain/);
     await giveRain(0);
     assert.equal(await page.locator("#launch-rain").count(), 0);
+
+    // Carpet bomb: aims at a whole row; R (or the button) switches to a column.
+    await page.evaluate(() => {
+      const m = window.ddp.match;
+      m.state.inventory[m.me].carpet = 1; // local only, never fired
+      m.emit("update");
+    });
+    await page.click('.weapon[data-w="carpet"]');
+    assert.equal(await page.locator("#carpet-dir").innerText(), "↔ Row");
+    await page.hover(`.enemy .cell[data-i="${free}"]`);
+    const inRow = (await page.evaluate((f) => window.ddp.match.state.boards[1].cells.filter((v, i) => v === 0 && Math.floor(i / 10) === Math.floor(f / 10)).length, free));
+    assert.equal(await page.locator(".enemy .cell.aim").count(), inRow, "the whole row is aimed");
+    await page.keyboard.press("r");
+    assert.equal(await page.locator("#carpet-dir").innerText(), "↕ Column");
+    const inCol = (await page.evaluate((f) => window.ddp.match.state.boards[1].cells.filter((v, i) => v === 0 && i % 10 === f % 10).length, free));
+    assert.equal(await page.locator(".enemy .cell.aim").count(), inCol, "R re-aims along the column");
+    await page.click("#carpet-dir");
+    assert.equal(await page.locator("#carpet-dir").innerText(), "↔ Row");
+    await page.evaluate(() => {
+      const m = window.ddp.match;
+      m.state.inventory[m.me].carpet = 0;
+      m.emit("update");
+    });
+    assert.equal(await page.locator("#carpet-dir").count(), 0);
   }
   const toastBox = await page.locator("#toast").boundingBox();
   assert.ok(toastBox && toastBox.y < 120, "toasts sit at the top, clear of the boards");
