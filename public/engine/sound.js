@@ -131,7 +131,11 @@ const SOUNDS = {
   },
   sink: (a) => {
     blast(a, 0, 1.3);
-    // Hull groaning as it goes under, then bubbles.
+    SOUNDS.groan(a);
+    splash(a, 0.5, 0.7);
+  },
+  // Hull groaning as it goes under.
+  groan: (a) => {
     const t = a.currentTime;
     const groan = a.createOscillator();
     const f = a.createBiquadFilter();
@@ -143,7 +147,6 @@ const SOUNDS = {
     groan.connect(f).connect(env(a, t + 0.25, { attack: 0.2, peak: 0.08, dur: 1.3 })).connect(bus);
     groan.start(t + 0.25);
     groan.stop(t + 1.6);
-    splash(a, 0.5, 0.7);
   },
   "rain-hit": (a) => blast(a, 0, 0.6),
   "rain-miss": (a) => splash(a, 0, 0.6),
@@ -192,29 +195,33 @@ export function preload(urls) {
   );
 }
 
-// Play one of `urls` (picked at random, pitch nudged for variety). Falls back
-// to the synthesized `fallback` sound until the sample is decoded.
-export function playSample(urls, { gain = 0.6, jitter = 0.06, fallback } = {}) {
-  if (!soundOn()) return;
+// Play one of `urls` (picked at random, pitch nudged for variety; `rate` below
+// 1 plays it slower and deeper). Falls back to the synthesized `fallback` sound
+// until the sample is decoded. Returns whether the recording played.
+export function playSample(urls, { gain = 0.6, rate = 1, jitter = 0.06, fallback } = {}) {
+  if (!soundOn()) return false;
   const list = Array.isArray(urls) ? urls : [urls];
   const url = list[Math.floor(Math.random() * list.length)];
   const buf = decoded.get(url);
   if (!buf) {
     preload(list);
     if (fallback) play(fallback);
-    return;
+    return false;
   }
   try {
     const a = audio();
-    if (!a) return;
+    if (!a) return false;
     const src = a.createBufferSource();
     src.buffer = buf;
-    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * jitter;
+    src.playbackRate.value = rate * (1 + (Math.random() * 2 - 1) * jitter);
     const g = a.createGain();
     g.gain.value = gain;
     src.connect(g).connect(bus);
     src.start();
-  } catch {}
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function play(name) {

@@ -67,10 +67,15 @@ const WEAPON_ICON = {
 const AI_DELAY = 650;
 // Seconds a shell is in the air before it lands (sound and visuals wait for it).
 const FLIGHT = { shot: 0.45, missile: 0.45, big: 0.55, rain: 0.6, nuke: 1.0 };
-// Real recordings of heavy objects hitting water (CC0, see sounds/LICENSE.txt).
-const SPLASH_HEAVY = ["splash-heavy-1", "splash-heavy-2"].map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
-const SPLASH_SMALL = ["splash-small-1", "splash-small-2"].map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
+// Real recordings (CC0, see sounds/LICENSE.txt): heavy objects hitting water,
+// shells exploding on a steel hull, and bigger blasts at the waterline.
+const sounds = (...names) => names.map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
+const SPLASH_HEAVY = sounds("splash-heavy-1", "splash-heavy-2");
+const SPLASH_SMALL = sounds("splash-small-1", "splash-small-2");
+const EXPLOSION = sounds("explosion-hit-1", "explosion-hit-2");
+const BLAST = sounds("explosion-big-1", "explosion-big-2");
 const splashHeavy = (gain = 0.7) => playSample(SPLASH_HEAVY, { gain, fallback: "miss" });
+const explode = (gain = 0.65, opts) => playSample(EXPLOSION, { gain, fallback: "hit", ...opts });
 const LAUNCH_SOUND = { shot: "launch", missile: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke" };
 // Seconds per shot in friend games (papergames uses a per-turn clock too).
 const TURN_SECONDS = 40;
@@ -89,7 +94,7 @@ function shipName(len, sunkCountOfLen) {
 }
 
 function mountSeaBattle(session, root, shell) {
-  preload([...SPLASH_HEAVY, ...SPLASH_SMALL]);
+  preload([...SPLASH_HEAVY, ...SPLASH_SMALL, ...EXPLOSION, ...BLAST]);
   const me = session.index;
   const opp = R.other(me);
   const oppName = session.opponent.name;
@@ -664,19 +669,31 @@ function mountSeaBattle(session, root, shell) {
     const view = board === me ? ownBoard : enemyBoard;
     const sunk = events.some((e) => e.type === "sunk");
     const hits = events.filter((e) => e.type === "hit");
-    if (w === "nuke") play("nuke");
-    else if (w === "rain") {
+    if (w === "nuke") {
+      play("nuke");
+      playSample(BLAST, { gain: 0.7, rate: 0.5, jitter: 0.03 }); // slowed down: a deep, real roar
+    } else if (w === "rain") {
       events
         .filter((e) => e.type === "hit" || e.type === "miss")
         .forEach((e, k) =>
-          setTimeout(() => (e.type === "hit" ? play("rain-hit") : playSample(SPLASH_SMALL, { gain: 0.45, jitter: 0.12, fallback: "rain-miss" })), k * 70),
+          setTimeout(
+            () =>
+              e.type === "hit"
+                ? explode(0.45, { rate: 1.15, jitter: 0.12, fallback: "rain-hit" })
+                : playSample(SPLASH_SMALL, { gain: 0.45, jitter: 0.12, fallback: "rain-miss" }),
+            k * 70,
+          ),
         );
-    } else if (w === "big") hits.length ? play("hit-big") : splashHeavy(0.85);
+    } else if (w === "big") {
+      if (hits.length && playSample(BLAST, { gain: 0.7, fallback: "hit-big" })) explode(0.4, { fallback: null });
+      else if (!hits.length) splashHeavy(0.85);
+    } else hits.length ? explode() : splashHeavy();
     if (sunk) {
-      // The hull blows up, groans, and goes under with a heavy splash.
-      setTimeout(() => play("sink"), w === "nuke" ? 900 : 0);
-      setTimeout(() => splashHeavy(0.45), w === "nuke" ? 1400 : 500);
-    } else if (w === "shot" || w === "missile") hits.length ? play("hit") : splashHeavy();
+      // A second, deeper blast as the ship blows apart; it groans and goes under.
+      const at = w === "nuke" ? 900 : 250;
+      setTimeout(() => playSample(BLAST, { gain: 0.55, rate: 0.8, fallback: "sink" }) && play("groan"), at);
+      setTimeout(() => splashHeavy(0.45), at + 500);
+    }
     if (events.some((e) => e.type === "gift" && e.by === me)) setTimeout(() => play("gift"), 300);
     if (w === "nuke" || w === "big") {
       const shots = events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell);

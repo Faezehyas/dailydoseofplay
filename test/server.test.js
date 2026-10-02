@@ -48,6 +48,17 @@ test("HTTP routes: home, games, healthz, ws, 404s", async (t) => {
   assert.equal((await fetch(`${srv.base}/sea-battle/sounds/splash-heavy-1.mp3`)).headers.get("content-type"), "audio/mpeg");
 });
 
+test("sea battle: every recorded sound exists and is credited", () => {
+  const main = fs.readFileSync(new URL("../public/sea-battle/main.js", import.meta.url), "utf8");
+  const credits = fs.readFileSync(new URL("../public/sea-battle/sounds/LICENSE.txt", import.meta.url), "utf8");
+  const names = [...main.matchAll(/sounds\(([^)]*)\)/g)].flatMap((m) => [...m[1].matchAll(/"([\w-]+)"/g)].map((n) => n[1]));
+  assert.ok(names.length >= 8, "found the sample lists");
+  for (const n of names) {
+    assert.ok(fs.existsSync(new URL(`../public/sea-battle/sounds/${n}.mp3`, import.meta.url)), `${n}.mp3`);
+    assert.match(credits, new RegExp(`^${n}\\.mp3 `, "m"), `${n} credited`);
+  }
+});
+
 test("registry: every entry is well formed and every ready game has a folder", () => {
   const slugs = new Set();
   for (const g of registry.games) {
