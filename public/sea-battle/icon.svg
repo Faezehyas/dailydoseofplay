@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fd3ec"/>
+      <stop offset="1" stop-color="#4f9cc6"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="200" fill="url(#sea)"/>
+  <g stroke="#ffffff" stroke-opacity=".28" stroke-width="2">
+    <path d="M0 40h320M0 80h320M0 120h320M0 160h320M40 0v200M80 0v200M120 0v200M160 0v200M200 0v200M240 0v200M280 0v200"/>
+  </g>
+  <rect x="44" y="84" width="152" height="32" rx="16" fill="#3d4a63"/>
+  <rect x="62" y="94" width="116" height="12" rx="6" fill="#6c7d9c"/>
+  <circle cx="85" cy="100" r="4" fill="#cfe0f5"/>
+  <circle cx="120" cy="100" r="4" fill="#cfe0f5"/>
+  <circle cx="155" cy="100" r="4" fill="#cfe0f5"/>
+  <g transform="translate(130 58)">
+    <path d="M20 0c3 12 18 21 18 38a18 18 0 0 1-36 0c0-9 4-15 8-20 1 7 4 11 8 12-2-10-1-20 2-30z" fill="#ff6b2c"/>
+    <path d="M20 26c2 6 9 10 9 17a9 9 0 0 1-18 0c0-5 3-9 6-11 0 3 1 5 3 5 0-4-1-8 0-11z" fill="#ffc23a"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="4">
+    <circle cx="250" cy="60" r="10"/>
+    <circle cx="250" cy="60" r="22" stroke-opacity=".6"/>
+  </g>
+  <g transform="translate(232 128)">
+    <rect x="0" y="14" width="40" height="26" rx="4" fill="#8b5cf6"/>
+    <rect x="-3" y="6" width="46" height="11" rx="3" fill="#a78bfa"/>
+    <rect x="17" y="6" width="6" height="34" fill="#fde68a"/>
+    <path d="M20 6c-6-10-16-8-14-2 2 5 14 2 14 2zM20 6c6-10 16-8 14-2-2 5-14 2-14 2z" fill="#fde68a"/>
+  </g>
+</svg>

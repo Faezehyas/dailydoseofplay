@@ -1,0 +1,60 @@
+{
+  "games": [
+    {
+      "slug": "sea-battle",
+      "name": "Sea Battle",
+      "status": "ready",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Hide your fleet, hunt theirs. Grab gifts for big missiles, missile rain and the nuke."
+    },
+    {
+      "slug": "tic-tac-toe",
+      "name": "Tic Tac Toe",
+      "status": "soon",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Three in a row wins. The classic five-minute duel."
+    },
+    {
+      "slug": "connect-4",
+      "name": "Connect 4",
+      "status": "soon",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Drop discs, line up four before your friend does."
+    },
+    {
+      "slug": "gomoku",
+      "name": "Gomoku",
+      "status": "soon",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Five in a row on a big board. Easy to learn, deep to master."
+    },
+    {
+      "slug": "chess",
+      "name": "Chess",
+      "status": "soon",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "The king of board games, played straight from the browser."
+    },
+    {
+      "slug": "checkers",
+      "name": "Checkers",
+      "status": "soon",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Jump, capture, crown. Clear the board to win."
+    },
+    {
+      "slug": "backgammon",
+      "name": "Backgammon",
+      "status": "soon",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Race your checkers home with a little luck and a lot of tactics."
+    }
+  ]
+}
