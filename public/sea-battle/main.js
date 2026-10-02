@@ -1,7 +1,8 @@
 // Sea Battle page: mounts the engine shell and renders a match.
 // All game logic lives in rules.js / match.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
-import { el, toast } from "../engine/shell.js";
+import { el, toast, setTabAlert } from "../engine/shell.js";
+import { play } from "../engine/sound.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
@@ -13,7 +14,9 @@ const ICON = {
   splash:
     '<svg viewBox="0 0 24 24" class="mk-splash" aria-hidden="true"><circle cx="12" cy="12" r="2.4"/><circle class="ring" cx="12" cy="12" r="5.5"/><circle class="ring2" cx="12" cy="12" r="9"/></svg>',
   gift:
-    '<svg viewBox="0 0 24 24" class="mk-gift" aria-hidden="true"><rect class="g1" x="4" y="10" width="16" height="10" rx="1.6"/><rect class="g2" x="3" y="7" width="18" height="4" rx="1.2"/><rect class="g3" x="11" y="7" width="2" height="13"/><path class="g3" d="M12 7c-3-5-8-4-7-1 1 2.5 7 1 7 1zm0 0c3-5 8-4 7-1-1 2.5-7 1-7 1z"/></svg>',
+    '<svg viewBox="0 0 24 24" class="mk-gift" aria-hidden="true"><rect class="g1" x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path class="g2" d="M9.2 9.6a2.9 2.9 0 1 1 4.3 2.5c-.9.5-1.5 1-1.5 2v.6"/><circle class="g3" cx="12" cy="17.4" r="1.2"/></svg>',
+  wreck:
+    '<svg viewBox="0 0 24 24" class="mk-wreck" aria-hidden="true"><circle class="w1" cx="12" cy="12" r="7.5"/><path class="w2" d="M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4"/></svg>',
   clear: '<svg viewBox="0 0 24 24" class="mk-clear" aria-hidden="true"><circle cx="12" cy="12" r="2"/></svg>',
 };
 
@@ -26,6 +29,8 @@ const WEAPON_ICON = {
 };
 
 const AI_DELAY = 650;
+// Seconds per shot in friend games (papergames uses a per-turn clock too).
+const TURN_SECONDS = 40;
 
 startGameShell({
   slug: "sea-battle",
@@ -54,13 +59,22 @@ function mountSeaBattle(session, root, shell) {
   let selectedShip = -1;
   let dragging = false;
   let rematchVotes = { me: false, them: false };
+  const score = [0, 0]; // wins per player across rematches
+  let lastShots = [new Set(), new Set()]; // board -> squares of the latest volley at it
+  let lastTurnSeen = -1;
+  const turnSeconds = session.mode === "friend" ? Number(window.ddpTurnSeconds) || TURN_SECONDS : 0;
+  let timerKey = "";
+  let timerId = null;
+  let deadline = 0;
+  let lastTick = -1;
   const offs = [];
 
   // ---------- layout ----------
   const status = el("p", { class: "sb-status", id: "sb-status", role: "status", "aria-live": "polite" });
   const players = el("div", { class: "sb-players" });
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
+  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: confirmLeave }, "Leave");
   const top = el("div", { class: "sb-top" }, players, leaveBtn);
+  const clock = el("span", { class: "sb-clock", id: "sb-clock", hidden: true, "aria-live": "off" });
 
   const ownBoard = createBoard("Your fleet", false);
   const enemyBoard = createBoard(`${oppName}'s waters`, true);
@@ -85,7 +99,7 @@ function mountSeaBattle(session, root, shell) {
       "div",
       { class: "sea-battle" },
       top,
-      status,
+      el("div", { class: "sb-statusrow" }, status, clock),
       placeBar,
       overBox,
       el("div", { class: "sb-boards" }, enemyBoard.wrap, ownBoard.wrap),
@@ -109,6 +123,7 @@ function mountSeaBattle(session, root, shell) {
         : el("div", { class: "cell", dataset: { i } });
       cell.style.gridArea = `${R.rowOf(i) + 1} / ${R.colOf(i) + 1}`;
       cell.dataset.v = "";
+      cell.dataset.s = "";
       cells.push(cell);
       cellsLayer.append(cell);
     }
@@ -134,24 +149,30 @@ function mountSeaBattle(session, root, shell) {
     return { r: R.rowOf(s[0]), c: R.colOf(s[0]), len: s.length, vertical: s.length > 1 && s[1] - s[0] === R.SIZE };
   };
 
-  function paintCells(view, board, { gifts = true } = {}) {
-    const giftAt = new Map(gifts && board ? board.gifts.map((g) => [g.cell, g.type]) : []);
+  function paintCells(view, board, last = new Set()) {
+    const giftAt = new Map(board ? board.gifts.map((g) => [g.cell, g.type]) : []);
+    const sunkAt = new Set(board ? board.sunk.flatMap((x) => x.cells) : []);
     for (let i = 0; i < R.CELLS; i++) {
       const v = board ? board.cells[i] : R.UNKNOWN;
-      const key = `${v}${giftAt.has(i) ? "g" : ""}`;
+      const gift = giftAt.has(i);
+      const sunk = sunkAt.has(i);
+      const key = `${v}${gift ? "g" : ""}${sunk ? "s" : ""}${last.has(i) ? "l" : ""}`;
       const cell = view.cells[i];
       if (cell.dataset.v === key) continue;
-      const fresh = cell.dataset.v !== "" && (v === R.HIT || v === R.MISS);
+      const fresh = cell.dataset.s !== "" && cell.dataset.s !== String(v) && (v === R.HIT || v === R.MISS);
       cell.dataset.v = key;
+      cell.dataset.s = String(v);
       cell.className = "cell";
-      if (v === R.HIT) cell.classList.add("hit");
+      if (v === R.HIT) cell.classList.add(sunk ? "sunk" : "hit");
       else if (v === R.MISS) cell.classList.add("miss");
       else if (v === R.CLEAR) cell.classList.add("clear");
-      if (giftAt.has(i)) cell.classList.add("gift");
+      if (gift) cell.classList.add("gift");
+      if (last.has(i)) cell.classList.add("last");
       if (fresh) cell.classList.add("fresh");
-      cell.innerHTML = v === R.HIT ? ICON.fire : v === R.MISS ? ICON.splash : v === R.CLEAR ? ICON.clear : giftAt.has(i) ? ICON.gift : "";
+      cell.innerHTML =
+        v === R.HIT ? (sunk ? ICON.wreck : ICON.fire) : v === R.MISS ? ICON.splash : v === R.CLEAR ? ICON.clear : gift ? ICON.gift : "";
       if (view === enemyBoard) {
-        const what = v === R.HIT ? "hit" : v === R.MISS ? "miss" : v === R.CLEAR ? "clear water" : giftAt.has(i) ? "gift" : "unexplored";
+        const what = v === R.HIT ? (sunk ? "sunk" : "hit") : v === R.MISS ? "miss" : v === R.CLEAR ? "clear water" : gift ? "mystery gift" : "unexplored";
         cell.setAttribute("aria-label", `${R.cellName(i)}, ${what}`);
       }
     }
@@ -177,9 +198,19 @@ function mountSeaBattle(session, root, shell) {
     root.querySelector(".sea-battle").dataset.phase = phase;
 
     players.replaceChildren(
-      el("span", { class: `who me ${st && st.turn === me && phase === "playing" ? "active" : ""}` }, session.me.name === "You" ? "You" : `${session.me.name} (you)`),
+      el(
+        "span",
+        { class: `who me ${st && st.turn === me && phase === "playing" ? "active" : ""}` },
+        session.me.name === "You" ? "You" : `${session.me.name} (you)`,
+        el("b", { class: "score", id: "score-me", title: "Wins" }, String(score[me])),
+      ),
       el("span", { class: "vs" }, "vs"),
-      el("span", { class: `who ${st && st.turn === opp && phase === "playing" ? "active" : ""}` }, oppName),
+      el(
+        "span",
+        { class: `who ${st && st.turn === opp && phase === "playing" ? "active" : ""}` },
+        el("b", { class: "score", id: "score-opp", title: "Wins" }, String(score[opp])),
+        oppName,
+      ),
     );
 
     // Status line
@@ -224,7 +255,7 @@ function mountSeaBattle(session, root, shell) {
         return node;
       }),
     );
-    paintCells(ownBoard, st && st.boards[me]);
+    paintCells(ownBoard, st && st.boards[me], lastShots[me]);
     ownBoard.wrap.classList.toggle("placing", placing);
 
     // Enemy board: sunk ships, revealed fleet at the end, our fire
@@ -238,7 +269,7 @@ function mountSeaBattle(session, root, shell) {
         }
       }
       enemyBoard.shipsLayer.replaceChildren(...shipNodes);
-      paintCells(enemyBoard, board);
+      paintCells(enemyBoard, board, lastShots[opp]);
       fleetLeft(enemyBoard, board);
       fleetLeft(ownBoard, st.boards[me]);
     } else {
@@ -247,9 +278,72 @@ function mountSeaBattle(session, root, shell) {
     const myTurn = match.canFire();
     enemyBoard.wrap.classList.toggle("armed", myTurn);
     enemyBoard.cellsLayer.classList.toggle("rain", myTurn && weapon === "rain");
+    setTabAlert(phase === "playing" && st.turn === me ? "Your turn" : null);
+    if (phase === "playing" && st.turn !== lastTurnSeen) {
+      lastTurnSeen = st.turn;
+      if (st.turn === me) {
+        play("turn");
+        follow(enemyBoard);
+      }
+    }
+    syncTimer();
 
     renderWeapons();
     renderOver();
+  }
+
+  // ---------- turn clock (friend games) ----------
+  function syncTimer() {
+    const st = match.state;
+    const active = turnSeconds && match.phase === "playing" ? st.turn : -1;
+    // A new clock for every shot opportunity, including "hit, fire again".
+    const key = active === -1 ? "" : `${match.m}:${st.moves}:${active}`;
+    if (key === timerKey) return;
+    timerKey = key;
+    clearInterval(timerId);
+    if (active === -1) {
+      clock.hidden = true;
+      return;
+    }
+    deadline = Date.now() + turnSeconds * 1000;
+    lastTick = -1;
+    clock.hidden = false;
+    tickClock(active);
+    timerId = setInterval(() => tickClock(active), 250);
+  }
+
+  function tickClock(active) {
+    const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    clock.textContent = `${active === me ? "Your shot" : `${oppName}`}: ${left}s`;
+    clock.classList.toggle("mine", active === me);
+    clock.classList.toggle("low", left <= 10);
+    if (active === me && left <= 5 && left > 0 && left !== lastTick) {
+      lastTick = left;
+      play("tick");
+    }
+    if (left > 0) return;
+    clearInterval(timerId);
+    if (active === me && match.canFire()) {
+      const free = R.unexplored(match.state.boards[opp]);
+      if (!free.length) return;
+      toast("Time's up! A random shot was fired for you.");
+      match.fire("shot", free[Math.floor(Math.random() * free.length)]);
+    }
+  }
+
+  // On phones the two boards don't fit on one screen: keep the action in view.
+  function follow(view) {
+    if (innerWidth >= 760) return;
+    const r = view.board.getBoundingClientRect();
+    if (r.top >= 0 && r.bottom <= innerHeight) return;
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    view.wrap.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "nearest" });
+  }
+
+  function confirmLeave() {
+    const live = session.mode === "friend" && match && (match.phase === "playing" || match.phase === "placing");
+    if (live && !confirm(`Leave the game? ${oppName} will be told you left.`)) return;
+    shell.leave();
   }
 
   function renderWeapons() {
@@ -497,6 +591,8 @@ function mountSeaBattle(session, root, shell) {
     weapon = "shot";
     lastAgain = false;
     selectedShip = -1;
+    lastShots = [new Set(), new Set()];
+    lastTurnSeen = -1;
     rematchVotes = { me: false, them: false };
     match = new SeaBattleMatch({ send: (msg) => session.send(msg), me, fleet, m });
     window.ddp.match = match; // for debugging and browser tests
@@ -507,14 +603,22 @@ function mountSeaBattle(session, root, shell) {
       toast(first === me ? "You go first!" : `${oppName} goes first`);
     });
     match.on("fired", ({ by, weapon: w, cells }) => {
+      if (by === opp) follow(ownBoard);
       if (w === "rain") for (const c of cells) (by === me ? enemyBoard : ownBoard).cells[c].classList.add("incoming");
     });
-    match.on("events", ({ shooter, weapon: w, events }) => describe(shooter, w, events));
+    match.on("events", ({ shooter, weapon: w, events }) => {
+      lastShots[R.other(shooter)] = new Set(events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell));
+      play(events.some((e) => e.type === "sunk") ? "sink" : events.some((e) => e.type === "hit") ? "hit" : "miss");
+      if (events.some((e) => e.type === "gift" && e.by === me)) setTimeout(() => play("gift"), 250);
+      describe(shooter, w, events);
+    });
     match.on("gifts", (spawned) => {
       addLog("Gifts popped up on both boards. Hit one to win a weapon!", "gift");
     });
     match.on("over", ({ winner }) => {
+      score[winner] += 1;
       addLog(winner === me ? "You sank the whole fleet!" : `${oppName} sank your whole fleet.`, "big");
+      setTimeout(() => play(winner === me ? "win" : "lose"), 400);
     });
     match.on("verified", () => render());
     match.on("abort", ({ reason }) => {
@@ -541,6 +645,8 @@ function mountSeaBattle(session, root, shell) {
   return {
     destroy() {
       destroyed = true;
+      clearInterval(timerId);
+      setTabAlert(null);
       for (const off of offs) off();
     },
   };

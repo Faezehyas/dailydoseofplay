@@ -128,6 +128,12 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   const winner = await host.evaluate(() => window.ddp.match.state.winner);
   assert.equal(winner, 1, "the guest aimed at ships and wins");
   assert.match(await guest.locator(".sb-over h2").innerText(), /Victory/);
+  // Wins carry across rematches; the latest volley on each board is ringed.
+  assert.equal(await guest.locator("#score-me").innerText(), "1");
+  assert.equal(await host.locator("#score-opp").innerText(), "1");
+  assert.equal(await host.locator("#score-me").innerText(), "0");
+  assert.ok((await guest.locator(".enemy .cell.last").count()) >= 1);
+  assert.ok((await host.locator(".own .cell.last").count()) >= 1);
   assert.match(await host.locator(".sb-over h2").innerText(), /Defeat/);
   await host.screenshot({ path: `${ARTIFACTS}/3-game-over.png`, fullPage: true });
 
@@ -140,6 +146,16 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   await host.click("#ready");
   await guest.click("#ready");
   await wait(host, () => window.ddp.match.phase === "playing");
+
+  // Leaving a live friend game asks first; dismissing keeps the game.
+  let asked = "";
+  host.once("dialog", (d) => {
+    asked = d.message();
+    d.dismiss();
+  });
+  await host.click("#leave");
+  assert.match(asked, /Leave the game\?/);
+  assert.equal(await host.evaluate(() => window.ddp.match.phase), "playing");
 
   // Friend closes the tab: host is told.
   await guest.close();
@@ -275,7 +291,44 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
     shots++;
   }
   assert.ok((await page.locator("#sb-log li").count()) >= 3);
+  assert.equal(await page.locator("#sb-clock").isVisible(), false, "no turn clock against the robot");
+  const toastBox = await page.locator("#toast").boundingBox();
+  assert.ok(toastBox && toastBox.y < 120, "toasts sit at the top, clear of the boards");
+  await page.click("#sound-toggle");
+  assert.equal(await page.evaluate(() => localStorage.getItem("ddp-sound")), "off");
+  assert.equal(await page.locator("#sound-toggle").getAttribute("aria-pressed"), "true");
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
   assert.deepEqual(errors, []);
+});
+
+test("the turn clock fires a random shot when time runs out (friend game)", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-background-timer-throttling"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const open = async () => {
+    const ctx = await browser.newContext();
+    await ctx.addInitScript(() => (window.ddpTurnSeconds = 2));
+    return ctx.newPage();
+  };
+  const host = await open();
+  await host.goto(`${srv.base}/sea-battle/`);
+  await host.click("#play-friend");
+  const invite = await host.locator("#invite-link").inputValue();
+  const guest = await open();
+  await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await host.click("#ready");
+  await guest.click("#ready");
+  for (const p of [host, guest]) await p.waitForFunction(() => window.ddp.match.phase === "playing", null, { timeout: 20_000 });
+  const shooter = (await host.evaluate(() => window.ddp.match.canFire())) ? host : guest;
+  const watcher = shooter === host ? guest : host;
+  assert.match(await shooter.locator("#sb-clock").innerText(), /Your shot: \ds/);
+  assert.match(await watcher.locator("#sb-clock").innerText(), /: \ds/);
+  // Nobody clicks: after 2 s the shooter's browser fires on its own.
+  await shooter.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 10_000 });
+  await watcher.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 10_000 });
+  assert.match(await shooter.locator("#toast").innerText(), /Time's up/);
 });
