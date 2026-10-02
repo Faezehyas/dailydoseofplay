@@ -22,7 +22,6 @@ export const RAIN_COUNT = 7;
 
 export const WEAPONS = {
   shot: { label: "Shot", gift: false, help: "1 square. Hit to fire again; sinking a ship ends your turn." },
-  missile: { label: "Simple missile", gift: true, weight: 40, help: "1 square. A bonus shot: your turn continues even on a miss, unless it sinks a ship." },
   big: { label: "Big missile", gift: true, weight: 30, help: "5-square splash (plus shape)." },
   rain: { label: "Missile rain", gift: true, weight: 20, help: "7 random unexplored squares, agreed by both players." },
   nuke: { label: "Nuclear missile", gift: true, weight: 10, help: "14-square splash." },
@@ -32,7 +31,6 @@ export const GIFT_TYPES = Object.keys(WEAPONS).filter((w) => WEAPONS[w].gift);
 // Splash patterns as [dRow, dCol] around the aimed square.
 export const PATTERNS = {
   shot: [[0, 0]],
-  missile: [[0, 0]],
   big: [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]],
   // 4x4 block with two opposite corners spared: 14 squares.
   nuke: (() => {
@@ -153,7 +151,7 @@ export function newBoard() {
 }
 
 export function newInventory() {
-  return { missile: 0, big: 0, rain: 0, nuke: 0 };
+  return { big: 0, rain: 0, nuke: 0 };
 }
 
 // boards[p] is player p's waters (fired at by the other player).
@@ -220,7 +218,7 @@ export function checkFire(state, shooter, weapon, target) {
     return null;
   }
   if (!Number.isInteger(target) || target < 0 || target >= CELLS) throw new RuleError("bad target");
-  if ((weapon === "shot" || weapon === "missile") && board.cells[target] !== UNKNOWN) throw new RuleError("square already explored");
+  if (weapon === "shot" && board.cells[target] !== UNKNOWN) throw new RuleError("square already explored");
   const cells = aimedCells(board, weapon, target);
   if (cells.length === 0) throw new RuleError("nothing to hit there");
   return cells;
@@ -308,8 +306,8 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
   if (board.sunk.length === FLEET.length) {
     state.winner = shooter;
     events.push({ type: "win", winner: shooter });
-  } else if (sunk.length === 0 && (weapon === "missile" || hits.some(Boolean))) {
-    // A hit (or a bonus missile) fires again; sinking a ship always ends the turn.
+  } else if (sunk.length === 0 && hits.some(Boolean)) {
+    // A hit fires again; sinking a ship always ends the turn.
     events.push({ type: "again", player: shooter });
   } else {
     state.turn = defender;

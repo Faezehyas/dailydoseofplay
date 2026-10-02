@@ -186,17 +186,10 @@ test("gifts pop every few moves, the shooter collects them, and weapons work", (
   assert.ok(!state.boards[1].gifts.some((g) => g.cell === gift.cell));
 });
 
-test("simple missile keeps the turn, big/nuke splash, rain hits 7 agreed squares", () => {
+test("big/nuke splash, rain hits 7 agreed squares", () => {
   const state = newMatchState(0);
-  state.inventory[0] = { missile: 1, big: 1, rain: 1, nuke: 1 };
-  fire(state, FLEET_A, 0, "missile", idx(9, 9));
-  assert.equal(state.turn, 0, "bonus shot keeps the turn on a miss");
-  assert.equal(state.inventory[0].missile, 0);
-  state.inventory[0].missile = 1;
-  fire(state, FLEET_A, 0, "shot", idx(8, 0));
-  fire(state, FLEET_A, 0, "missile", idx(8, 1));
-  assert.equal(state.turn, 1, "a bonus missile that sinks a ship still ends the turn");
-  state.turn = 0;
+  state.inventory[0] = { big: 1, rain: 1, nuke: 1 };
+  assert.throws(() => checkFire(state, 0, "missile", idx(9, 9)), RuleError, "the simple missile is gone");
   const big = fire(state, FLEET_A, 0, "big", idx(5, 5));
   assert.equal(big.cells.length, 5);
   const rainA = rainCells(state.boards[1], rngFromSeed("rain"));
@@ -211,7 +204,7 @@ test("simple missile keeps the turn, big/nuke splash, rain hits 7 agreed squares
   const nuke = fire(state, FLEET_A, 0, "nuke", idx(1, 6));
   assert.ok(nuke.cells.length > 0 && nuke.cells.length <= 14);
   assert.deepEqual(aimedCells(state.boards[1], "nuke", idx(1, 6)), []);
-  assert.deepEqual(state.inventory[0], { missile: 0, big: 0, rain: 0, nuke: 0 });
+  assert.deepEqual(state.inventory[0], { big: 0, rain: 0, nuke: 0 });
 });
 
 test("audit catches every kind of lie", () => {

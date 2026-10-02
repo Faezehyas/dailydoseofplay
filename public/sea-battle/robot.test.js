@@ -76,16 +76,14 @@ test("in hunt mode the robot uses parity and ignores impossible squares", () => 
   assert.ok(density[idx(4, 4)] > density[idx(0, 0)], "centre squares are likelier than corners");
 });
 
-test("robot uses gifts: splash weapons when hunting, missile for a bonus shot", () => {
+test("robot uses gifts: splash weapons when hunting", () => {
   const state = newMatchState(0);
   state.inventory[0].nuke = 1;
   assert.equal(chooseMove(state, 0, rngFromSeed("w")).weapon, "nuke");
-  state.inventory[0] = { missile: 0, big: 1, rain: 0, nuke: 0 };
+  state.inventory[0] = { big: 1, rain: 0, nuke: 0 };
   assert.equal(chooseMove(state, 0, rngFromSeed("w")).weapon, "big");
-  state.inventory[0] = { missile: 0, big: 0, rain: 1, nuke: 0 };
+  state.inventory[0] = { big: 0, rain: 1, nuke: 0 };
   assert.equal(chooseMove(state, 0, rngFromSeed("w")).weapon, "rain");
-  state.inventory[0] = { missile: 1, big: 0, rain: 0, nuke: 0 };
-  assert.equal(chooseMove(state, 0, rngFromSeed("w")).weapon, "missile");
 });
 
 test("robot vs robot through the full rules (gifts and weapons included) always finishes", () => {

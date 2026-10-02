@@ -98,7 +98,6 @@ export function chooseMove(state, me, rng = Math.random) {
     }
     if (inv.rain > 0) return { weapon: "rain" };
   }
-  if (inv.missile > 0) return { weapon: "missile", target: single.cell };
   return { weapon: "shot", target: single.cell };
 }
 

@@ -112,7 +112,7 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
     // Host plays hopelessly (water first) so the guest's answers get exercised too.
     const water = [...Array(100).keys()].filter((i) => view.cells[i] === 0 && !shipSquares[1 - k].includes(i));
     let target = k === 0 && water.length > 40 ? water[0] : targets[0] ?? water[0];
-    const owned = ["big", "nuke", "missile"].find((w) => view.inv[w] > 0);
+    const owned = ["big", "nuke"].find((w) => view.inv[w] > 0);
     if (owned && !usedWeapon) {
       await page.click(`.weapon[data-w="${owned}"]`);
       usedWeapon = true;

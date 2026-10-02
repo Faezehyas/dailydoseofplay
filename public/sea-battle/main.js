@@ -58,7 +58,6 @@ function shipSvg(len, vertical) {
 
 const WEAPON_ICON = {
   shot: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>',
-  missile: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3l7 7-8 8-4-4 5-11zM9 14l-5 5M7 12l-3 1M12 17l-1 3"/></svg>',
   big: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.2 5.3L20 6l-3.5 4.6L21 14l-5.6.6L14 21l-2-5-2 5-1.4-6.4L3 14l4.5-3.4L4 6l5.8 1.3z"/></svg>',
   rain: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v6M12 6v6M18 3v6M9 12v6M15 14v6M4 15v4M20 13v4"/></svg>',
   nuke: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.5"/><path d="M12 3a9 9 0 0 1 7.8 4.5L14.2 10.8M4.2 7.5A9 9 0 0 1 12 3M9.8 10.8 4.2 7.5M8 19.8l2.9-5.6M16 19.8l-2.9-5.6M8 19.8a9 9 0 0 0 8 0"/></svg>',
@@ -67,7 +66,7 @@ const WEAPON_ICON = {
 // The robot "thinks" this long (plus up to half again) before each shot.
 const AI_DELAY = 1400;
 // Seconds a shell is in the air before it lands (sound and visuals wait for it).
-const FLIGHT = { shot: 0.45, missile: 0.45, big: 0.55, rain: 0.6, nuke: 1.0 };
+const FLIGHT = { shot: 0.45, big: 0.55, rain: 0.6, nuke: 1.0 };
 // Real recordings (CC0, see sounds/LICENSE.txt): heavy objects hitting water,
 // shells exploding on a steel hull, and bigger blasts at the waterline.
 const sounds = (...names) => names.map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
@@ -81,7 +80,7 @@ const CARPET = sounds("carpet-bomb");
 const RAIN_STEP = 0.17;
 const splashHeavy = (gain = 0.7) => playSample(SPLASH_HEAVY, { gain, fallback: "miss" });
 const explode = (gain = 0.65, opts) => playSample(EXPLOSION, { gain, fallback: "hit", ...opts });
-const LAUNCH_SOUND = { shot: "launch", missile: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke" };
+const LAUNCH_SOUND = { shot: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke" };
 // Seconds per shot in friend games (papergames uses a per-turn clock too).
 const TURN_SECONDS = 40;
 
@@ -278,7 +277,7 @@ function mountSeaBattle(session, root, shell) {
       else text = "Tossing a coin to see who starts…";
     } else if (phase === "playing") {
       if (st.turn === me) {
-        text = match.pending ? "Firing…" : lastAgain === "hit" ? "Hit! Fire again." : lastAgain === "bonus" ? "Bonus shot! Fire again." : "Your turn: fire at the enemy waters.";
+        text = match.pending ? "Firing…" : lastAgain ? "Hit! Fire again." : "Your turn: fire at the enemy waters.";
       }
       else text = `${oppName} is aiming…`;
     } else if (phase === "over") {
@@ -623,7 +622,7 @@ function mountSeaBattle(session, root, shell) {
     clearAim();
     if (!match.canFire() || weapon === "rain") return;
     const board = match.state.boards[opp];
-    const cells = weapon === "shot" || weapon === "missile" ? (board.cells[i] === R.UNKNOWN ? [i] : []) : R.aimedCells(board, weapon, i);
+    const cells = weapon === "shot" ? (board.cells[i] === R.UNKNOWN ? [i] : []) : R.aimedCells(board, weapon, i);
     for (const c of cells) enemyBoard.cells[c].classList.add("aim");
   }
   enemyBoard.cellsLayer.addEventListener("pointerover", (e) => {
@@ -642,8 +641,8 @@ function mountSeaBattle(session, root, shell) {
     const board = match.state.boards[opp];
     // Rain isn't aimed, so a tap on a square (say, a gift) must not launch it.
     if (weapon === "rain") return toast("Missile rain falls on 7 random squares. Press Launch rain.");
-    if ((weapon === "shot" || weapon === "missile") && board.cells[i] !== R.UNKNOWN) return toast("Already explored. Pick another square.");
-    if (weapon !== "shot" && weapon !== "missile" && R.aimedCells(board, weapon, i).length === 0) return toast("Nothing left to hit there.");
+    if (weapon === "shot" && board.cells[i] !== R.UNKNOWN) return toast("Already explored. Pick another square.");
+    if (weapon !== "shot" && R.aimedCells(board, weapon, i).length === 0) return toast("Nothing left to hit there.");
     clearAim();
     match.fire(weapon, i);
   });
@@ -753,8 +752,7 @@ function mountSeaBattle(session, root, shell) {
     match.on("events", ({ shooter, weapon: w, events }) => {
       const board = R.other(shooter);
       lastShots[board] = new Set(events.filter((e) => e.type === "hit" || e.type === "miss").map((e) => e.cell));
-      const again = shooter === me && events.some((e) => e.type === "again");
-      lastAgain = !again ? false : events.some((e) => e.type === "hit") ? "hit" : "bonus";
+      lastAgain = shooter === me && events.some((e) => e.type === "again");
       const wait = Math.max(0, landsAt[board] - performance.now());
       const current = match;
       setTimeout(() => {
