@@ -754,6 +754,10 @@ function mountSeaBattle(session, root, shell) {
         const text = `Gift! You got a ${R.WEAPONS[e.gift].label}.`;
         addLog(text, "gift");
         toast(text);
+      } else if (e.type === "gift-lost" && mine) {
+        const text = "Your blast destroyed a mystery gift. Aim at a gift's own square to win it.";
+        addLog(text, "gift");
+        toast(text);
       }
     }
   }

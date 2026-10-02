@@ -90,7 +90,8 @@ export function chooseMove(state, me, rng = Math.random) {
       if (inv[weapon] > 0) {
         const aim = bestOf(
           [...Array(CELLS).keys()],
-          (i) => aimedCells(board, weapon, i).reduce((s, c) => s + density[c] + (gifts.has(c) ? giftBonus : 0), 0),
+          // Only the aimed square picks a gift up; one caught in the splash is lost.
+          (i) => aimedCells(board, weapon, i).reduce((s, c) => s + density[c] + (c === i && gifts.has(c) ? giftBonus : 0), 0),
           rng,
         );
         if (aim.score > 0) return { weapon, target: aim.cell };
@@ -106,7 +107,10 @@ export function chooseMove(state, me, rng = Math.random) {
       };
       const aim = bestOf(
         [...Array(2 * SIZE).keys()],
-        (k) => aimedCells(board, "carpet", line(k).target, line(k).dir).reduce((s, c) => s + density[c] + (gifts.has(c) ? giftBonus : 0), 0),
+        (k) => {
+          const { target, dir } = line(k);
+          return aimedCells(board, "carpet", target, dir).reduce((s, c) => s + density[c] + (c === target && gifts.has(c) ? giftBonus : 0), 0);
+        },
         rng,
       );
       if (aim.score > 0) return { weapon: "carpet", ...line(aim.cell) };

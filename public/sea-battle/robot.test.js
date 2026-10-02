@@ -106,7 +106,7 @@ test("robot vs robot through the full rules (gifts and weapons included) always 
       let cells = checkFire(state, me, weapon, target, undefined, dir);
       if (weapon === "rain") cells = rainCells(state.boards[1 - me], rng);
       const { hits, sunk } = answerShots(fleets[1 - me], state.boards[1 - me], cells);
-      applyFire(state, me, weapon, cells, hits, sunk);
+      applyFire(state, me, weapon, cells, hits, sunk, { target });
       if (giftsDue(state)) spawnGifts(state, rng);
     }
     assert.ok(state.winner === 0 || state.winner === 1);

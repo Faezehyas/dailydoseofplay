@@ -15,8 +15,8 @@ export const HIT = 2;
 export const CLEAR = 3; // known water next to a sunk ship (ships never touch side by side)
 
 // Gifts: every GIFT_EVERY moves one gift pops on each board (max MAX_GIFTS
-// waiting per board). Only a shot aimed at a gift's own square collects it:
-// splashes and missile rain spare gift squares, which stay unexplored.
+// waiting per board). Only a shot aimed at a gift's own square collects it;
+// a gift hit by a splash or missile rain is destroyed with its square.
 export const GIFT_EVERY = 6;
 export const MAX_GIFTS = 2;
 export const RAIN_COUNT = 7;
@@ -228,11 +228,8 @@ export function patternCells(weapon, target, dir = "row") {
 }
 
 export function aimedCells(board, weapon, target, dir) {
-  const gifts = giftCells(board);
-  return patternCells(weapon, target, dir).filter((i) => board.cells[i] === UNKNOWN && (i === target || !gifts.has(i)));
+  return patternCells(weapon, target, dir).filter((i) => board.cells[i] === UNKNOWN);
 }
-
-const giftCells = (board) => new Set(board.gifts.map((g) => g.cell));
 
 export function unexplored(board) {
   const out = [];
@@ -242,13 +239,7 @@ export function unexplored(board) {
 
 // Missile rain squares from an rng both peers share.
 export function rainCells(board, rng) {
-  return sample(rng, rainable(board), RAIN_COUNT).sort((a, b) => a - b);
-}
-
-// Rain isn't aimed, so it never lands on a gift.
-function rainable(board) {
-  const gifts = giftCells(board);
-  return unexplored(board).filter((i) => !gifts.has(i));
+  return sample(rng, unexplored(board), RAIN_COUNT).sort((a, b) => a - b);
 }
 
 // Validate a fire request against public state. Returns cells (or null for rain).
@@ -264,7 +255,7 @@ export function checkFire(state, shooter, weapon, target, ms, dir) {
   if (!weaponAvailable(state, shooter, weapon)) throw new RuleError("weapon not available");
   const board = state.boards[other(shooter)];
   if (weapon === "rain") {
-    if (rainable(board).length === 0) throw new RuleError("nothing left to fire at");
+    if (unexplored(board).length === 0) throw new RuleError("nothing left to fire at");
     return null;
   }
   if (!Number.isInteger(target) || target < 0 || target >= CELLS) throw new RuleError("bad target");
@@ -311,9 +302,10 @@ function sunkShipValid(board, ship, hitNow) {
 }
 
 // Apply a resolved fire to the shared public state (both peers run this).
-// ms was checked by checkFire. Throws RuleError on an impossible answer.
+// ms (checked by checkFire) is the time spent; target is the aimed square,
+// which alone can pick up a gift. Throws RuleError on an impossible answer.
 // Returns a list of events.
-export function applyFire(state, shooter, weapon, cells, hits, sunk, ms = 0) {
+export function applyFire(state, shooter, weapon, cells, hits, sunk, { ms = 0, target } = {}) {
   const defender = other(shooter);
   const board = state.boards[defender];
   if (!Array.isArray(hits) || hits.length !== cells.length || !hits.every((h) => h === 0 || h === 1)) {
@@ -343,14 +335,16 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk, ms = 0) {
     }
     events.push({ type: "sunk", ship: clean });
   }
-  // A gift goes to the shooter who aimed at its square (splashes spare the
-  // others). A gift whose square just became cleared water (beside a sunk
-  // ship) can't be shot any more: it's removed.
+  // A gift goes to the shooter who aimed at its square (rain isn't aimed).
+  // A gift whose square was blown up by a splash or rain, or just became
+  // cleared water beside a sunk ship, can't be clicked any more: it's destroyed.
   const keep = [];
   for (const g of board.gifts) {
-    if (cells.includes(g.cell)) {
+    if (weapon !== "rain" && g.cell === target && cells.includes(g.cell)) {
       state.inventory[shooter][g.type] += 1;
       events.push({ type: "gift", gift: g.type, cell: g.cell, by: shooter });
+    } else if (cells.includes(g.cell)) {
+      events.push({ type: "gift-lost", cell: g.cell, by: shooter });
     } else if (board.cells[g.cell] === UNKNOWN) {
       keep.push(g);
     }

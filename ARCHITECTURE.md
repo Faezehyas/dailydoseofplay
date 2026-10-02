@@ -125,7 +125,7 @@ handler is attached.
 - **Placement:** ships are placed at random; you can shuffle, drag them, press R while dragging to rotate, or tap a ship to rotate it. Ships may not touch side by side; diagonal contact is allowed.
 - **Turns:** a hit lets you fire again; a miss, or a hit that sinks a ship, passes the turn.
 - **Sinking:** a sunk ship is revealed, and the squares beside it are marked as clear water.
-- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Only a shot aimed at a gift's own square picks it up (the aimed square of a big missile, nuclear missile or carpet bomb counts); the weapon inside is shown only then. Splashes and missile rain skip gift squares, so a gift stays, its square unexplored, until someone aims at it. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears.
+- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Only a shot aimed at a gift's own square picks it up (the aimed square of a big missile, nuclear missile or carpet bomb counts); the weapon inside is shown only then. A gift hit by a splash or missile rain aimed elsewhere is destroyed with its square, since nobody can aim at it any more. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears too.
 - **Time limits (room settings):** like papergames, games are timed. Under **Game settings** the player picks a time per shot (10, 20, 30 or 40 s, or none) and a time for each player (3, 5 or 10 min, or none); the default is 30 s a shot and 10 min each. When the time for a shot runs out, that player's browser fires a random shot; when a player's own clock runs out, they lose. In a friend game the room creator's settings apply (the host sends `setup {config}` before the first match, as in Tic Tac Toe). Against the robot only the human's clock runs: the robot reports no time spent. Fleet placement isn't timed.
 
 **Weapons:**
@@ -141,7 +141,7 @@ handler is attached.
 Gift odds are 3 : 2 : 1 : 1 for big missile, missile rain, nuclear missile and
 carpet bomb.
 
-Splash squares that were already explored are skipped, and so are squares holding a gift (unless aimed at).
+Splash squares that were already explored are skipped.
 
 ### Why not a host-authoritative design
 

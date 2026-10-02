@@ -210,14 +210,14 @@ export class SeaBattleMatch extends Emitter {
         this.emit("fired", { by: shooter, weapon, target: msg.at, dir: msg.dir, cells });
         const { hits, sunk } = answerShots(this.fleet, this.state.boards[this.me], cells);
         this.send({ t: "result", hits, sunk });
-        await this.#advance(shooter, weapon, cells, hits, sunk, msg.ms);
+        await this.#advance(shooter, weapon, cells, hits, sunk, { ms: msg.ms, target: msg.at });
         return;
       }
       case "result": {
         if (!this.pending) throw new RuleError("unexpected result");
-        const { weapon, cells, ms } = this.pending;
+        const { weapon, cells, ms, target } = this.pending;
         this.pending = null;
-        await this.#advance(this.me, weapon, cells, msg.hits, msg.sunk, ms);
+        await this.#advance(this.me, weapon, cells, msg.hits, msg.sunk, { ms, target });
         return;
       }
       case "timeout": {
@@ -236,8 +236,8 @@ export class SeaBattleMatch extends Emitter {
     }
   }
 
-  async #advance(shooter, weapon, cells, hits, sunk, ms) {
-    const events = applyFire(this.state, shooter, weapon, cells, hits, sunk, ms);
+  async #advance(shooter, weapon, cells, hits, sunk, shot) {
+    const events = applyFire(this.state, shooter, weapon, cells, hits, sunk, shot);
     this.emit("events", { shooter, weapon, events });
     if (this.state.winner !== -1) return this.#finish();
     if (giftsDue(this.state)) {
