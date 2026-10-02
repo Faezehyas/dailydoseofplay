@@ -43,7 +43,7 @@
     {
       "slug": "checkers",
       "name": "Checkers",
-      "status": "soon",
+      "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Jump, capture, crown. Clear the board to win."

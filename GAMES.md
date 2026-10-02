@@ -9,7 +9,7 @@ is in `CONTRIBUTING.md`. Each game's slug is already in `public/games.json` with
 - [ ] **Connect 4** (`connect-4`): 7×6, discs drop into columns, four in a row. `TurnMatch`; shallow minimax with a threat heuristic.
 - [ ] **Gomoku** (`gomoku`): 15×15, exactly five in a row. `TurnMatch`; pattern-scoring robot.
 - [ ] **Chess** (`chess`): standard rules, including castling, en passant, promotion, and stalemate and repetition draws. `TurnMatch`; small alpha-beta robot.
-- [ ] **Checkers** (`checkers`): 8×8, mandatory captures, multi-jumps, kings. `TurnMatch`, where a move is a full jump path.
+- [x] **Checkers** (`checkers`): 8×8 English draughts, mandatory captures, multi-jumps, kings, a draw after 40 turns with no capture or new king; optional clocks; the room picks who starts. `TurnMatch`, where a move is a full jump path; alpha-beta robot with Easy, Medium and Hard.
 - [ ] **Backgammon** (`backgammon`): dice via `needsRandom` (a `{type: "roll"}` move drawn by both peers), bearing off, hitting, the bar. `TurnMatch`.
 
 When a game ships, tick it here and set its `games.json` status to `ready`.

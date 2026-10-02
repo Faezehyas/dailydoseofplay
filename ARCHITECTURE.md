@@ -236,6 +236,35 @@ A modified client could under-report its `ms`. The 5 s check bounds how long it
 can stall, but not small savings on each move. That is the same trade-off as
 everywhere else here: fine between friends, not a referee.
 
+## Checkers in depth
+
+Checkers follows papergames' variant, English draughts: 8×8, 12 men each,
+forced captures, multi-jumps that must be finished, and kings that move one
+square in all four diagonals. A man that reaches the far row is crowned and
+its turn ends. A player with no piece, or no legal move, loses. After 40 turns
+in a row (20 each) with no capture and no new king, the game is drawn.
+
+It reuses Tic Tac Toe's room settings and clocks unchanged: `setup {config}`
+from the host, `makeRules(config)`, and `ms` on every move. The settings add
+a robot level, which stays in the browser and never goes in `setup`.
+
+**A move is the whole path.** `{ path: [from, landing, ..., to] }` covers a
+step or a full multi-jump in one message, so a turn is one TurnMatch move and
+the protocol needs nothing new. `rules.js` lists every legal path (only
+captures when one exists, each jumped as far as it goes) and accepts a move
+only if its path is one of them. The view builds the path one tap at a time
+and sends it when it is complete. Player 0's men start at the bottom and
+player 1's at the top; the view turns the board for player 1.
+
+**Robot.** Alpha-beta search to depth 4, 5 or 6 for Easy, Medium and Hard,
+with 30 %, 10 % and 0 % random moves. Captures extend the search, so it never
+stops in the middle of an exchange. The score counts material (a king is 1.5
+men), how far men have advanced, a guarded back row, central kings and
+mobility; the side that is ahead also likes trades and kings near the enemy,
+so won endgames finish before the 40-turn draw. A node budget caps each move
+at about 35 ms on a laptop. Before searching it takes a move that leaves the
+opponent stuck, and avoids one that lets the opponent do that.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |
