@@ -133,8 +133,9 @@ export class SeaBattleMatch extends Emitter {
       try {
         await step();
       } catch (err) {
+        // Always tell the peer, or it would wait forever.
+        this.send({ t: "abort", reason: err.message });
         if (err instanceof RuleError || err instanceof FairPlayError) {
-          this.send({ t: "abort", reason: err.message });
           this.abort(`Opponent broke the rules: ${err.message}`);
         } else {
           console.error(err);

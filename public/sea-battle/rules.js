@@ -226,7 +226,9 @@ export function checkFire(state, shooter, weapon, target) {
   return cells;
 }
 
-export class RuleError extends Error {}
+export class RuleError extends Error {
+  name = "RuleError";
+}
 
 // Defender side: answer shots against the private fleet.
 // knownHits is the defender's own board state (public), used to detect sinks.

@@ -199,8 +199,11 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
 
   await page.goto(`${srv.base}/`);
   await page.locator('.game-card[data-slug="sea-battle"]').waitFor();
-  assert.equal(await page.locator(".game-card.soon").count(), 6);
-  assert.match(await page.locator('.game-card[data-slug="chess"]').innerText(), /Coming soon/);
+  const { games } = await (await fetch(`${srv.base}/games.json`)).json();
+  const soon = games.filter((g) => g.status === "soon");
+  assert.equal(await page.locator(".game-card.soon").count(), soon.length);
+  assert.equal(await page.locator("a.game-card").count(), games.length - soon.length);
+  for (const g of soon) assert.match(await page.locator(`.game-card[data-slug="${g.slug}"]`).innerText(), /Coming soon/);
   const before = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");

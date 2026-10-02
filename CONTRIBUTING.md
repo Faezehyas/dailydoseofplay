@@ -56,11 +56,15 @@ public/<slug>/
 ├── robot.js         move choice (+ startRobot when not using startTurnRobot)
 ├── icon.svg         original 16:10 card art (viewBox 0 0 320 200), no external refs
 ├── rules.test.js    rules unit tests
-└── robot.test.js    robot unit tests (+ a full robot-vs-robot game)
+├── robot.test.js    robot unit tests (+ a full robot-vs-robot game)
+└── match.test.js    protocol test: two peers play a full game (optional file; may live in robot.test.js)
 ```
 
-Keep `index.html`'s `<section id="lobby">` and `<section id="game" hidden>`.
-The engine renders into them.
+Keep `index.html`'s `<section id="lobby">` and `<section id="game" hidden>`;
+the engine renders into them. Shared styles (`.card`, `.btn`, `.btn.small`,
+`.rules` for the "How to play" panel, `.rematch-status`, `.overlay`,
+`.spinner`) live in `/engine/theme.css`. `style.css` holds only what is
+specific to your game.
 
 ### 3. Write `rules.js` (pure)
 
@@ -126,7 +130,11 @@ startGameShell({
       router.start(match);
       render();
     }
-    function render() { /* draw match.state; call match.play(move) on input when match.canMove() */ }
+    function render() {
+      // match.state is null until the coin toss ends (match.phase === "playing").
+      // Draw match.state; on input call match.play(move) when match.canMove().
+      // On "over"/"aborted" show the result, Rematch and Leave.
+    }
     const offs = [
       session.on("rematch", (v) => { rematch = v; render(); }),
       session.on("rematch-start", () => { rematch = { me: false, them: false }; newMatch(); }),
@@ -154,7 +162,10 @@ from theme tokens, so light and dark both work.
 In `public/games.json`, set the game's entry to `"status": "ready"` (add an
 entry if the game isn't listed). Fields: `slug`, `name`, `status`, `players`,
 `maxPlayers` (2), and a one-sentence original `description`. The home page
-picks it up automatically.
+picks it up automatically. The server reads `games.json` once at startup, so
+restart `npm start` after editing it, or creating a room will fail with `bad_game`.
+The browser test reads the "Coming soon" count from the registry, so it needs
+no change.
 
 ### 7. Test
 
@@ -167,7 +178,7 @@ picks it up automatically.
   - it takes an immediate win;
   - it blocks an immediate loss;
   - robot vs robot over 20 seeded games always finishes with legal moves.
-- **Protocol:** pair two `TurnMatch`es over `localPair()` + `openSession()` + `matchRouter()` (see `public/engine/turn-match.test.js`), play a full game, and assert both states are equal.
+- **Protocol** (in `match.test.js` or `robot.test.js`): pair two `TurnMatch`es over `localPair()` + `openSession()` + `matchRouter()` (see `public/engine/turn-match.test.js`), play a full game, and assert both states are equal.
 - **Browser (recommended):** add `test/browser/<slug>.test.js` modelled on `test/browser/friend-match.test.js`. Host clicks `#play-friend`, the guest opens `#invite-link`, both play through `window.ddp.match`, then a rematch.
 
 Run `npm test` and `npm run test:browser`. All tests must pass. Never skip or

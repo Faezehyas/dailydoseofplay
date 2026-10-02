@@ -15,7 +15,9 @@ import { Emitter } from "./channel.js";
 import { SharedRandom, FairPlayError } from "./fair.js";
 import { matchRouter } from "./session.js";
 
-export class RuleError extends Error {}
+export class RuleError extends Error {
+  name = "RuleError";
+}
 
 const noRandom = () => {
   throw new RuleError("this move may not use randomness");
@@ -50,7 +52,7 @@ export class TurnMatch extends Emitter {
       try {
         this.rules.applyMove(structuredClone(this.state), this.me, move, () => 0);
       } catch (err) {
-        if (err instanceof RuleError || err?.name === "RuleError") return this.emit("invalid", err.message);
+        if (err?.name === "RuleError") return this.emit("invalid", err.message);
         throw err;
       }
       this.send({ t: "move", move });
@@ -83,8 +85,9 @@ export class TurnMatch extends Emitter {
       try {
         await step();
       } catch (err) {
-        if (err instanceof RuleError || err instanceof FairPlayError || err?.name === "RuleError") {
-          this.send({ t: "abort", reason: err.message });
+        // Always tell the peer, or it would wait forever.
+        this.send({ t: "abort", reason: err.message });
+        if (err?.name === "RuleError" || err instanceof FairPlayError) {
           this.abort(`Opponent broke the rules: ${err.message}`);
         } else {
           console.error(err);

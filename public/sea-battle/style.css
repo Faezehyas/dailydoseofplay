@@ -40,11 +40,6 @@
   font-size: 0.85rem;
 }
 
-.btn.small {
-  min-height: 36px;
-  padding: 0 12px;
-}
-
 .sb-status {
   margin: 0;
   text-align: center;
@@ -107,12 +102,6 @@
 
 .verdict.bad {
   color: var(--danger);
-  font-weight: 700;
-}
-
-.rematch-status {
-  margin: 10px 0 0;
-  color: var(--muted);
   font-weight: 700;
 }
 
@@ -515,19 +504,6 @@ button.cell {
 .sb-log li.big { font-weight: 800; }
 .sb-log li.gift { border-left-color: var(--gift); }
 .sb-log li.bad { border-left-color: var(--danger); color: var(--danger); }
-
-.rules {
-  margin-top: 24px;
-}
-
-.rules summary {
-  cursor: pointer;
-  font-weight: 800;
-}
-
-.rules li {
-  margin: 6px 0;
-}
 
 @media (max-width: 760px) {
   .sb-boards {
