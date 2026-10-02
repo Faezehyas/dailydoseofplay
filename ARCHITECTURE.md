@@ -65,7 +65,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 
 | Module | Job |
 |---|---|
-| `shell.js` | Header, light/dark toggle (follows the OS until pinned), nickname in `localStorage`, toast, `el()` DOM helper |
+| `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
 | `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
 | `signaling.js` | `RoomClient`: create, join, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
@@ -75,6 +75,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
+| `sound.js` | Synthesized sound effects (WebAudio, no audio files) behind a per-device mute toggle in the header |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
 **Session flow.**
@@ -115,7 +116,8 @@ handler is attached.
 - **Placement:** ships are placed at random; you can shuffle, drag and tap to rotate. Ships may not touch side by side; diagonal contact is allowed.
 - **Turns:** a hit lets you fire again; a miss passes the turn.
 - **Sinking:** a sunk ship is revealed, and the squares beside it are marked as clear water.
-- **Gifts:** after every 6 moves (one fire action is one move), a gift appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter. A gift whose square becomes cleared water after a sinking disappears.
+- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter; the weapon inside is shown only then. A gift whose square becomes cleared water after a sinking disappears.
+- **Turn clock (friend games):** 40 s per shot, like papergames' per-turn clock. When it runs out, that player's own browser fires a random shot. Each browser runs the clock locally, so it is a courtesy against stalling, not an enforced rule.
 
 **Weapons:**
 
