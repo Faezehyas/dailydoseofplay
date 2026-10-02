@@ -1,0 +1,636 @@
+/* Backgammon view. Uses the shared tokens from /engine/theme.css. */
+.backgammon {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.bg-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bg-top > .btn {
+  flex: none;
+}
+
+/* Each name keeps its full width when it fits; long names share what's left. */
+.bg-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.bg-players .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.bg-players .who.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.bg-players .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bg-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- score ---------- */
+.bg-score {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.bg-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.bg-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bg-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.bg-score .mine dd {
+  color: var(--accent);
+}
+
+.bg-score .theirs dd {
+  color: var(--accent-2);
+}
+
+/* ---------- status ---------- */
+.bg-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.bg-status.mine {
+  color: var(--accent);
+}
+
+.bg-config,
+.bg-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- clocks ---------- */
+.bg-clocks {
+  display: grid;
+  grid-template-columns: 4.2em minmax(0, 1fr) 4.2em;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.bg-clocks .clock {
+  padding: 2px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.bg-clocks .clock.theirs {
+  grid-column: 3;
+}
+
+.bg-clocks .clock.active {
+  color: var(--text);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2) inset;
+}
+
+.bg-clocks .clock.mine.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.bg-clocks .clock.low {
+  color: var(--danger);
+}
+
+.bg-clocks .move {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bg-movebar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.bg-movebar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  transition: width 0.2s linear;
+}
+
+.bg-movebar.mine > span {
+  background: var(--accent);
+}
+
+.bg-movebar.low > span {
+  background: var(--danger);
+}
+
+.move-left {
+  flex: none;
+  min-width: 2.6em;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- settings (lobby) ---------- */
+.bg-settings {
+  text-align: left;
+}
+
+.bg-settings h2 {
+  font-size: 1.1rem;
+}
+
+.bg-seg {
+  border: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  min-width: 0;
+}
+
+.bg-seg legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.seg-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seg-opt {
+  position: relative;
+}
+
+.seg-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.seg-opt span {
+  display: inline-grid;
+  align-content: center;
+  min-height: 40px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.seg-opt small {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.seg-opt input:checked + span {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+.seg-opt input:checked + span small {
+  color: inherit;
+}
+
+.seg-opt input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.bg-settings .hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- game over ---------- */
+.bg-over {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.bg-over h2 {
+  font-size: 1.6rem;
+}
+
+.bg-over h2.win {
+  color: var(--accent);
+}
+
+.bg-over .detail {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.bg-over .detail.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.bg-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- players ---------- */
+.bg-players .who {
+  gap: 5px;
+  padding: 3px 10px 3px 6px;
+}
+
+.bg-players .swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.bg-players .them .swatch {
+  background: var(--accent-2);
+}
+
+.bg-players .label {
+  display: grid;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.bg-players .pips {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- board ---------- */
+.bg-board-wrap {
+  display: grid;
+  justify-items: center;
+}
+
+.bg-board {
+  --pt-a: color-mix(in srgb, var(--accent-2) 50%, var(--surface));
+  --pt-b: color-mix(in srgb, var(--muted) 40%, var(--surface));
+  --bar: color-mix(in srgb, var(--border) 75%, var(--text) 10%);
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(0, 0.85fr) repeat(6, minmax(0, 1fr)) minmax(0, 0.95fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 0.12fr) minmax(0, 1fr);
+  column-gap: 2px;
+  width: 100%;
+  aspect-ratio: 1.3;
+  padding: 6px;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--surface-2);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bg-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+
+.bg-cell.bottom {
+  flex-direction: column-reverse;
+}
+
+.bg-cell.point::before {
+  content: "";
+  position: absolute;
+  inset: 0 3% 14%;
+  background: var(--pt-b);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transition: background 0.15s ease;
+}
+
+.bg-cell.point.bottom::before {
+  inset: 14% 3% 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.bg-cell.point.odd::before {
+  background: var(--pt-a);
+}
+
+.bg-cell.bar {
+  background: var(--bar);
+  border-radius: 0;
+  justify-content: flex-end;
+}
+
+.bg-cell.bar.bottom {
+  justify-content: flex-end;
+}
+
+.bg-cell.tray {
+  gap: 1px;
+  padding: 3px 0;
+  margin-left: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+/* ---------- checkers ---------- */
+.checker {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 88%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+
+.checker.mine {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, var(--text));
+}
+
+.checker.theirs {
+  background: var(--accent-2);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-2) 55%, var(--text));
+}
+
+.checker b {
+  font-size: clamp(0.6rem, 2.4vw, 0.85rem);
+  font-weight: 900;
+  color: var(--accent-ink);
+  line-height: 1;
+}
+
+.checker.theirs b {
+  color: var(--bg);
+}
+
+.slab {
+  flex: 0 1 5px;
+  min-height: 2px;
+  width: 78%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.slab.theirs {
+  background: var(--accent-2);
+}
+
+.tray-count {
+  flex: none;
+  margin-top: 2px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.bg-cell.bottom .tray-count {
+  margin: 0 0 2px;
+}
+
+/* ---------- picking ---------- */
+.bg-board.armed .bg-cell.src,
+.bg-board.armed .bg-cell.dest {
+  cursor: pointer;
+}
+
+.bg-cell.src > .checker:last-of-type {
+  box-shadow: inset 0 0 0 2px var(--accent-ink), 0 0 0 2px var(--focus);
+}
+
+.bg-cell.selected > .checker:last-of-type {
+  transform: scale(1.12);
+  box-shadow: inset 0 0 0 2px var(--accent-ink), 0 0 0 3px var(--text);
+}
+
+.bg-cell.point.dest::before {
+  background: color-mix(in srgb, var(--accent) 45%, var(--surface));
+}
+
+.bg-cell.dest::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px dashed var(--accent);
+  transform: translateX(-50%);
+  animation: bg-pulse 1s ease-in-out infinite alternate;
+}
+
+.bg-cell.dest.bottom::after {
+  top: 4%;
+  bottom: auto;
+}
+
+.bg-cell.tray.dest {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.bg-cell.tray.dest::after {
+  top: auto;
+  bottom: 4px;
+}
+
+@keyframes bg-pulse {
+  from {
+    opacity: 0.45;
+  }
+}
+
+/* The opponent's last play: a dot by each point it touched. */
+.bg-cell.point.hot:not(.dest)::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  transform: translateX(-50%);
+}
+
+.bg-cell.point.hot.bottom:not(.dest)::after {
+  top: 2%;
+  bottom: auto;
+}
+
+.bg-board.done .checker {
+  opacity: 0.75;
+}
+
+/* ---------- dice and turn actions ---------- */
+.bg-turn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.bg-dice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.die {
+  display: grid;
+  grid-template-areas: "s1 s2 s3" "s4 s5 s6" "s7 s8 s9";
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  border-radius: 9px;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: opacity 0.2s ease;
+}
+
+.die.theirs {
+  border-color: var(--accent-2);
+}
+
+.die i {
+  place-self: center;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.die.small {
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+}
+
+.die.small i {
+  width: 5px;
+  height: 5px;
+}
+
+.die.used,
+.die.old {
+  opacity: 0.4;
+  box-shadow: none;
+}
+
+.bg-turn-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.bg-turn-actions .btn {
+  min-width: 84px;
+  min-height: 40px;
+}
