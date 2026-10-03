@@ -189,6 +189,8 @@ test("Backgammon vs the robot on a 360 px phone: a full game by touch and keyboa
   const errors = [];
   const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" })).newPage();
   page.on("pageerror", (e) => errors.push(e.message));
+  const sounds = new Map();
+  page.on("response", (r) => r.url().includes("/backgammon/sounds/") && sounds.set(r.url().split("/").pop(), r.status()));
 
   await page.goto(`${srv.base}/`);
   await page.click('.game-card[data-slug="backgammon"]');
@@ -209,9 +211,13 @@ test("Backgammon vs the robot on a 360 px phone: a full game by touch and keyboa
 
   // Turn 1 by touch.
   await playTurnByHand(page, { tap: true });
-  // The robot answers: its dice and its checkers move.
+  // The robot answers: its checkers fly one at a time, then all of them land.
+  await page.locator(".checker.ghost").first().waitFor({ timeout: 10_000 });
   await wait(page, () => window.ddp.match.state.turn === 0 && window.ddp.match.state.ply >= 4);
+  await wait(page, () => !document.querySelector(".checker.ghost, .pending"));
   assert.notDeepEqual(await page.evaluate(() => window.ddp.match.state.pos[1]), START, "the robot moved");
+  assert.deepEqual([...sounds.values()].filter((code) => code !== 200), [], "every sound loads");
+  assert.ok([...sounds.keys()].some((f) => f.startsWith("checker-")) && [...sounds.keys()].some((f) => f.startsWith("dice-")));
 
   // Turn 2 by keyboard: arrows move between points, Enter picks a checker, Space drops it.
   await wait(page, () => window.ddp.match.canMove() && window.ddp.match.state.rolled);
