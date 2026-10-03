@@ -310,14 +310,25 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   await playTurnByHand(page, { tap: true });
   await wait(page, () => window.ddp.match.canMove() && window.ddp.match.state.rolled);
   assert.ok(await page.locator("#bg-offer").isHidden(), "asked once a game");
-  // Changed your mind: the game moves for you to the end.
+  // Changed your mind: the game moves for you to the end, and the robot
+  // keeps the same quick pace (its usual pause is 800 ms).
   assert.equal(await page.locator("#bg-auto").innerText(), "Play for me");
+  await page.evaluate(() => {
+    window.__robotPauses = [];
+    let sent = 0;
+    window.ddp.match.on("events", ({ player, events }) => {
+      if (player === 0 && events[0].type === "play") sent = performance.now();
+      if (player === 1 && events[0].type === "roll" && sent) window.__robotPauses.push(performance.now() - sent);
+    });
+  });
   await page.tap("#bg-auto");
   await page.locator("#bg-status").filter({ hasText: "Moving for you" }).waitFor();
   assert.equal(await page.locator("#bg-auto").innerText(), "Stop");
   await wait(page, () => window.ddp.match.phase === "over", undefined, 60_000);
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "off");
   assert.equal(await page.evaluate(() => window.ddp.robot.match.state.ply), await ply(page), "the robot checked every move");
+  const pauses = await page.evaluate(() => window.__robotPauses);
+  assert.ok(pauses.length && pauses.every((ms) => ms < 650), `the robot raced too: ${pauses.map(Math.round)}`);
 
   // The robot accepts another rematch. This time let the 30 s turn clock run out.
   await page.locator("#rematch").click();
