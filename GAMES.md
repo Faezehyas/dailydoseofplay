@@ -10,6 +10,6 @@ is in `CONTRIBUTING.md`. Each game's slug is already in `public/games.json` with
 - [x] **Gomoku** (`gomoku`): 15×15, five or more in a row (an overline wins, as on papergames); optional clocks; the room picks who starts. `TurnMatch`; pattern-scoring robot.
 - [ ] **Chess** (`chess`): standard rules, including castling, en passant, promotion, and stalemate and repetition draws. `TurnMatch`; small alpha-beta robot.
 - [ ] **Checkers** (`checkers`): 8×8, mandatory captures, multi-jumps, kings. `TurnMatch`, where a move is a full jump path.
-- [ ] **Backgammon** (`backgammon`): dice via `needsRandom` (a `{type: "roll"}` move drawn by both peers), bearing off, hitting, the bar. `TurnMatch`.
+- [x] **Backgammon** (`backgammon`): dice via `needsRandom` (a `{type: "roll"}` move drawn by both peers), bearing off, hitting, the bar; optional clocks; the room picks who starts; no cube or gammons. `TurnMatch`; play-scoring robot at three levels.
 
 When a game ships, tick it here and set its `games.json` status to `ready`.

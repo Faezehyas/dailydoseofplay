@@ -90,6 +90,9 @@ export const rules = {
   },
   // Optional: true when this move's outcome uses rng, e.g. { type: "roll" }
   needsRandom: (state, move) => false,
+  // Optional: the most shared random draws one match may need (default 256:
+  // the coin toss plus one per random move). Backgammon sets 1024.
+  draws: 256,
 };
 ```
 

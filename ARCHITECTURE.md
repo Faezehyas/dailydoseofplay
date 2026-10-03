@@ -72,11 +72,11 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `channel.js` | `Emitter` and `localPair()`, an in-memory channel with the same interface as `PeerChannel` (used for the robot and the tests) |
 | `session.js` | `Session`: names exchange (`$hello` with a protocol version), buffering of game messages, rematch votes (`$rematch`), goodbye (`$bye`). No DOM. |
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, and holds messages for a rematch that hasn't started yet |
-| `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
+| `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
-| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
+| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions and Backgammon's checkers and dice are CC0 recordings, see each game's `sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
 **Session flow.**
@@ -300,6 +300,62 @@ can change on its own.
   stop: arrow keys move between points (roving `tabindex`), and Enter or Space
   plays. At 360 px a point is about 21 px wide, so the board fills the width with
   no horizontal scroll.
+
+## Backgammon in depth
+
+Backgammon is the first `TurnMatch` game with dice. It copies Tic Tac Toe's
+room settings (`setup {config}`, plus a robot level) and clocks. There is no
+doubling cube and no gammon: the first to bear off all fifteen checkers wins
+one game.
+
+**Position.** Each side counts points from its own home board: `pos[p][n]`
+is how many of player p's checkers stand on p's point n, with the bar at 25
+and borne-off checkers at 0. Your point n is the opponent's 25 − n, so the
+move generator, the view and the robot run the same code for either player.
+
+**A turn is two moves.**
+
+- `{ type: "roll", ms }`: `needsRandom` is true, so both peers draw the dice through `SharedRandom`, and neither side can choose or predict them. The view sends it by itself when the turn starts. A roll with no legal play passes the turn inside the rules, so both peers pass it without another message.
+- `{ type: "play", steps: [[from, die], …], ms }`: the whole turn, sent on Confirm. Picking checkers and Undo stay in the view. The rules replay each step and refuse a play that doesn't use as many dice as it could, or that plays the smaller die when only one fits. Bearing off the last checker wins at once.
+- The roll's and the play's `ms` share the turn's limit (`state.spent`), and both come off the player's clock.
+
+**Why the engine got `draws`.** Every roll is one shared draw. A chain of
+256 links covers the coin toss and 255 rolls. Sensible games need 50 to 150
+rolls, but in random-vs-random games about 2 in 1000 go past 255, and the
+match would stop with "hash chain exhausted". There was no way around it
+inside the game folder: the chain is built in `TurnMatch`'s constructor.
+Backgammon's rules ask for `draws: 1024`, which takes about 10 ms to build in
+Chromium against 2 ms for 256. Other games keep the default, and the
+protocol is unchanged.
+
+**Robot.** It lists every distinct legal play for the roll (with a double,
+steps go from non-increasing points, so each final position comes up once)
+and scores the position each one leaves, in pips: the pip lead, made points
+weighted by where they stand, primes, checkers on the bar and borne off, and
+the pips its blots could lose to the opponent's next roll. It always takes a
+win, and when the opponent could bear off next turn it hits if it can.
+
+| Level | Blot risk | Random play | Wins vs Hard | Wins vs a random player |
+|---|---|---|---|---|
+| Easy | direct shots, one blot at a time | 30% of turns | 12% | 97% |
+| Medium | direct shots, one blot at a time | 8% | 34% | 99% |
+| Hard | every one of the 36 rolls, blocked paths included | never | — | 100% |
+
+Medium beats Easy 75% of the time (1000 seeded games per pair). Each choice
+takes under 2 ms in Node; `robot.test.js` holds the levels apart and checks a
+crowded board with doubles stays under 100 ms.
+
+**Motion and sound.** The match state never waits for the screen. When a
+checker moves, the real one is drawn hidden where it lands, and a copy flies
+there over the board: lifted a little, along a low arc, for 240 to 620 ms
+depending on the distance (your own moves fly a third faster). A checker that
+is hit flies to the bar once the mover lands, and a borne-off checker shrinks
+into a slab in the tray. The opponent's play waits 250 ms after their dice
+land, then moves one checker at a time with a short pause between steps; your
+dice roll 400 ms after their last checker settles. New dice tumble in. Every
+landing plays a recorded wooden clack, and a roll plays dice on wood, through
+`playSample()` and the header's mute toggle. With `prefers-reduced-motion`,
+checkers move at once and the dice don't tumble.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
