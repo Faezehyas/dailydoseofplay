@@ -75,6 +75,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
+| `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
 | `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
@@ -122,20 +123,23 @@ handler is attached.
 
 - **Board and fleet:** 10×10, fleet of 5, 4, 3, 3 and 2.
 - **Placement:** ships are placed at random; you can shuffle, drag them, press R while dragging to rotate, or tap a ship to rotate it. Ships may not touch side by side; diagonal contact is allowed.
-- **Turns:** a hit lets you fire again; a miss passes the turn.
+- **Turns:** a hit lets you fire again; a miss, or a hit that sinks a ship, passes the turn.
 - **Sinking:** a sunk ship is revealed, and the squares beside it are marked as clear water.
-- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter; the weapon inside is shown only then. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears.
-- **Turn clock (friend games):** 40 s per shot, like papergames' per-turn clock. When it runs out, that player's own browser fires a random shot. Each browser runs the clock locally, so it is a courtesy against stalling, not an enforced rule.
+- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Only a shot aimed at a gift's own square picks it up (the aimed square of a big missile, nuclear missile or carpet bomb counts); the weapon inside is shown only then. A gift hit by a splash or missile rain aimed elsewhere is destroyed with its square, since nobody can aim at it any more. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears too.
+- **Time limits (room settings):** like papergames, games are timed. Under **Game settings** the player picks a time per shot (10, 20, 30 or 40 s, or none) and a time for each player (3, 5 or 10 min, or none); the default is 30 s a shot and 10 min each. When the time for a shot runs out, that player's browser fires a random shot; when a player's own clock runs out, they lose. In a friend game the room creator's settings apply (the host sends `setup {config}` before the first match, as in Tic Tac Toe). Against the robot only the human's clock runs: the robot reports no time spent. Fleet placement isn't timed.
 
 **Weapons:**
 
 | Weapon | Effect |
 |---|---|
 | Shot | 1 square, unlimited |
-| Simple missile | 1 square; a bonus shot, so the turn continues even on a miss |
 | Big missile | 5-square plus shape |
-| Missile rain | 7 random unexplored squares |
+| Missile rain | 7 random unexplored squares; not aimed, so it fires from a Launch rain button rather than a tap on the board |
 | Nuclear missile | 14 squares: a 4×4 block with two opposite corners spared |
+| Carpet bomb | The whole row or column through the aimed square (`dir` is `row` or `col`) |
+
+Gift odds are 3 : 2 : 1 : 1 for big missile, missile rain, nuclear missile and
+carpet bomb.
 
 Splash squares that were already explored are skipped.
 
@@ -182,8 +186,9 @@ friends with no server-side referee.
 |---|---|---|
 | `ready {commit, chain}` | each | Fleet commitment and `SharedRandom` chain tip |
 | `draw {k, v}` | each | Reveal for shared draw *k*. Handled outside the step queue, because a queued step may be waiting for it. |
-| `fire {w, at}` | shooter | Weapon and aimed square (rain has no `at`) |
+| `fire {w, at, ms, dir}` | shooter | Weapon, aimed square (rain has no `at`), the time spent on the shot, and the carpet bomb's `row` or `col`. Both peers deduct `ms` from the shooter's clock. |
 | `result {hits, sunk}` | defender | 0 or 1 per fired square, plus newly sunk ships |
+| `timeout {}` | player on turn | Their own clock ran out: they lose, and the reveal follows |
 | `reveal {fleet, salt}` | each | After the game ends |
 | `abort {reason}` | either | A protocol violation was detected |
 
@@ -192,7 +197,14 @@ promise queue. Both peers therefore take the same steps in the same order:
 apply the shot, check gift timing, draw. The draw counter stays in step.
 
 The `m` field and `matchRouter()` keep a rematch from mixing with the
-previous match.
+previous match. `setup {config}` (the room's time limits) has no match
+number: the view handles it before handing other messages to
+`matchRouter()`.
+
+Clocks follow Tic Tac Toe's rules (below): each browser times only its own
+player, measured from when the previous volley landed on its screen. The
+rules refuse a shot whose `ms` is over the time left, and a browser that sees
+the opponent 5 s past their limit with no shot stops the match.
 
 ### Robot (`robot.js`)
 
@@ -212,7 +224,7 @@ its moves are easy to follow.
 
 Tic Tac Toe has no hidden information, so it runs on `TurnMatch`. What it adds
 is room settings and clocks, both of which later games (Connect 4, Gomoku)
-can copy.
+can copy; the settings panel itself is the engine's `settings.js`.
 
 **Room settings.** Before a game, the player picks the board (3×3 with three
 in a row, or 5×5 with four), a limit per move, a total per player, and who

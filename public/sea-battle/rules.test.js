@@ -28,6 +28,12 @@ import {
   rainCells,
   auditBoard,
   normalizeFleet,
+  normalizeConfig,
+  applyTimeout,
+  WEAPONS,
+  isTimed,
+  timeLeft,
+  DEFAULT_CONFIG,
   RuleError,
 } from "./rules.js";
 
@@ -43,11 +49,11 @@ const FLEET_A = [
 ];
 
 // Simulate a full fire step: defender answers from its fleet, then apply.
-function fire(state, fleet, shooter, weapon, target, rng) {
-  let cells = checkFire(state, shooter, weapon, target);
+function fire(state, fleet, shooter, weapon, target, rng, ms, dir) {
+  let cells = checkFire(state, shooter, weapon, target, ms, dir);
   if (weapon === "rain") cells = rainCells(state.boards[1 - shooter], rng);
   const { hits, sunk } = answerShots(fleet, state.boards[1 - shooter], cells);
-  return { cells, events: applyFire(state, shooter, weapon, cells, hits, sunk) };
+  return { cells, events: applyFire(state, shooter, weapon, cells, hits, sunk, { ms, target }) };
 }
 
 test("random fleets are always legal and never touch side by side", () => {
@@ -113,9 +119,10 @@ test("a hit fires again, a miss passes the turn", () => {
   assert.throws(() => checkFire(state, 1, "nuke", idx(5, 5)), RuleError, "weapon not owned");
 });
 
-test("sinking a ship reveals it and clears the water beside it", () => {
+test("sinking a ship reveals it, clears the water beside it and ends the turn", () => {
   const state = newMatchState(0);
   for (const c of [0, 1]) fire(state, FLEET_A, 0, "shot", idx(8, c));
+  assert.equal(state.turn, 1, "a sink passes the turn even though it was a hit");
   const board = state.boards[1];
   assert.equal(board.sunk.length, 1);
   assert.deepEqual(board.sunk[0], { len: 2, cells: [idx(8, 0), idx(8, 1)] });
@@ -129,7 +136,12 @@ test("sinking a ship reveals it and clears the water beside it", () => {
 test("sinking the whole fleet wins", () => {
   const state = newMatchState(0);
   let last;
-  for (const ship of FLEET_A) for (const i of shipCells(ship)) last = fire(state, FLEET_A, 0, "shot", i);
+  for (const ship of FLEET_A) {
+    for (const i of shipCells(ship)) {
+      state.turn = 0; // each sink passes the turn; keep firing as player 0
+      last = fire(state, FLEET_A, 0, "shot", i);
+    }
+  }
   assert.equal(state.winner, 0);
   assert.ok(last.events.some((e) => e.type === "win"));
   assert.throws(() => checkFire(state, 0, "shot", idx(9, 9)), RuleError);
@@ -180,12 +192,26 @@ test("gifts pop every few moves, the shooter collects them, and weapons work", (
   assert.ok(!state.boards[1].gifts.some((g) => g.cell === gift.cell));
 });
 
-test("simple missile keeps the turn, big/nuke splash, rain hits 7 agreed squares", () => {
+test("a carpet bomb hits the whole row or column of the aimed square", () => {
+  assert.deepEqual(patternCells("carpet", idx(3, 7), "row"), [...Array(10).keys()].map((c) => idx(3, c)));
+  assert.deepEqual(patternCells("carpet", idx(3, 7), "col"), [...Array(10).keys()].map((r) => idx(r, 7)));
   const state = newMatchState(0);
-  state.inventory[0] = { missile: 1, big: 1, rain: 1, nuke: 1 };
-  fire(state, FLEET_A, 0, "missile", idx(9, 9));
-  assert.equal(state.turn, 0, "bonus shot keeps the turn on a miss");
-  assert.equal(state.inventory[0].missile, 0);
+  state.inventory[0].carpet = 1;
+  assert.throws(() => checkFire(state, 0, "carpet", idx(0, 0)), RuleError, "a direction is required");
+  assert.throws(() => checkFire(state, 0, "carpet", idx(0, 0), undefined, "diagonal"), RuleError);
+  fire(state, FLEET_A, 0, "shot", idx(0, 0)); // carrier square: hit, fire again
+  const { cells, events } = fire(state, FLEET_A, 0, "carpet", idx(5, 0), undefined, undefined, "col");
+  assert.equal(cells.length, 9, "the square already hit is skipped");
+  assert.ok(cells.every((i) => i % 10 === 0));
+  assert.equal(events.filter((e) => e.type === "hit").length, 4, "the battleship, both cruisers and the destroyer");
+  assert.equal(state.inventory[0].carpet, 0);
+  assert.equal(WEAPONS.carpet.weight, WEAPONS.nuke.weight, "as rare as the nuclear missile");
+});
+
+test("big/nuke splash, rain hits 7 agreed squares", () => {
+  const state = newMatchState(0);
+  state.inventory[0] = { big: 1, rain: 1, nuke: 1 };
+  assert.throws(() => checkFire(state, 0, "missile", idx(9, 9)), RuleError, "the simple missile is gone");
   const big = fire(state, FLEET_A, 0, "big", idx(5, 5));
   assert.equal(big.cells.length, 5);
   const rainA = rainCells(state.boards[1], rngFromSeed("rain"));
@@ -200,7 +226,7 @@ test("simple missile keeps the turn, big/nuke splash, rain hits 7 agreed squares
   const nuke = fire(state, FLEET_A, 0, "nuke", idx(1, 6));
   assert.ok(nuke.cells.length > 0 && nuke.cells.length <= 14);
   assert.deepEqual(aimedCells(state.boards[1], "nuke", idx(1, 6)), []);
-  assert.deepEqual(state.inventory[0], { missile: 0, big: 0, rain: 0, nuke: 0 });
+  assert.deepEqual(state.inventory[0], { big: 0, rain: 0, nuke: 0 });
 });
 
 test("audit catches every kind of lie", () => {
@@ -225,4 +251,62 @@ test("audit catches every kind of lie", () => {
   const touching = FLEET_A.map((s) => ({ ...s }));
   touching[1] = { r: 1, c: 0, len: 4, vertical: false };
   assert.equal(auditBoard(newMatchState(0).boards[1], touching).ok, false);
+});
+
+test("room settings: unknown values fall back to the defaults", () => {
+  assert.deepEqual(normalizeConfig(null), DEFAULT_CONFIG);
+  assert.deepEqual(normalizeConfig({ shotSeconds: 7, gameSeconds: "600" }), DEFAULT_CONFIG);
+  assert.deepEqual(normalizeConfig({ shotSeconds: 0, gameSeconds: 180 }), { shotSeconds: 0, gameSeconds: 180 });
+  assert.equal(isTimed(newMatchState(0)), false, "no config, no clocks");
+});
+
+test("clocks: each shot spends its time; over the limit is refused; a clock running out loses", () => {
+  const state = newMatchState(0, { shotSeconds: 10, gameSeconds: 180 });
+  assert.equal(timeLeft(state, 0), 10_000, "the shot limit binds first");
+  assert.throws(() => checkFire(state, 0, "shot", idx(9, 9)), RuleError, "time is required");
+  assert.throws(() => checkFire(state, 0, "shot", idx(9, 9), 10_001), RuleError, "over the shot limit");
+  fire(state, FLEET_A, 0, "shot", idx(9, 9), undefined, 4_000);
+  assert.deepEqual(state.clocks, [176_000, 180_000]);
+  state.clocks[1] = 3_000;
+  assert.equal(timeLeft(state, 1), 3_000, "the game clock binds when it's lower");
+  assert.throws(() => checkFire(state, 1, "shot", idx(9, 9), 3_500), RuleError);
+  assert.throws(() => applyTimeout(state, 0), RuleError, "only the player on turn");
+  assert.deepEqual(applyTimeout(state, 1), [{ type: "timeout", player: 1 }, { type: "win", winner: 0 }]);
+  assert.equal(state.winner, 0);
+  assert.equal(state.reason, "timeout");
+  assert.throws(() => applyTimeout(newMatchState(0, { shotSeconds: 10, gameSeconds: 0 }), 0), RuleError, "no game clock, no timeout loss");
+});
+
+test("a gift is picked up only by aiming at its own square; a splash or rain that hits it destroys it", () => {
+  const state = newMatchState(0);
+  state.inventory[0] = { big: 2, rain: 0, nuke: 0, carpet: 1 };
+  const board = state.boards[1];
+  // A big missile next to a gift blows up its square, and the gift with it.
+  board.gifts = [{ cell: idx(5, 6), type: "nuke" }];
+  const big = fire(state, FLEET_A, 0, "big", idx(5, 5));
+  assert.ok(big.cells.includes(idx(5, 6)));
+  assert.ok(big.events.some((e) => e.type === "gift-lost" && e.cell === idx(5, 6)));
+  assert.ok(!big.events.some((e) => e.type === "gift"));
+  assert.deepEqual(board.gifts, []);
+  assert.equal(state.inventory[0].nuke, 0);
+  // A carpet bomb along a gift's row, aimed elsewhere: destroyed too.
+  board.gifts = [{ cell: idx(7, 8), type: "big" }];
+  state.turn = 0;
+  const carpet = fire(state, FLEET_A, 0, "carpet", idx(7, 9), undefined, undefined, "row");
+  assert.ok(carpet.events.some((e) => e.type === "gift-lost"));
+  assert.equal(state.inventory[0].big, 1, "only the big missile fired earlier was spent");
+  // Rain landing on a gift destroys it, even if a peer claims to have aimed there.
+  board.gifts = [{ cell: idx(9, 9), type: "rain" }];
+  state.inventory[0].rain = 1;
+  state.turn = 0;
+  const lost = applyFire(state, 0, "rain", [idx(9, 9)], [0], [], { target: idx(9, 9) });
+  assert.ok(lost.some((e) => e.type === "gift-lost"));
+  assert.equal(state.inventory[0].rain, 0, "the rain was spent and the gift not won");
+  // Aiming at the gift's own square picks it up, even with a splash weapon.
+  board.gifts = [{ cell: idx(3, 6), type: "nuke" }];
+  state.turn = 0;
+  const aimed = fire(state, FLEET_A, 0, "big", idx(3, 6));
+  assert.ok(aimed.events.some((e) => e.type === "gift" && e.gift === "nuke"));
+  assert.equal(state.inventory[0].nuke, 1);
+  assert.deepEqual(board.gifts, []);
 });

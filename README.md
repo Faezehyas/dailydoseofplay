@@ -6,7 +6,7 @@ text and code are original.
 
 **Games:**
 
-- Sea Battle: Battleship rules, with gifts and special weapons.
+- Sea Battle: Battleship rules, with gifts and special weapons; optional shot and game clocks.
 - Tic Tac Toe: 3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks.
 - Gomoku: five in a row on a 15×15 board; optional move and game clocks.
 
