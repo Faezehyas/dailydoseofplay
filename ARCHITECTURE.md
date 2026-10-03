@@ -456,6 +456,21 @@ landing plays a recorded wooden clack, and a roll plays dice on wood, through
 `playSample()` and the header's mute toggle. With `prefers-reduced-motion`,
 checkers move at once and the dice don't tumble.
 
+**Picking, dragging and marks.** You tap a checker and then a point, or drag
+the checker there with a mouse or finger (pointer events; a press that
+doesn't move is a tap, and a drop anywhere else sends it back). The landing
+spot shows as a dashed circle in the next free place on the point, or around
+the top checker of a full stack or the blot it would hit. After the
+opponent's play, each checker that arrived gets a ring and each place one
+left keeps a faint outline, until your play goes out.
+
+**Racing home.** Once no checker can be hit (`inContact()` is false for good),
+the game offers once per match to move for you. Yes plays each of your turns
+one step at a time with Hard's choice, then confirms; Stop, or "Play for me"
+after a no, switches it at any time. It is only the view pressing the
+buttons for you: the same `play` message goes out, so the protocol and the
+other side don't change.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |
