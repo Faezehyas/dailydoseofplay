@@ -477,6 +477,71 @@ checkers replay at your own speed. The robot runs on `startRobot()` in
 `robot.js`, a copy of the engine's `startTurnRobot()` that asks for the pause
 before each move instead of taking a fixed one.
 
+## Chutes and Ladders in depth
+
+Chutes and Ladders runs on `TurnMatch` with no engine change. It copies
+Backgammon's room settings (`setup {config}`) and shared luck, but has no
+clocks and no robot levels: the game has no choices, so a move is just
+`{ type: "spin" }` and the robot only spins.
+
+**Board.** The classic 1943 layout: squares 1 to 100 snake up a 10×10 grid
+(1 bottom left, 100 top left), with nine ladders (1→38, 4→14, 9→31, 21→42,
+28→84, 36→44, 51→67, 71→91, 80→100) and ten chutes (16→6, 47→26, 49→11,
+56→53, 62→19, 64→60, 87→24, 93→73, 95→75, 98→78). Pawns start on a lawn
+below square 1 (`pos` 0), and both may share a square.
+
+**A spin.** `needsRandom` is true for every spin, so the 1–6 comes from
+`SharedRandom` like Backgammon's dice. `spinResult()` returns everything the
+view animates: the squares hopped (`path`), the square landed on, a ladder or
+chute taken (`jump`), and the flags `bounce`, `stay`, `again` and `win`. Only
+the square a pawn stops on counts.
+
+**Room settings.** The finish (`exact`: an overshooting spin leaves the pawn
+where it is, the classic rule; `bounce`: the extra steps walk back from 100,
+and the square reached can be a chute; `any`: reaching 100 wins), whether a 6
+spins again (a winning 6 still ends the game), and who starts. The spinner
+mode (tap, or spin by itself) is per player and never sent: it only decides
+when that player's own browser sends its spin. Each spin is one shared draw;
+`DRAWS` is 1024, and `rules.test.js` checks that 600 seeded games stay under it.
+
+**Motion.** The match state never waits for the screen. Each spin event is
+queued and played out in order: the spinner's pointer eases to the drawn
+number (your own spin starts turning the moment you press Spin, while the draw
+completes), the pawn hops square by square on a short arc with a squash on
+landing, then climbs a ladder rung by rung or rides the chute's Bézier curve,
+speeding up and tilting with it. A burst of stars marks a ladder's top, dust a
+chute's foot, and confetti the win. When spins pile up (a hidden tab, a 6
+spinning again) the queue plays faster; with the tab hidden or
+`prefers-reduced-motion` set, it applies them at once. The result box waits
+for the winning pawn to arrive. The pawn whose turn it is bobs on the spot.
+
+**Art.** Everything is inline SVG drawn in code: pastel squares, wooden
+ladders, chutes drawn as playground slides (a rim, raised walls, a bed and a
+shine, a deck with handrails at the top and a run-out lip at the bottom), and
+kids on stands for pawns. As on the classic board, small pictures tell a
+story at both ends: a good deed at a ladder's foot and its reward at the top
+(seedling → flower, sweeping → star, reading → medal…), mischief at a chute's
+top and what came of it at the bottom (too many cookies → tummy ache, a ball
+→ broken window…). The board's palette lives in `style.css` as `--cl-*`
+tokens with a dark set.
+
+**Sound** (`sounds.js`, synthesized with WebAudio, behind the header's mute
+toggle). The spinner clicks once per wedge, so the clicks slow down with the
+pointer; a hop is a pawn tap plus a marimba note that climbs a C-major
+pentatonic scale with each square (and walks back down after a bounce); a
+ladder is a xylophone run, then a shimmer; a chute is a slide whistle over
+rushing air, then a bump; overshooting with the exact rule is a two-note
+"nope", bouncing off 100 a spring; plus a turn chime and win and lose tunes.
+Levels were set by rendering each sound offline and matching the recorded
+samples other games play (hops and landings about 0.3 peak, ticks lower).
+
+**Why two players.** Chutes and Ladders is often played by up to four.
+`Session`, `TurnMatch` and `SharedRandom` are two-party throughout (one
+opponent, `turn` 0 or 1, two hash chains per draw), and the lobby closes the
+signaling socket as soon as one DataChannel opens. Four players would need a
+hub or mesh of channels, a total order for messages, N-party draws and a way
+to drop a player mid-game; that belongs in the engine as its own change.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |
