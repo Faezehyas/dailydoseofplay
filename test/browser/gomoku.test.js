@@ -82,6 +82,9 @@ test("two friends play Gomoku on the host's settings through the invite link, wi
   assert.equal(await host.locator("#gmk-config").innerText(), await guest.locator("#gmk-config").innerText());
   assert.deepEqual(await guest.evaluate(() => [window.ddp.match.state.moveMs, window.ddp.match.state.clocks]), [20_000, [180_000, 180_000]]);
   assert.match(await host.locator(".gmk-players").innerText(), /Ada[\s\S]*Bo/);
+  // "Ada vs Bo" stays together, centred over the scoreboard.
+  const centre = (page, sel) => page.locator(sel).evaluate((n) => { const r = n.getBoundingClientRect(); return r.left + r.width / 2; });
+  assert.ok(Math.abs((await centre(host, ".gmk-players")) - (await centre(host, "#gmk-score"))) < 2, "the players are centred");
   assert.match(await guest.locator(".gmk-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -216,6 +219,9 @@ test("Gomoku vs the robot on a 360 px phone: a full game, then a loss on the mov
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
   assert.match(await page.locator(".gmk-players").innerText(), /Cleo[\s\S]*Robot/);
+  // On a phone the names use the full width, from the scoreboard's left edge.
+  const left = (sel) => page.locator(sel).evaluate((n) => n.getBoundingClientRect().left);
+  assert.ok(Math.abs((await left(".gmk-players")) - (await left("#gmk-score"))) < 1, "the names start at the scoreboard's edge");
   assert.equal(await page.locator("#gmk-config").innerText(), "15 × 15, five in a row · 10 s a move · no game clock");
   assert.equal(await page.evaluate(() => window.ddp.match.state.turn), 0, "the room setting says I start");
   assert.ok(await page.locator("#gmk-move-left").isVisible());
