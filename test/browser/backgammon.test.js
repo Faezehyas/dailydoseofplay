@@ -2,7 +2,7 @@
 // match on the host's settings (clocks, host starts) through the invite link
 // over a real WebRTC DataChannel, then a rematch; and a robot game on a
 // phone, played by touch, keyboard and drag; a race the game plays for you;
-// then a loss on the turn clock.
+// a forced turn it plays and ends for you; then a loss on the turn clock.
 // Skips if Playwright is missing.
 //
 //   npm run test:browser
@@ -49,9 +49,30 @@ async function playTurnByHand(page, { tap = false } = {}) {
     await page.locator(".bg-cell.dest").first().waitFor();
     await press(".bg-cell.dest >> nth=0");
   }
-  assert.ok(await page.locator("#bg-confirm").isEnabled(), "the whole roll is played");
-  await press("#bg-confirm");
+  // A turn with no choice in it ends by itself; otherwise you confirm it.
+  if (await page.locator("#bg-undo").isEnabled()) {
+    assert.ok(await page.locator("#bg-confirm").isEnabled(), "the whole roll is played");
+    await press("#bg-confirm");
+  }
   await wait(page, (n) => window.ddp.match.state.ply > n, start);
+}
+
+// Robot games only: puts the same position on both sides before the first
+// roll, to reach a race or a forced turn quickly. Points use each side's own
+// numbering; "bar" is the bar, and missing checkers are borne off.
+function setPosition(page, mine, theirs) {
+  return page.evaluate(([mine, theirs]) => {
+    const side = (spec) => {
+      const s = Array(26).fill(0);
+      for (const [k, v] of Object.entries(spec)) s[k === "bar" ? 25 : Number(k)] = v;
+      s[0] = 15 - s.reduce((a, b) => a + b, 0);
+      return s;
+    };
+    const pos = [side(mine), side(theirs)];
+    window.ddp.match.state.pos = structuredClone(pos);
+    window.ddp.robot.match.state.pos = structuredClone(pos);
+    window.ddp.match.emit("update");
+  }, [mine, theirs]);
 }
 
 // Plays this page's side by the robot's choices, at once, until the game ends.
@@ -244,8 +265,10 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
     await page.locator(".bg-cell.dest").first().focus();
     await page.keyboard.press(" ");
   }
-  await page.locator("#bg-confirm").focus();
-  await page.keyboard.press("Enter");
+  if (await page.locator("#bg-undo").isEnabled()) {
+    await page.locator("#bg-confirm").focus();
+    await page.keyboard.press("Enter");
+  }
   await wait(page, (n) => window.ddp.match.state.ply > n, start);
 
   // Turn 3 by dragging: a checker dropped off the board goes back, one dropped on a point lands there.
@@ -271,7 +294,7 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   await page.mouse.move(dx, dy, { steps: 8 });
   await page.mouse.up();
   await wait(page, () => !document.querySelector(".checker.ghost, .pending"));
-  assert.ok(await page.locator("#bg-undo").isEnabled(), "the dropped checker was played");
+  assert.ok((await page.locator("#bg-dice .die.used").count()) >= 1, "the dropped checker was played");
   await page.screenshot({ path: `${ARTIFACTS}/bg-5-robot-mobile-light.png`, fullPage: true });
 
   // The rest of the game at speed: the robot keeps its own pace.
@@ -289,18 +312,7 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   // before the first roll; the game then offers to move for you.
   await page.click("#rematch");
   await wait(page, () => window.ddp.match.m === 2 && window.ddp.match.phase === "playing");
-  await page.evaluate(() => {
-    const side = (spec) => {
-      const s = Array(26).fill(0);
-      for (const [k, v] of Object.entries(spec)) s[k] = v;
-      s[0] = 15 - s.reduce((a, b) => a + b, 0);
-      return s;
-    };
-    const pos = [side({ 6: 2, 5: 2, 4: 2, 3: 2, 2: 2, 1: 2 }), side({ 6: 3, 5: 3, 4: 3, 3: 3, 2: 3 })];
-    window.ddp.match.state.pos = structuredClone(pos);
-    window.ddp.robot.match.state.pos = structuredClone(pos);
-    window.ddp.match.emit("update");
-  });
+  await setPosition(page, { 6: 2, 5: 2, 4: 2, 3: 2, 2: 2, 1: 2 }, { 6: 3, 5: 3, 4: 3, 3: 3, 2: 3 });
   await page.locator("#bg-offer").waitFor();
   assert.match(await page.locator("#bg-offer").innerText(), /race/);
   await page.screenshot({ path: `${ARTIFACTS}/bg-7-race-offer-light.png`, fullPage: true });
@@ -330,9 +342,22 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   const pauses = await page.evaluate(() => window.__robotPauses);
   assert.ok(pauses.length && pauses.every((ms) => ms < 650), `the robot raced too: ${pauses.map(Math.round)}`);
 
-  // The robot accepts another rematch. This time let the 30 s turn clock run out.
+  // Another rematch: your last checker on your 1 point, so whatever you roll
+  // there is only one way to play it. The game plays it and ends your turn.
   await page.locator("#rematch").click();
   await wait(page, () => window.ddp.match.m === 3 && window.ddp.match.phase === "playing");
+  await setPosition(page, { 1: 1 }, { 6: 15 });
+  await page.locator("#bg-status").filter({ hasText: "only one way to play it" }).waitFor();
+  assert.ok(await page.locator("#bg-offer").isHidden(), "no race offer for a forced turn");
+  assert.equal(await page.locator("#bg-undo").isEnabled(), false);
+  await wait(page, () => window.ddp.match.phase === "over");
+  assert.equal(await page.evaluate(() => window.ddp.match.state.winner), 0);
+  await page.locator("#toast").filter({ hasText: "Only one way to play" }).waitFor();
+  assert.equal(await page.locator("#bg-result").innerText(), "Victory!");
+
+  // The robot accepts another rematch. This time let the 30 s turn clock run out.
+  await page.locator("#rematch").click();
+  await wait(page, () => window.ddp.match.m === 4 && window.ddp.match.phase === "playing");
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
   assert.ok(await noHorizontalScroll(page));
@@ -344,7 +369,7 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
   assert.equal(await page.locator("#bg-result").innerText(), "Defeat");
   assert.equal(await page.locator("#bg-detail").innerText(), "Your clock ran out.");
-  assert.match(await page.locator("#bg-score").innerText(), /Robot\s+[1-3]/);
+  assert.match(await page.locator("#bg-score").innerText(), /Robot\s+[1-4]/);
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
   assert.deepEqual(errors, []);

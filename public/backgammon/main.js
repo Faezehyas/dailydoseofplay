@@ -5,7 +5,7 @@ import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playSample, preload } from "../engine/sound.js";
-import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
+import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, legalPlays, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
 import { chooseMove, inContact, startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
 
@@ -19,6 +19,7 @@ const BETWEEN_STEPS = 140;
 const FLY = { min: 240, perPx: 0.9, max: 620 }; // a checker's flight time, by distance
 const MY_PACE = 0.7; // your own checkers fly faster than the replayed ones
 const AUTO_DELAY = 450; // between the steps the game plays for you in a race
+const FORCED_DELAY = 550; // before a move you have no choice about is played for you
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const STACK = 5; // checkers drawn on a point; a taller stack shows its count
 const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
@@ -196,16 +197,17 @@ function mountBackgammon(session, root, shell) {
     selected = null;
   }
 
-  function applyStaged(step) {
+  function applyStaged(step, forced = false) {
     const done = applyStep(stage.pos, me, step.from, step.die);
+    done.forced = forced;
     stage.steps.push(done);
     stage.dice.splice(stage.dice.indexOf(step.die), 1);
     return done;
   }
 
-  function stageStep(step, drop) {
+  function stageStep(step, drop, forced = !!forcedNext()) {
     moveOnScreen(me, step.from, step.to, () => {
-      const done = applyStaged(step);
+      const done = applyStaged(step, forced);
       // Keep the moved checker picked when it can go on.
       const next = steps();
       selected = done.to !== OFF && next.some((s) => s.from === done.to) ? done.to : null;
@@ -214,15 +216,22 @@ function mountBackgammon(session, root, shell) {
     }, drop ? 0.45 : MY_PACE, drop);
   }
 
-  // Takes the last step back; the checker (and any checker it hit) flies home.
+  // Takes back the last step you chose (forced steps after it go too, or they
+  // would come straight back); the checker, and any checker it hit, flies home.
   function undo() {
-    if (!stage?.steps.length) return;
-    const last = stage.steps.at(-1);
-    const keep = stage.steps.slice(0, -1);
+    const chosen = stage ? stage.steps.findLastIndex((s) => !s.forced) : -1;
+    if (chosen < 0) return;
+    const last = stage.steps[chosen];
+    const keep = stage.steps.slice(0, chosen);
+    const after = stage.steps.length - 1 - chosen;
     const start = topRect(last.to);
     const blot = last.hit ? topRect("bar-top") : null;
     resetStage();
-    for (const s of keep) applyStaged(s);
+    for (const s of keep) applyStaged(s, s.forced);
+    if (after) {
+      render();
+      return clack("bar");
+    }
     hide(last.from, 1);
     if (last.hit) hide(last.to, 1);
     render();
@@ -376,18 +385,46 @@ function mountBackgammon(session, root, shell) {
     render();
   }
 
-  // One step at a time, so you can watch it and stop it: the robot's best play from where you stand.
+  // The next step when you have no choice: it is the only legal one, or every
+  // legal way to play the rest of the turn ends in the same position.
+  let forcedMemo = null;
+  function forcedNext() {
+    const legal = steps();
+    if (!legal.length) return null;
+    if (legal.length === 1) return legal[0];
+    if (forcedMemo?.stage === stage && forcedMemo.n === stage.steps.length) return forcedMemo.step;
+    const plays = legalPlays(stage.pos, me, stage.dice);
+    const [from, die] = plays.length === 1 ? plays[0].steps[0] : [];
+    const step = legal.find((s) => s.from === from && s.die === die) || null;
+    forcedMemo = { stage, n: stage.steps.length, step };
+    return step;
+  }
+  const forcedTurn = () => !!stage?.steps.length && stage.steps.every((s) => s.forced);
+
+  // The game moves for you, one step at a time so you can watch: a step you
+  // have no choice about, and the end of a turn that was forced all the way.
+  // In a race with auto-play on, every step: the robot's best play from where you stand.
   function scheduleAuto() {
-    if (!auto || autoTimer || !stage || !myTurn() || match.working || flying || drag) return;
+    if (autoTimer || !stage || !myTurn() || match.working || flying || drag) return;
+    if (!auto && !forcedNext() && !(forcedTurn() && !steps().length)) return;
     autoTimer = setTimeout(() => {
       autoTimer = null;
       // Busy or landing: the next render schedules it again.
-      if (destroyed || !auto || !stage || !myTurn() || match.working || flying) return;
+      if (destroyed || !stage || !myTurn() || match.working || flying || drag) return;
       const legal = steps();
-      if (!legal.length) return confirm();
+      if (!legal.length) {
+        if (auto) return confirm();
+        if (!forcedTurn()) return;
+        toast(`Only one way to play ${rollText(match.state.roll)}, so the game played it for you.`);
+        return confirm();
+      }
+      if (!auto) {
+        const step = forcedNext();
+        return step && stageStep(step, undefined, true);
+      }
       const [[from, die]] = chooseMove({ rolled: true, pos: stage.pos, dice: stage.dice }, me, Math.random, { level: "hard" }).steps;
       stageStep(legal.find((s) => s.from === from && s.die === die) || legal[0]);
-    }, still ? 0 : AUTO_DELAY);
+    }, still ? 0 : auto ? AUTO_DELAY : FORCED_DELAY);
   }
 
   // ---------- clocks and the automatic roll ----------
@@ -715,6 +752,8 @@ function mountBackgammon(session, root, shell) {
         if (st.turn === opp) return st.rolled ? `${oppName} rolled ${rollText(st.roll)} and is moving…` : anim ? `${oppName} is moving…` : `${oppName} is rolling…`;
         if (!st.rolled) return anim ? `${oppName} is moving…` : "Your turn. Rolling the dice…";
         if (auto) return `You rolled ${rollText(st.roll)}. Moving for you…`;
+        if (stage && !match.working && forcedNext()) return `You rolled ${rollText(st.roll)}. There's only one way to play it: moving for you…`;
+        if (stage && !match.working && !steps().length && forcedTurn()) return "That was the only way to play it. Passing the turn…";
         if (!steps().length && stage?.steps.length) return "All played. Press Confirm, or Undo to change it.";
         if (stage?.pos[me][BAR]) return `You rolled ${rollText(st.roll)}. Bring your checker back in.`;
         return selected !== null ? "Now pick where it goes." : `You rolled ${rollText(st.roll)}. Pick a checker to move.`;
@@ -742,11 +781,11 @@ function mountBackgammon(session, root, shell) {
     const staging = !!stage && phase === "playing";
     turnBar.classList.toggle("mine", staging);
     undoBtn.hidden = confirmBtn.hidden = !staging;
-    undoBtn.disabled = !stage?.steps.length || !!auto;
+    undoBtn.disabled = !stage?.steps.some((s) => !s.forced) || !!auto;
     confirmBtn.disabled = !stage?.steps.length || steps().length > 0 || !!match?.working || !!auto;
     const race = racing();
     racingForYou = session.mode === "robot" && race && !!auto;
-    offer.hidden = !(race && auto === null && staging);
+    offer.hidden = !(race && auto === null && staging && !forcedNext() && !forcedTurn());
     autoBtn.hidden = !(race && auto !== null);
     autoBtn.textContent = auto ? "Stop" : "Play for me";
     autoBtn.setAttribute("aria-label", auto ? "Stop moving for me" : "Let the game move for me");
