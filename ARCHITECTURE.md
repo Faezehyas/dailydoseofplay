@@ -301,6 +301,14 @@ so won endgames finish before the 40-turn draw. A node budget caps each move
 at about 35 ms on a laptop. Before searching it takes a move that leaves the
 opponent stuck, and avoids one that lets the opponent do that.
 
+**Sounds.** `sounds.js` synthesizes a wooden clack per landing, a knock per
+captured piece and a chime for a new king with WebAudio, and follows the
+header's mute button (`soundOn()` from `engine/sound.js`). The engine's sound
+list is Sea Battle's and the shared UI sounds, so these stay in the game
+folder. Audio starts on the first click or key press; until then sounds are
+skipped rather than queued, so a friend who opened the invite link but hasn't
+clicked yet doesn't get a burst of them later.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |

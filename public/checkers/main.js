@@ -7,6 +7,7 @@ import { el, toast } from "../engine/shell.js";
 import { makeRules, normalizeConfig, legalMoves, capturedBy, countPieces, isTimed, timeLeft, owner, isKing, isJump, isDark, EMPTY, DRAW, QUIET_LIMIT } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings, normalizeLevel } from "./settings.js";
+import { playMove } from "./sounds.js";
 
 const CROWN_SVG =
   '<svg viewBox="0 0 24 24" class="crown" aria-hidden="true"><path d="M4 17.5h16l1.2-9.3-5.1 3.7L12 5.5l-4.1 6.4-5.1-3.7z"/></svg>';
@@ -413,6 +414,7 @@ function mountCheckers(session, root, shell) {
     match.on("events", ({ events }) => {
       turnStart = performance.now();
       const moved = events.find((e) => e.type === "moved");
+      if (moved) playMove(moved, moved.player === me);
       if (moved?.crowned && match.state.winner === -1) toast(moved.player === me ? "Crowned! Your piece is now a king" : `${oppName} crowned a king`);
     });
     match.on("over", ({ winner }) => {
