@@ -1,0 +1,636 @@
+/* Dots and Boxes view. Shared tokens come from /engine/theme.css; the
+   paper's own palette (sheet, graph lines, ink) is defined here for light
+   and dark. Yours is coral (--accent), theirs teal (--accent-2). */
+.dots-boxes {
+  --db-paper: #fffdf6;
+  --db-paper-edge: #e9dfcd;
+  --db-grid: rgb(86 140 196 / 16%);
+  --db-ink: #3b4256;
+  --db-halo: #fffdf6;
+  --db-tint: 20%;
+  --db-hatch: 0.42;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dots-boxes {
+    --db-paper: #1e232e;
+    --db-paper-edge: #2f3646;
+    --db-grid: rgb(140 175 220 / 9%);
+    --db-ink: #d9dde6;
+    --db-halo: #1e232e;
+    --db-tint: 26%;
+    --db-hatch: 0.5;
+  }
+}
+
+:root[data-theme="dark"] .dots-boxes {
+  --db-paper: #1e232e;
+  --db-paper-edge: #2f3646;
+  --db-grid: rgb(140 175 220 / 9%);
+  --db-ink: #d9dde6;
+  --db-halo: #1e232e;
+  --db-tint: 26%;
+  --db-hatch: 0.5;
+}
+
+.db-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.db-top > .btn {
+  flex: none;
+}
+
+/* ---------- players ---------- */
+.db-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.db-players .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px 4px 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.db-players .who.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.db-players .who.p1.active {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px var(--accent-2) inset;
+}
+
+/* The swatch carries the initial drawn in your boxes. */
+.db-players .swatch {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.db-players .p1 .swatch {
+  background: var(--accent-2);
+}
+
+.db-players .label {
+  display: grid;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.db-players .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-players .count {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transform-origin: left center;
+}
+
+.db-players .count.bump {
+  animation: db-bump 0.45s ease-out;
+}
+
+.db-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@keyframes db-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.3); color: var(--text); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- score and status ---------- */
+.db-score {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.db-score.three {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 1fr);
+}
+
+.db-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.db-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.db-score .mine dd {
+  color: var(--accent);
+}
+
+.db-score .theirs dd {
+  color: var(--accent-2);
+}
+
+.db-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.db-status.mine {
+  color: var(--accent);
+}
+
+.db-config,
+.db-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.db-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- clocks ---------- */
+.db-clocks {
+  display: grid;
+  grid-template-columns: 4.2em minmax(0, 1fr) 4.2em;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.db-clocks .clock {
+  padding: 2px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.db-clocks .clock.theirs {
+  grid-column: 3;
+}
+
+.db-clocks .clock.active {
+  color: var(--text);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2) inset;
+}
+
+.db-clocks .clock.mine.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.db-clocks .clock.low {
+  color: var(--danger);
+}
+
+.db-clocks .move {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.db-movebar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.db-movebar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  transition: width 0.2s linear;
+}
+
+.db-movebar.mine > span {
+  background: var(--accent);
+}
+
+.db-movebar.low > span {
+  background: var(--danger);
+}
+
+.db-clocks .move-left {
+  min-width: 2.6em;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---------- layout: board, with the tally and result beside it on wide screens ---------- */
+.db-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.db-board-wrap {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+}
+
+.db-side {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (min-width: 860px) {
+  .db-main {
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+
+  .db-side {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+/* ---------- board ---------- */
+/* As big as fits: the full width on a phone, the screen's height on a laptop. */
+.db-board {
+  display: block;
+  width: min(100%, 620px, max(300px, calc(100svh - 270px)));
+  height: auto;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  font-family: inherit;
+  outline: none;
+}
+
+.db-board:focus-visible {
+  box-shadow: var(--shadow), 0 0 0 3px var(--focus);
+}
+
+.db-board .paper {
+  fill: var(--db-paper);
+  stroke: var(--db-paper-edge);
+  stroke-width: 2;
+}
+
+.db-board .grid-line {
+  fill: none;
+  stroke: var(--db-grid);
+  stroke-width: 1.4;
+}
+
+.db-board .dot {
+  fill: var(--db-ink);
+  transition: r 0.15s ease;
+}
+
+.db-board .dot.hot {
+  r: 10px;
+}
+
+/* Lines: a pencil stroke in the player's colour with a faint graphite sheen. */
+.db-board .line path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+}
+
+/* Board units grow with the board, so lines get a little weight back on big boards. */
+.db-board .line .ink {
+  stroke: var(--accent);
+  stroke-width: calc(4px + var(--db-n, 4) * 0.95px);
+}
+
+.db-board .line.p1 .ink {
+  stroke: var(--accent-2);
+}
+
+.db-board .line .sheen {
+  stroke: #fff;
+  stroke-width: 2.4;
+  opacity: 0.35;
+}
+
+.db-board .line.fresh .ink {
+  animation: db-fresh 1.6s ease-in-out infinite;
+}
+
+@keyframes db-fresh {
+  50% { stroke-width: calc(7px + var(--db-n, 4) * 1.2px); }
+}
+
+.db-board .tip {
+  fill: var(--db-ink);
+  stroke: var(--db-paper);
+  stroke-width: 2;
+}
+
+.db-board .preview {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: calc(4px + var(--db-n, 4) * 0.95px);
+  stroke-linecap: round;
+  stroke-dasharray: 0.07 0.06;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.db-board .focus-ring {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 3.5;
+  pointer-events: none;
+}
+
+.db-board .hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.db-board.armed .hit {
+  cursor: pointer;
+}
+
+/* Claimed boxes: a tint, a pencil hatch and the owner's initial. */
+.db-board .box .tint {
+  fill: color-mix(in srgb, var(--accent) var(--db-tint), transparent);
+}
+
+.db-board .box.p1 .tint {
+  fill: color-mix(in srgb, var(--accent-2) var(--db-tint), transparent);
+}
+
+.db-board .box .hatch {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1 1;
+  opacity: var(--db-hatch);
+}
+
+.db-board .box.p1 .hatch {
+  stroke: var(--accent-2);
+}
+
+.db-board .box .initial {
+  fill: var(--accent);
+  font-size: 46px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: var(--db-halo);
+  stroke-width: 7px;
+  stroke-linejoin: round;
+}
+
+.db-board .box.p1 .initial {
+  fill: var(--accent-2);
+}
+
+.db-board .ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+
+.db-board .ring.p1,
+.db-board .fleck.p1 {
+  stroke: var(--accent-2);
+  fill: var(--accent-2);
+}
+
+.db-board .fleck {
+  fill: var(--accent);
+}
+
+.db-board .ring.p1 {
+  fill: none;
+}
+
+.dots-boxes[data-phase="over"] .db-board .hit,
+.dots-boxes[data-phase="aborted"] .db-board .hit {
+  cursor: default;
+}
+
+/* ---------- tally ---------- */
+.db-tally {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.db-tally-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.db-tally-bar .fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  transition: width 0.35s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.db-tally-bar .mine {
+  left: 0;
+  background: var(--accent);
+}
+
+.db-tally-bar .theirs {
+  right: 0;
+  background: var(--accent-2);
+}
+
+.db-tally-text {
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-tally-text .mine {
+  color: var(--accent);
+}
+
+.db-tally-text .theirs {
+  color: var(--accent-2);
+}
+
+/* ---------- game over ---------- */
+.db-over {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  animation: db-in 0.3s ease-out;
+}
+
+.db-over h2 {
+  font-size: 1.6rem;
+}
+
+.db-over h2.win {
+  color: var(--accent);
+}
+
+.db-over .detail {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.db-over .detail.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.db-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@keyframes db-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+/* Phones: a tighter column, so the result fits under the board. */
+@media (max-width: 859px) {
+  .dots-boxes {
+    gap: 8px;
+  }
+
+  /* The result says the same, and has to fit on screen. */
+  .dots-boxes[data-phase="over"] .db-tally {
+    display: none;
+  }
+
+  .db-score dd {
+    font-size: 1.15rem;
+  }
+
+  .db-tally {
+    padding: 8px 10px;
+  }
+
+  .db-over {
+    padding: 12px;
+  }
+
+  .db-over h2 {
+    font-size: 1.4rem;
+    margin-bottom: 0.25em;
+  }
+
+  .db-over .detail {
+    margin-bottom: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .db-board .line.fresh .ink,
+  .db-players .count.bump,
+  .db-over {
+    animation: none;
+  }
+
+  .db-tally-bar .fill {
+    transition: none;
+  }
+}

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4e2"/>
+      <stop offset="1" stop-color="#f6dcc0"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffd27a"/>
+      <stop offset="1" stop-color="#f0a93a"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="200" fill="url(#paper)"/>
+  <g stroke="#e8c9a8" stroke-width="2" opacity=".7">
+    <path d="M0 30h320M0 60h320M0 90h320M0 120h320M0 150h320M0 180h320"/>
+  </g>
+  <!-- claimed boxes: tint, pencil hatch, initial -->
+  <g>
+    <rect x="77" y="35" width="42" height="42" rx="7" fill="#ff6b4a" opacity=".22" transform="rotate(-2 98 56)"/>
+    <path d="M80 62l13-24M84 72l23-37M93 74l22-38M104 74l12-21" fill="none" stroke="#ff6b4a" stroke-width="3" stroke-linecap="round" opacity=".45"/>
+    <text x="98" y="65" font-family="ui-rounded, system-ui, sans-serif" font-size="27" font-weight="900" text-anchor="middle" fill="#ff6b4a" stroke="#fff4e2" stroke-width="4" paint-order="stroke">A</text>
+    <rect x="125" y="83" width="42" height="42" rx="7" fill="#2b8a8a" opacity=".22" transform="rotate(2 146 104)"/>
+    <path d="M128 110l13-24M132 120l23-37M141 122l22-38M152 122l12-21" fill="none" stroke="#2b8a8a" stroke-width="3" stroke-linecap="round" opacity=".45"/>
+    <text x="146" y="113" font-family="ui-rounded, system-ui, sans-serif" font-size="27" font-weight="900" text-anchor="middle" fill="#2b8a8a" stroke="#fff4e2" stroke-width="4" paint-order="stroke">B</text>
+    <rect x="77" y="131" width="42" height="42" rx="7" fill="#ff6b4a" opacity=".22" transform="rotate(1.5 98 152)"/>
+    <path d="M80 158l13-24M84 168l23-37M93 170l22-38M104 170l12-21" fill="none" stroke="#ff6b4a" stroke-width="3" stroke-linecap="round" opacity=".45"/>
+    <text x="98" y="161" font-family="ui-rounded, system-ui, sans-serif" font-size="27" font-weight="900" text-anchor="middle" fill="#ff6b4a" stroke="#fff4e2" stroke-width="4" paint-order="stroke">A</text>
+  </g>
+  <!-- hand-drawn lines -->
+  <g fill="none" stroke-width="6" stroke-linecap="round">
+    <g stroke="#ff6b4a">
+      <path d="M76 32q22 -2 44 0"/>
+      <path d="M74 34q-2 22 0 44"/>
+      <path d="M122 80q2 22 0 44"/>
+      <path d="M74 130q-2 22 0 44"/>
+      <path d="M76 176q22 2 44 0"/>
+      <path d="M170 80q22 2 44 -1"/>
+      <path d="M124 176q22 -2 44 0"/>
+    </g>
+    <g stroke="#2b8a8a">
+      <path d="M122 34q2 22 0 44"/>
+      <path d="M76 80q22 2 44 0"/>
+      <path d="M124 80q22 -2 44 0"/>
+      <path d="M170 82q-2 22 0 44"/>
+      <path d="M124 128q22 2 44 0"/>
+      <path d="M76 128q22 -2 44 0"/>
+      <path d="M122 130q-2 22 0 44"/>
+      <path d="M218 34q2 22 0 44"/>
+    </g>
+  </g>
+  <!-- the dots -->
+  <g fill="#3b4256">
+    <circle cx="74" cy="32" r="6"/><circle cx="122" cy="32" r="6"/><circle cx="170" cy="32" r="6"/><circle cx="218" cy="32" r="6"/>
+    <circle cx="74" cy="80" r="6"/><circle cx="122" cy="80" r="6"/><circle cx="170" cy="80" r="6"/><circle cx="218" cy="80" r="6"/>
+    <circle cx="74" cy="128" r="6"/><circle cx="122" cy="128" r="6"/><circle cx="170" cy="128" r="6"/><circle cx="218" cy="128" r="6"/>
+    <circle cx="74" cy="176" r="6"/><circle cx="122" cy="176" r="6"/><circle cx="170" cy="176" r="6"/><circle cx="218" cy="176" r="6"/>
+  </g>
+  <!-- a pencil drawing the next line -->
+  <path d="M218 82q-2 18 0 33" fill="none" stroke="#ff6b4a" stroke-width="6" stroke-linecap="round"/>
+  <g transform="translate(219 116) rotate(-38)">
+    <path d="M0 0l9 -5v10z" fill="#3b4256"/>
+    <path d="M9 -5l14 -7v24l-14 -7z" fill="#f2c79a"/>
+    <rect x="23" y="-12" width="62" height="24" fill="url(#wood)"/>
+    <path d="M23 -4h62" stroke="#e5962c" stroke-width="2"/>
+    <path d="M23 4h62" stroke="#e5962c" stroke-width="2"/>
+    <rect x="85" y="-12" width="10" height="24" fill="#c9ced8"/>
+    <rect x="95" y="-12" width="14" height="24" rx="5" fill="#ff8fa3"/>
+  </g>
+  <g fill="#ffc23a">
+    <path d="M268 140l4 9 10 1-7 7 2 10-9-5-9 5 2-10-7-7 10-1z"/>
+    <circle cx="40" cy="56" r="5"/>
+    <circle cx="292" cy="38" r="4"/>
+    <circle cx="246" cy="178" r="3.5"/>
+  </g>
+</svg>

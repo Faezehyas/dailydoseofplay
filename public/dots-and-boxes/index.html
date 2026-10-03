@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dots and Boxes · Daily Dose of Play</title>
+    <meta name="description" content="Free Dots and Boxes with a friend or vs a robot, right in the browser. Draw lines, close boxes, take the most. No sign-up." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/engine/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section id="lobby" aria-live="polite"></section>
+      <section id="db-settings" class="card lobby-card" aria-label="Game settings" hidden></section>
+      <section id="game" hidden></section>
+      <details class="card rules">
+        <summary>How to play</summary>
+        <ul>
+          <li>The board starts as a grid of dots. Take turns drawing one line between two dots that sit side by side, across or down. Diagonals don't count.</li>
+          <li>Draw the fourth side of a box and it's yours: it fills with your colour and your initial. Closing a box (or two at once) means you draw again straight away, so one turn can sweep up a whole row.</li>
+          <li>When every box is taken, whoever has the most wins. An even split is a draw.</li>
+          <li>The trap: drawing a box's third side hands it to your opponent, and often the boxes behind it too. Draw safe lines for as long as you can.</li>
+          <li>Near the end, when every line gives something away, it can pay to leave the last two boxes of a long chain: your opponent takes them but then has to open the next chain for you.</li>
+          <li>Before a game you can pick the board (3×3 up to 6×6 boxes), a time per line and per player, and who draws first. When you play a friend, the settings of whoever creates the room apply to both of you.</li>
+          <li>Tap or click a gap between two dots to draw there; on a computer, hovering shows the line first. On a keyboard, Tab to the board, move with the arrow keys and press Enter or Space to draw.</li>
+          <li>Fair play: both browsers check every line with the same rules, and the coin toss for who starts is drawn by both together.</li>
+        </ul>
+      </details>
+    </main>
+  </body>
+</html>
