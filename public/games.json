@@ -63,6 +63,14 @@
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Spin, climb the ladders, slide down the chutes. First to square 100 wins."
+    },
+    {
+      "slug": "dots-and-boxes",
+      "name": "Dots and Boxes",
+      "status": "ready",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Join the dots, close a box and go again. Most boxes wins."
     }
   ]
 }

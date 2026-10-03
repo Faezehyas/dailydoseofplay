@@ -14,6 +14,7 @@ text and code are original.
 - Checkers: English draughts on 8×8, with forced captures, multi-jumps and kings; optional clocks; an Easy, Medium or Hard robot.
 - Backgammon: race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels.
 - Chutes and Ladders: the classic 100-square board with a 1–6 spinner; climb the ladders, slide down the chutes; house rules for the finish and for a 6.
+- Dots and Boxes: join the dots on a 3×3 to 6×6 board; closing a box earns another line; optional clocks; an Easy, Medium or Hard robot that plays the chains properly.
 
 More are coming, one at a time; see [GAMES.md](GAMES.md).
 
@@ -39,6 +40,7 @@ npm start                 # http://localhost:8080  (PORT=3000 npm start to chang
 - Checkers: http://localhost:8080/checkers/
 - Backgammon: http://localhost:8080/backgammon/
 - Chutes and Ladders: http://localhost:8080/chutes-and-ladders/
+- Dots and Boxes: http://localhost:8080/dots-and-boxes/
 - Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?room=CODE` joins a room.
 - Health: http://localhost:8080/healthz
 
@@ -73,6 +75,8 @@ public/
   chess/           Chess: rules, robot, view, tests (TurnMatch protocol)
   checkers/        Checkers: rules, robot, view, tests (TurnMatch protocol)
   backgammon/      Backgammon: rules, robot, view, tests (TurnMatch with shared dice)
+  chutes-and-ladders/  Chutes and Ladders: rules, view, sounds, tests (TurnMatch with shared spins)
+  dots-and-boxes/  Dots and Boxes: rules, robot, view, sounds, tests (TurnMatch)
 test/              integration and browser tests
 app.yaml           Wasmer Edge app config (name dailydoseofplay, owner faezeh_yass)
 ```
