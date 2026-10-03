@@ -432,7 +432,9 @@ steps go from non-increasing points, so each final position comes up once)
 and scores the position each one leaves, in pips: the pip lead, made points
 weighted by where they stand, primes, checkers on the bar and borne off, and
 the pips its blots could lose to the opponent's next roll. It always takes a
-win, and when the opponent could bear off next turn it hits if it can.
+win, and when the opponent could bear off next turn it hits if it can. In a
+race, where nothing can be hit, every level plays its best move: random
+moves only happen while there is still contact.
 
 | Level | Blot risk | Random play | Wins vs Hard | Wins vs a random player |
 |---|---|---|---|---|
@@ -440,7 +442,7 @@ win, and when the opponent could bear off next turn it hits if it can.
 | Medium | direct shots, one blot at a time | 8% | 34% | 99% |
 | Hard | every one of the 36 rolls, blocked paths included | never | — | 100% |
 
-Medium beats Easy 75% of the time (1000 seeded games per pair). Each choice
+Medium beats Easy 74% of the time (1000 seeded games per pair). Each choice
 takes under 2 ms in Node; `robot.test.js` holds the levels apart and checks a
 crowded board with doubles stays under 100 ms.
 
@@ -469,7 +471,11 @@ the game offers once per match to move for you. Yes plays each of your turns
 one step at a time with Hard's choice, then confirms; Stop, or "Play for me"
 after a no, switches it at any time. It is only the view pressing the
 buttons for you: the same `play` message goes out, so the protocol and the
-other side don't change.
+other side don't change. Against the robot, the robot keeps the same quick
+pace meanwhile: its pause before a move drops from 800 to 250 ms, and its
+checkers replay at your own speed. The robot runs on `startRobot()` in
+`robot.js`, a copy of the engine's `startTurnRobot()` that asks for the pause
+before each move instead of taking a fixed one.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
