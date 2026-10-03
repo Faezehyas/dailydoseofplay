@@ -371,6 +371,7 @@
   border-radius: var(--radius);
   border: 2px solid var(--border);
   background: var(--surface-2);
+  position: relative;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -633,4 +634,65 @@
 .bg-turn-actions .btn {
   min-width: 84px;
   min-height: 40px;
+}
+
+/* ---------- motion ---------- */
+/* A checker in the air: a copy flies over the board while the real one waits, hidden, where it lands. */
+.checker.ghost {
+  position: absolute;
+  z-index: 5;
+  aspect-ratio: auto;
+  pointer-events: none;
+  transition: none;
+  will-change: transform;
+}
+
+.checker.ghost.mine {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, var(--text)), 0 6px 14px color-mix(in srgb, var(--text) 28%, transparent);
+}
+
+.checker.ghost.theirs {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-2) 55%, var(--text)), 0 6px 14px color-mix(in srgb, var(--text) 28%, transparent);
+}
+
+.checker.pending,
+.slab.pending {
+  visibility: hidden;
+}
+
+.die.tumble {
+  animation: bg-tumble 0.6s cubic-bezier(0.2, 0.75, 0.3, 1) both;
+}
+
+.die.tumble:nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.die.tumble:nth-child(3) {
+  animation-delay: 0.1s;
+}
+
+.die.tumble:nth-child(4) {
+  animation-delay: 0.15s;
+}
+
+@keyframes bg-tumble {
+  from {
+    opacity: 0;
+    transform: translate(-18px, -16px) rotate(var(--spin, 240deg)) scale(0.7);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(2px, 2px) rotate(-10deg) scale(1.05);
+  }
+  80% {
+    transform: translate(0, 0) rotate(4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .die.tumble,
+  .bg-cell.dest::after {
+    animation: none;
+  }
 }

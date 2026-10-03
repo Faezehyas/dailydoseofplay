@@ -4,14 +4,19 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playSample, preload } from "../engine/sound.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
 
-const ROBOT_DELAY = 600;
+const ROBOT_DELAY = 800;
 const ROLL_DELAY = 600; // before your dice roll themselves
 const PASS_DELAY = 1600; // after a passed turn, so the notice can be read
-const STEP_MS = 350; // the opponent's checkers move one step at a time
+const SETTLE_DELAY = 400; // after the opponent's checkers land, before your dice roll
+const BEFORE_MOVE = 250; // the opponent's dice show a moment before their checkers move
+const BETWEEN_STEPS = 140;
+const FLY = { min: 240, perPx: 0.9, max: 620 }; // a checker's flight time, by distance
+const MY_PACE = 0.7; // your own checkers fly faster than the replayed ones
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const STACK = 5; // checkers drawn on a point; a taller stack shows its count
 const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
@@ -21,6 +26,15 @@ const TOP = [13, 14, 15, 16, 17, 18, "bar-top", 19, 20, 21, 22, 23, 24, "off-top
 const BOTTOM = [12, 11, 10, 9, 8, 7, BAR, 6, 5, 4, 3, 2, 1, OFF];
 
 const settings = mountSettings(document.getElementById("bg-settings"), document.getElementById("lobby"));
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Real recordings (CC0, see sounds/LICENSE.txt): a checker set down on a wooden board, and dice.
+const sounds = (...names) => names.map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
+const CLACK = sounds("checker-1", "checker-2", "checker-3");
+const DICE = sounds("dice-1", "dice-2");
+preload([...CLACK, ...DICE]);
+const CLACKS = { place: { gain: 0.7 }, hit: { gain: 1, rate: 0.88 }, bar: { gain: 0.45, rate: 1.08 }, off: { gain: 0.5, rate: 1.2 } };
+const clack = (kind) => playSample(CLACK, CLACKS[kind]);
 
 function robotChoice(level) {
   return (state, me, rng) => {
@@ -77,7 +91,12 @@ function mountBackgammon(session, root, shell) {
   let claimed = false;
   let stage = null; // your turn in progress: { pos, dice, steps }
   let selected = null; // the point whose checker you picked
-  let anim = null; // the opponent's play being replayed: { frames, steps, k, timer }
+  let anim = null; // the opponent's play being replayed: { pos, dice }
+  let settledAt = 0; // when the last replay ended
+  let hidden = new Map(); // cell key -> checkers still in the air, hidden at the top of that cell
+  let flying = 0;
+  let rollId = 0; // bumps on every roll, so new dice tumble once
+  let diceSig = "";
   let marks = new Set(); // the opponent's last play, as cell keys
   let rollTimer = null;
   let rolling = false;
@@ -156,24 +175,44 @@ function mountBackgammon(session, root, shell) {
     selected = null;
   }
 
-  function stageStep(step) {
+  function applyStaged(step) {
     const done = applyStep(stage.pos, me, step.from, step.die);
     stage.steps.push(done);
     stage.dice.splice(stage.dice.indexOf(step.die), 1);
-    // Keep the moved checker picked when it can go on.
-    const next = steps();
-    selected = done.to !== OFF && next.some((s) => s.from === done.to) ? done.to : null;
-    if (next.length && next.every((s) => s.from === next[0].from)) selected = next[0].from;
-    render();
+    return done;
   }
 
+  function stageStep(step) {
+    moveOnScreen(me, step.from, step.to, () => {
+      const done = applyStaged(step);
+      // Keep the moved checker picked when it can go on.
+      const next = steps();
+      selected = done.to !== OFF && next.some((s) => s.from === done.to) ? done.to : null;
+      if (next.length && next.every((s) => s.from === next[0].from)) selected = next[0].from;
+      return done;
+    }, MY_PACE);
+  }
+
+  // Takes the last step back; the checker (and any checker it hit) flies home.
   function undo() {
     if (!stage?.steps.length) return;
+    const last = stage.steps.at(-1);
     const keep = stage.steps.slice(0, -1);
+    const start = topRect(last.to);
+    const blot = last.hit ? topRect("bar-top") : null;
     resetStage();
-    for (const s of keep) stageStep(s);
-    selected = null;
+    for (const s of keep) applyStaged(s);
+    hide(last.from, 1);
+    if (last.hit) hide(last.to, 1);
     render();
+    const back = (whose, from, key) =>
+      fly(whose, from, topRect(key), MY_PACE).then(() => {
+        hide(key, -1);
+        render();
+        clack("bar");
+      });
+    back("mine", start, last.from);
+    if (last.hit) back("theirs", blot, last.to);
   }
 
   function confirm() {
@@ -254,7 +293,8 @@ function mountBackgammon(session, root, shell) {
 
   function scheduleRoll() {
     if (rollTimer || rolling || anim || !myTurn() || match.state.rolled) return;
-    const wait = (match.state.last?.passed ? PASS_DELAY : ROLL_DELAY) - (performance.now() - turnStart);
+    const now = performance.now();
+    const wait = Math.max((match.state.last?.passed ? PASS_DELAY : ROLL_DELAY) - (now - turnStart), SETTLE_DELAY - (now - settledAt));
     rollTimer = setTimeout(() => {
       rollTimer = null;
       // Busy or replaying: the next render schedules it again.
@@ -289,35 +329,116 @@ function mountBackgammon(session, root, shell) {
     moveLeft.textContent = playing && st.moveMs ? `${Math.ceil(left / 1000)} s` : "";
   }
 
-  // ---------- the opponent's play, step by step ----------
+  // ---------- motion ----------
+  // Checkers in the air are copies ("ghosts") that fly over the board; the
+  // real checker waits hidden where it lands. The game's state never waits.
   const theirKey = (n) => (n === BAR ? "bar-top" : n === OFF ? "off-top" : 25 - n);
+  const pause = (ms) => new Promise((r) => setTimeout(r, still ? 0 : ms));
 
-  function replay(base, played) {
-    const frames = [clonePos(base)];
-    for (const s of played) {
-      const next = clonePos(frames.at(-1));
-      applyStep(next, opp, s.from, s.die);
-      frames.push(next);
+  function hide(key, by) {
+    const n = (hidden.get(key) || 0) + by;
+    if (n > 0) hidden.set(key, n);
+    else hidden.delete(key);
+  }
+
+  // Where the top checker (or slab) of a cell is drawn, relative to the board.
+  function topRect(key) {
+    const items = cells.get(key).querySelectorAll(".checker, .slab");
+    const node = items[items.length - 1];
+    if (!node) return null;
+    const r = node.getBoundingClientRect();
+    const b = board.getBoundingClientRect();
+    return { x: r.left - b.left - board.clientLeft, y: r.top - b.top - board.clientTop, w: r.width, h: r.height };
+  }
+
+  function ghost(whose, at) {
+    const node = el("span", { class: `checker ${whose} ghost`, "aria-hidden": "true" });
+    Object.assign(node.style, { left: `${at.x}px`, top: `${at.y}px`, width: `${at.w}px`, height: `${at.h}px` });
+    board.append(node);
+    return node;
+  }
+
+  // Lifts a checker, carries it along a low arc and sets it down (squashed
+  // into a slab when it lands in a tray). Resolves once it has landed.
+  function fly(whose, from, to, pace = 1, node = null) {
+    if (!from || !to || still || destroyed) {
+      node?.remove();
+      return Promise.resolve();
     }
-    clearInterval(anim?.timer);
-    anim = { frames, steps: played, k: 0 };
+    node ??= ghost(whose, from);
+    flying++;
+    const dx = to.x + to.w / 2 - (from.x + from.w / 2);
+    const dy = to.y + to.h / 2 - (from.y + from.h / 2);
+    const dist = Math.hypot(dx, dy);
+    const lift = Math.min(22, 6 + dist * 0.06);
+    const frames = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const grow = 1 + 0.16 * Math.sin(Math.PI * t);
+      const sx = grow * (1 + t * (to.w / from.w - 1));
+      const sy = grow * (1 + t * (to.h / from.h - 1));
+      frames.push({ transform: `translate(${dx * t}px, ${dy * t - 4 * lift * t * (1 - t)}px) scale(${sx}, ${sy})` });
+    }
+    const ms = Math.min(FLY.max, FLY.min + dist * FLY.perPx) * pace;
+    return node
+      .animate(frames, { duration: ms, easing: "cubic-bezier(.45, 0, .25, 1)", fill: "forwards" })
+      .finished.catch(() => {})
+      .finally(() => {
+        node.remove();
+        flying--;
+      });
+  }
+
+  // Plays one step on the board shown. `apply()` moves the checker in the
+  // position being drawn and returns { hit }; a copy flies to where it lands,
+  // then a checker it hit flies to the bar.
+  async function moveOnScreen(player, from, to, apply, pace) {
+    const key = (n) => (player === me ? n : theirKey(n));
+    const whose = player === me ? "mine" : "theirs";
+    const barKey = player === me ? "bar-top" : BAR;
+    const start = topRect(key(from));
+    const under = topRect(key(to));
+    const done = apply();
+    hide(key(to), 1);
+    if (done.hit) hide(barKey, 1);
+    render();
+    const knocked = done.hit && under && !still ? ghost(whose === "mine" ? "theirs" : "mine", under) : null;
+    await fly(whose, start, topRect(key(to)), pace);
+    hide(key(to), -1);
+    render();
+    clack(to === OFF ? "off" : done.hit ? "hit" : "place");
+    if (!done.hit) return;
+    await fly(null, under, topRect(barKey), pace, knocked);
+    hide(barKey, -1);
+    render();
+    clack("bar");
+  }
+
+  // The opponent's play, one checker at a time, after a short pause.
+  async function replay(base, played, roll) {
+    const run = (anim = { pos: clonePos(base), dice: roll[0] === roll[1] ? [roll[0], roll[0], roll[0], roll[0]] : roll.slice() });
     marks = new Set();
-    anim.timer = setInterval(() => {
-      if (destroyed) return clearInterval(anim?.timer);
-      anim.k++;
-      if (anim.k >= anim.frames.length) {
-        clearInterval(anim.timer);
-        anim = null;
-        marks = new Set(played.flatMap((s) => [theirKey(s.from), theirKey(s.to)]));
-      }
-      render();
-    }, STEP_MS);
+    render();
+    await pause(BEFORE_MOVE);
+    for (const s of played) {
+      if (anim !== run || destroyed) return;
+      await moveOnScreen(opp, s.from, s.to, () => {
+        run.dice.splice(run.dice.indexOf(s.die), 1);
+        return applyStep(run.pos, opp, s.from, s.die);
+      }, 1);
+      await pause(BETWEEN_STEPS);
+    }
+    if (anim !== run) return;
+    anim = null;
+    settledAt = performance.now();
+    marks = new Set(played.flatMap((s) => [theirKey(s.from), theirKey(s.to)]));
+    render();
   }
 
   // ---------- render ----------
   function shownPos() {
     if (stage) return stage.pos;
-    if (anim) return anim.frames[anim.k];
+    if (anim) return anim.pos;
     return match?.state?.pos;
   }
 
@@ -332,8 +453,7 @@ function mountBackgammon(session, root, shell) {
     const legal = steps();
     const sources = new Set(legal.map((s) => s.from));
     const dests = new Set(legal.filter((s) => s.from === selected).map((s) => s.to));
-    const moving = anim && anim.k > 0 ? anim.steps[anim.k - 1] : null;
-    const hot = new Set(moving ? [theirKey(moving.from), theirKey(moving.to)] : marks);
+    const hot = anim ? new Set() : marks;
     for (const [key, cell] of cells) {
       let label;
       if (!pos) {
@@ -356,6 +476,11 @@ function mountBackgammon(session, root, shell) {
         const theirs = pos[opp][25 - key];
         cell.replaceChildren(...(mine ? checkerStack(mine, "mine") : checkerStack(theirs, "theirs")));
         label = `Point ${key}: ${mine ? `${mine} of yours` : theirs ? `${theirs} of ${oppName}'s` : "empty"}`;
+      }
+      const pending = hidden.get(key);
+      if (pending) {
+        const items = cell.querySelectorAll(".checker, .slab");
+        for (let i = Math.max(0, items.length - pending); i < items.length; i++) items[i].classList.add("pending");
       }
       cell.classList.toggle("src", sources.has(key));
       cell.classList.toggle("selected", selected === key);
@@ -381,21 +506,36 @@ function mountBackgammon(session, root, shell) {
 
   function renderDice() {
     const st = match?.state;
-    if (!st || match.phase === "starting") return diceBox.replaceChildren();
+    if (!st || match.phase === "starting") {
+      diceSig = "";
+      return diceBox.replaceChildren();
+    }
     const current = st.rolled || st.winner !== -1;
     const fresh = current || !!anim;
     const roll = current ? st.roll : st.last?.roll || [];
     const owner = current ? st.turn : st.last?.player;
     const whose = owner === me ? "mine" : "theirs";
-    if (!roll.length) return diceBox.replaceChildren();
+    if (!roll.length) {
+      diceSig = "";
+      return diceBox.replaceChildren();
+    }
     const faces = roll[0] === roll[1] ? [roll[0], roll[0], roll[0], roll[0]] : roll.slice();
     // Grey out the dice already played in the turn you are staging.
-    const left = stage ? stage.dice.slice() : current && st.winner === -1 ? st.dice.slice() : [];
+    const left = stage ? stage.dice.slice() : anim ? anim.dice.slice() : current && st.winner === -1 ? st.dice.slice() : [];
+    const classes = faces.map((v) => {
+      const i = left.indexOf(v);
+      if (i >= 0) left.splice(i, 1);
+      return `${whose} ${i < 0 ? "used" : ""} ${fresh ? "" : "old"} ${faces.length > 2 ? "small" : ""}`;
+    });
+    const sig = `${rollId}|${faces}|${classes}`;
+    if (sig === diceSig) return;
+    const tumble = current && !still && !diceSig.startsWith(`${rollId}|`);
+    diceSig = sig;
     diceBox.replaceChildren(
-      ...faces.map((v) => {
-        const i = left.indexOf(v);
-        if (i >= 0) left.splice(i, 1);
-        return dieFace(v, `${whose} ${i < 0 ? "used" : ""} ${fresh ? "" : "old"} ${faces.length > 2 ? "small" : ""}`);
+      ...faces.map((v, k) => {
+        const die = dieFace(v, classes[k] + (tumble ? " tumble" : ""));
+        if (tumble) die.style.setProperty("--spin", `${(Math.random() < 0.5 ? -1 : 1) * (200 + Math.random() * 160)}deg`);
+        return die;
       }),
     );
     diceBox.setAttribute("aria-label", `${owner === me ? "Your" : `${oppName}'s`} ${fresh ? "" : "last "}roll: ${rollText(roll)}`);
@@ -460,7 +600,7 @@ function mountBackgammon(session, root, shell) {
   function renderOver() {
     const phase = match?.phase;
     // Let the winning checkers finish moving first.
-    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && anim)) {
+    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && (anim || flying))) {
       overBox.hidden = true;
       if (overBox.firstChild) overBox.replaceChildren();
       return;
@@ -507,8 +647,8 @@ function mountBackgammon(session, root, shell) {
     rollTimer = null;
     stage = null;
     selected = null;
-    clearInterval(anim?.timer);
     anim = null;
+    hidden = new Map();
     marks = new Set();
     note.textContent = m === 1 ? `Playing against ${oppName}. Good luck!` : `Rematch #${m - 1}. Same settings, fresh board.`;
     match = new TurnMatch({ send: (msg) => session.send(msg), me, rules, m });
@@ -532,9 +672,13 @@ function mountBackgammon(session, root, shell) {
       turnStart = performance.now();
       rolling = false;
       for (const ev of events) {
+        if (ev.type === "roll") {
+          rollId++;
+          playSample(DICE, { gain: 0.55 });
+        }
         if (ev.type === "pass") {
           toast(player === me ? `No move with ${rollText(ev.roll)}. Your turn passes.` : `${oppName} can't move with ${rollText(ev.roll)}.`);
-        } else if (ev.type === "play" && player === opp) replay(base, ev.steps);
+        } else if (ev.type === "play" && player === opp) replay(base, ev.steps, match.state.last.roll);
         else if (ev.type === "play") marks = new Set();
       }
       base = clonePos(match.state.pos);
@@ -580,7 +724,6 @@ function mountBackgammon(session, root, shell) {
     destroy() {
       destroyed = true;
       clearInterval(ticker);
-      clearInterval(anim?.timer);
       clearTimeout(rollTimer);
       for (const off of offs) off();
     },
