@@ -434,11 +434,12 @@ input[type="text"] {
   text-align: center;
 }
 
+/* Top of the screen, so it never covers a game board on a phone. */
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 20px;
-  transform: translate(-50%, 30px);
+  top: 12px;
+  transform: translate(-50%, -30px);
   opacity: 0;
   pointer-events: none;
   background: var(--text);
@@ -449,6 +450,8 @@ input[type="text"] {
   transition: all 0.2s ease;
   z-index: 60;
   max-width: calc(100vw - 32px);
+  text-align: center;
+  box-shadow: var(--shadow);
 }
 
 .toast.show {

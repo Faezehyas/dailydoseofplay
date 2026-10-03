@@ -27,7 +27,7 @@
     {
       "slug": "gomoku",
       "name": "Gomoku",
-      "status": "soon",
+      "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Five in a row on a big board. Easy to learn, deep to master."

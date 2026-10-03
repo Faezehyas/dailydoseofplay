@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4e2"/>
+      <stop offset="1" stop-color="#f6dcc0"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse" y="4">
+      <path d="M16 0v32M0 16h32" stroke="#dcbd9b" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="320" height="200" fill="url(#paper)"/>
+  <rect width="320" height="200" fill="url(#grid)"/>
+  <g fill="#ff6b4a">
+    <circle cx="80" cy="20" r="13"/>
+    <circle cx="112" cy="52" r="13"/>
+    <circle cx="144" cy="84" r="13"/>
+    <circle cx="176" cy="116" r="13"/>
+    <circle cx="208" cy="148" r="13"/>
+    <circle cx="240" cy="52" r="13"/>
+    <circle cx="112" cy="116" r="13"/>
+  </g>
+  <g fill="none" stroke="#2b8a8a" stroke-width="8">
+    <circle cx="112" cy="84" r="9"/>
+    <circle cx="176" cy="84" r="9"/>
+    <circle cx="208" cy="84" r="9"/>
+    <circle cx="80" cy="116" r="9"/>
+    <circle cx="144" cy="148" r="9"/>
+    <circle cx="240" cy="116" r="9"/>
+  </g>
+  <path d="M58 -2l172 172" stroke="#ffc23a" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 13"/>
+  <g fill="#ffc23a">
+    <path d="M286 18l4 9 10 1-7 7 2 10-9-5-9 5 2-10-7-7 10-1z"/>
+    <circle cx="30" cy="168" r="5"/>
+    <circle cx="292" cy="176" r="4"/>
+  </g>
+</svg>
