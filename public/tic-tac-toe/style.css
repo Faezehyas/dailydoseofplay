@@ -7,15 +7,23 @@
   margin: 0 auto;
 }
 
+/* "You vs Robot" stays together, centred over the scoreboard, with Leave on
+   the right; the empty first column balances Leave. No grid gap, so on a
+   phone that empty column takes no room from the names. */
 .ttt-top {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+}
+
+.ttt-top > .ttt-players {
+  grid-column: 2;
 }
 
 .ttt-top > .btn {
-  flex: none;
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 8px;
 }
 
 /* Each name keeps its full width when it fits; long names share what's left. */
@@ -24,7 +32,6 @@
   grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
   align-items: center;
   gap: 6px;
-  flex: 1 1 auto;
   min-width: 0;
   font-weight: 700;
 }
