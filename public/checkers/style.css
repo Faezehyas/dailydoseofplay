@@ -338,6 +338,13 @@
   color: var(--text);
 }
 
+/* Everything in a square shares its centre: a piece, the fading ghost of a
+   captured one, and the move dot or ring. */
+.ck-sq > *,
+.ck-sq::after {
+  grid-area: 1 / 1;
+}
+
 .ck-sq.dark {
   background: var(--dark);
   cursor: default;
