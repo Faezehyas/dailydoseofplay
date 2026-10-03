@@ -13,6 +13,7 @@ text and code are original.
 - Chess: standard rules with castling, en passant and promotion; optional clocks; a robot with three levels.
 - Checkers: English draughts on 8×8, with forced captures, multi-jumps and kings; optional clocks; an Easy, Medium or Hard robot.
 - Backgammon: race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels.
+- Chutes and Ladders: the classic 100-square board with a 1–6 spinner; climb the ladders, slide down the chutes; house rules for the finish and for a 6.
 
 More are coming, one at a time; see [GAMES.md](GAMES.md).
 
@@ -37,6 +38,7 @@ npm start                 # http://localhost:8080  (PORT=3000 npm start to chang
 - Chess: http://localhost:8080/chess/
 - Checkers: http://localhost:8080/checkers/
 - Backgammon: http://localhost:8080/backgammon/
+- Chutes and Ladders: http://localhost:8080/chutes-and-ladders/
 - Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?room=CODE` joins a room.
 - Health: http://localhost:8080/healthz
 
