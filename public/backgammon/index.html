@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Backgammon · Daily Dose of Play</title>
+    <meta name="description" content="Free Backgammon with a friend or vs a robot, right in the browser. No sign-up." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/engine/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section id="lobby" aria-live="polite"></section>
+      <section id="bg-settings" class="card lobby-card bg-settings" aria-label="Game settings" hidden></section>
+      <section id="game" hidden></section>
+      <details class="card rules">
+        <summary>How to play</summary>
+        <ul>
+          <li>You each have fifteen checkers on a track of twenty-four points. You race them the opposite way to your opponent's, into your home board at the bottom right, then off the board.</li>
+          <li>Your dice roll by themselves when your turn starts. Move one checker by each die, or one checker by both. A double lets you move that number four times.</li>
+          <li>You may not land on a point where your opponent has two or more checkers. Land on a point with just one, and that checker goes to the bar in the middle.</li>
+          <li>With a checker on the bar, your first job is to bring it back in, into your opponent's home board at the top right, before you move anything else.</li>
+          <li>Play both dice if you can. If only one can be played, play the bigger one. With no legal move at all, your turn passes by itself.</li>
+          <li>When all fifteen of your checkers are in your home board, start bearing them off: a 4 takes one off your 4 point. A die bigger than your farthest checker bears that one off.</li>
+          <li>The first to bear off all fifteen checkers wins. There is no doubling cube.</li>
+          <li>Tap a checker, then the point it should go to. <strong>Undo</strong> takes a step back; <strong>Confirm</strong> ends your turn. The number by each name is that player's pip count: how far they still have to go.</li>
+          <li>Before a game, pick a time limit for each turn and a clock for each player's whole game, who moves first, and how strong the robot plays. When you play a friend, the settings of whoever creates the room apply to both of you. Whoever runs out of time loses.</li>
+          <li>On a keyboard, move around the board with the arrow keys and press Enter or Space to pick a checker or a point. Escape lets go of a checker.</li>
+          <li>Fair play: both browsers check every move with the same rules, and the dice are drawn by both browsers together, so neither can load them.</li>
+        </ul>
+      </details>
+    </main>
+  </body>
+</html>

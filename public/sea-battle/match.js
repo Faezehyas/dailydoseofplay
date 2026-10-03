@@ -14,8 +14,10 @@
 // Messages (all carry m = match number, so rematches never mix):
 //   ready  { commit, chain }      fleet commitment + hash-chain tip
 //   draw   { k, v }               SharedRandom reveal for draw k
-//   fire   { w, at }              weapon + aimed square (no `at` for rain)
+//   fire   { w, at, ms, dir }     weapon + aimed square (no `at` for rain) + time spent
+//                                 (+ "row" | "col" for the carpet bomb)
 //   result { hits, sunk }         defender's answer: 0/1 per fired square, newly sunk ships
+//   timeout {}                    the sender's own clock ran out: they lose
 //   reveal { fleet, salt }        after game over
 //   abort  { reason }             protocol violation detected
 //
@@ -25,10 +27,12 @@ import { SharedRandom, commit, verifyCommit, FairPlayError } from "../engine/fai
 import {
   answerShots,
   applyFire,
+  applyTimeout,
   auditBoard,
   checkFire,
   giftsDue,
   newMatchState,
+  normalizeConfig,
   normalizeFleet,
   other,
   rainCells,
@@ -38,8 +42,10 @@ import {
 } from "./rules.js";
 
 export class SeaBattleMatch extends Emitter {
-  constructor({ send, me, fleet, m = 1 }) {
+  // config: the room's time limits (see normalizeConfig); none means no clocks.
+  constructor({ send, me, fleet, m = 1, config = null }) {
     super();
+    this.config = config ? normalizeConfig(config) : undefined;
     this.send = (msg) => send({ ...msg, m });
     this.me = me; // 0 = host, 1 = guest
     this.m = m;
@@ -92,27 +98,40 @@ export class SeaBattleMatch extends Emitter {
     return this.phase === "playing" && this.state.turn === this.me && !this.pending && !this.working;
   }
 
-  fire(weapon, target) {
+  // ms: time spent on this shot (required when the room has clocks).
+  // dir: the carpet bomb's "row" or "col".
+  fire(weapon, target, ms, dir) {
     return this.#enqueue(async () => {
       if (!this.canFireQueued()) return;
       let cells;
       try {
-        cells = checkFire(this.state, this.me, weapon, target);
+        cells = checkFire(this.state, this.me, weapon, target, ms, dir);
       } catch (err) {
         if (err instanceof RuleError) return this.emit("invalid", err.message);
         throw err;
       }
-      this.pending = { weapon, target, cells };
-      this.send({ t: "fire", w: weapon, at: weapon === "rain" ? undefined : target });
+      if (weapon !== "carpet") dir = undefined;
+      this.pending = { weapon, target, cells, ms };
+      this.send({ t: "fire", w: weapon, at: weapon === "rain" ? undefined : target, ms, dir });
       if (weapon === "rain") {
         this.pending.cells = rainCells(this.state.boards[other(this.me)], await this.#draw());
       }
-      this.emit("fired", { by: this.me, weapon, target, cells: this.pending.cells });
+      this.emit("fired", { by: this.me, weapon, target, dir, cells: this.pending.cells });
     });
   }
 
   canFireQueued() {
     return this.phase === "playing" && this.state.turn === this.me && !this.pending;
+  }
+
+  // My clock ran out on my turn: I lose.
+  timeout() {
+    return this.#enqueue(async () => {
+      if (!this.canFireQueued() || !this.state.clocks) return;
+      applyTimeout(this.state, this.me);
+      this.send({ t: "timeout" });
+      await this.#finish();
+    });
   }
 
   receive(msg) {
@@ -166,7 +185,7 @@ export class SeaBattleMatch extends Emitter {
   async #start() {
     const rng = await this.#draw();
     const first = rng() < 0.5 ? 0 : 1;
-    this.state = newMatchState(first);
+    this.state = newMatchState(first, this.config);
     this.phase = "playing";
     this.emit("start", { first });
   }
@@ -186,19 +205,25 @@ export class SeaBattleMatch extends Emitter {
         if (this.phase !== "playing") throw new RuleError("fire outside play");
         const shooter = other(this.me);
         const weapon = String(msg.w);
-        let cells = checkFire(this.state, shooter, weapon, msg.at);
+        let cells = checkFire(this.state, shooter, weapon, msg.at, msg.ms, msg.dir);
         if (weapon === "rain") cells = rainCells(this.state.boards[this.me], await this.#draw());
-        this.emit("fired", { by: shooter, weapon, target: msg.at, cells });
+        this.emit("fired", { by: shooter, weapon, target: msg.at, dir: msg.dir, cells });
         const { hits, sunk } = answerShots(this.fleet, this.state.boards[this.me], cells);
         this.send({ t: "result", hits, sunk });
-        await this.#advance(shooter, weapon, cells, hits, sunk);
+        await this.#advance(shooter, weapon, cells, hits, sunk, { ms: msg.ms, target: msg.at });
         return;
       }
       case "result": {
         if (!this.pending) throw new RuleError("unexpected result");
-        const { weapon, cells } = this.pending;
+        const { weapon, cells, ms, target } = this.pending;
         this.pending = null;
-        await this.#advance(this.me, weapon, cells, msg.hits, msg.sunk);
+        await this.#advance(this.me, weapon, cells, msg.hits, msg.sunk, { ms, target });
+        return;
+      }
+      case "timeout": {
+        if (this.phase !== "playing") throw new RuleError("timeout outside play");
+        applyTimeout(this.state, other(this.me));
+        await this.#finish();
         return;
       }
       case "reveal": {
@@ -211,20 +236,22 @@ export class SeaBattleMatch extends Emitter {
     }
   }
 
-  async #advance(shooter, weapon, cells, hits, sunk) {
-    const events = applyFire(this.state, shooter, weapon, cells, hits, sunk);
+  async #advance(shooter, weapon, cells, hits, sunk, shot) {
+    const events = applyFire(this.state, shooter, weapon, cells, hits, sunk, shot);
     this.emit("events", { shooter, weapon, events });
-    if (this.state.winner !== -1) {
-      this.phase = "over";
-      this.send({ t: "reveal", fleet: this.fleet, salt: this.salt });
-      this.emit("over", { winner: this.state.winner });
-      if (this.peerReveal) await this.#audit();
-      return;
-    }
+    if (this.state.winner !== -1) return this.#finish();
     if (giftsDue(this.state)) {
       const spawned = spawnGifts(this.state, await this.#draw());
       if (spawned.length) this.emit("gifts", spawned);
     }
+  }
+
+  // Game over (fleet sunk or clock out): reveal my fleet and audit theirs.
+  async #finish() {
+    this.phase = "over";
+    this.send({ t: "reveal", fleet: this.fleet, salt: this.salt });
+    this.emit("over", { winner: this.state.winner, reason: this.state.reason });
+    if (this.peerReveal) await this.#audit();
   }
 
   async #audit() {

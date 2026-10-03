@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Checkers · Daily Dose of Play</title>
+    <meta name="description" content="Free Checkers (English draughts) with a friend or vs a robot. No sign-up." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/engine/theme.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section id="lobby" aria-live="polite"></section>
+      <section id="ck-settings" class="card lobby-card ck-settings" aria-label="Game settings" hidden></section>
+      <section id="game" hidden></section>
+      <details class="card rules">
+        <summary>How to play</summary>
+        <ul>
+          <li>Each player starts with 12 pieces on the dark squares of an 8 × 8 board, in the three rows nearest to them. Pieces only ever stand on dark squares.</li>
+          <li>Pick who moves first: a coin toss drawn by both browsers, you, or your opponent. When you play a friend, the settings of whoever creates the room apply to both of you.</li>
+          <li>On your turn, move one piece diagonally forward to a free square next to it.</li>
+          <li>Capture by hopping over an opponent's piece next to yours onto the free square just behind it. If you can capture, you must. If, after a hop, the same piece can hop again, it must keep going in the same turn. When several captures are possible, you choose which.</li>
+          <li>A piece that reaches the far row becomes a king (it gets a crown), and its turn ends there. Kings move and capture diagonally backwards as well as forwards, one square at a time.</li>
+          <li>You win when your opponent has no pieces left, or none that can move. After 40 turns in a row with no capture and no new king, the game is a draw.</li>
+          <li>Clocks (optional): a limit for each move, and a total for each player's whole game. Whoever runs out of time loses the round.</li>
+          <li>To move, tap one of your pieces, then the square to land on. For a multi-hop, tap each landing square in turn, or just the last one. Pieces that can move are marked when it's your turn.</li>
+          <li>On a keyboard, move between dark squares with the arrow keys, press Enter or Space to pick a piece or a square, and Escape to put the piece back.</li>
+          <li>Against the robot, pick Easy, Medium or Hard before you start.</li>
+          <li>Sounds: a wooden clack when a piece lands, a knock for each piece captured, and a chime for a new king. The speaker button at the top mutes them on this device.</li>
+          <li>Press <strong>Rematch</strong> for another round with the same settings. The score counts your wins, draws and losses while you both stay.</li>
+          <li>Fair play: both browsers check every move with the same rules, so a move that breaks them stops the match. Each browser keeps its own player's clock.</li>
+        </ul>
+      </details>
+    </main>
+  </body>
+</html>

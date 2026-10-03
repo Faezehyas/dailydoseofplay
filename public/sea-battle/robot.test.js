@@ -76,16 +76,21 @@ test("in hunt mode the robot uses parity and ignores impossible squares", () => 
   assert.ok(density[idx(4, 4)] > density[idx(0, 0)], "centre squares are likelier than corners");
 });
 
-test("robot uses gifts: splash weapons when hunting, missile for a bonus shot", () => {
+test("robot uses gifts: splash weapons when hunting", () => {
   const state = newMatchState(0);
   state.inventory[0].nuke = 1;
   assert.equal(chooseMove(state, 0, rngFromSeed("w")).weapon, "nuke");
-  state.inventory[0] = { missile: 0, big: 1, rain: 0, nuke: 0 };
+  state.inventory[0] = { big: 1, rain: 0, nuke: 0 };
   assert.equal(chooseMove(state, 0, rngFromSeed("w")).weapon, "big");
-  state.inventory[0] = { missile: 0, big: 0, rain: 1, nuke: 0 };
+  state.inventory[0] = { big: 0, rain: 1, nuke: 0 };
   assert.equal(chooseMove(state, 0, rngFromSeed("w")).weapon, "rain");
-  state.inventory[0] = { missile: 1, big: 0, rain: 0, nuke: 0 };
-  assert.equal(chooseMove(state, 0, rngFromSeed("w")).weapon, "missile");
+  state.inventory[0] = { big: 0, rain: 0, nuke: 0, carpet: 1 };
+  const carpet = chooseMove(state, 0, rngFromSeed("w"));
+  assert.equal(carpet.weapon, "carpet");
+  assert.ok(["row", "col"].includes(carpet.dir));
+  // A middle line crosses more likely ship squares than an edge.
+  const line = carpet.dir === "row" ? Math.floor(carpet.target / 10) : carpet.target % 10;
+  assert.ok(line > 0 && line < 9, `aimed at line ${line}`);
 });
 
 test("robot vs robot through the full rules (gifts and weapons included) always finishes", () => {
@@ -97,11 +102,11 @@ test("robot vs robot through the full rules (gifts and weapons included) always 
     while (state.winner === -1) {
       assert.ok(moves++ < 400, "game should end");
       const me = state.turn;
-      const { weapon, target } = chooseMove(state, me, rng);
-      let cells = checkFire(state, me, weapon, target);
+      const { weapon, target, dir } = chooseMove(state, me, rng);
+      let cells = checkFire(state, me, weapon, target, undefined, dir);
       if (weapon === "rain") cells = rainCells(state.boards[1 - me], rng);
       const { hits, sunk } = answerShots(fleets[1 - me], state.boards[1 - me], cells);
-      applyFire(state, me, weapon, cells, hits, sunk);
+      applyFire(state, me, weapon, cells, hits, sunk, { target });
       if (giftsDue(state)) spawnGifts(state, rng);
     }
     assert.ok(state.winner === 0 || state.winner === 1);
@@ -127,7 +132,7 @@ test("startRobot plays a whole match against a scripted human over the session p
     assert.notEqual(me.phase, "aborted");
     if (me.canFire()) {
       const move = chooseMove(me.state, 0, rng);
-      await me.fire(move.weapon, move.target);
+      await me.fire(move.weapon, move.target, undefined, move.dir);
     }
     await new Promise((r) => setTimeout(r, 1));
   }
