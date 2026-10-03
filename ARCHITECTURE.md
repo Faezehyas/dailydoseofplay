@@ -74,7 +74,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, and holds messages for a rematch that hasn't started yet |
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
-| `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
+| `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
 **Session flow.**
@@ -168,6 +168,15 @@ Every value was fixed when the tip was published, so the second peer to
 reveal can't change its value after seeing the first. Nobody can compute a
 future value from the published ones. Each draw costs one message per peer,
 with no extra commit round.
+
+**Hashing on plain http.** Browsers only give `crypto.subtle` to secure
+origins: https, `localhost` and `127.0.0.1`. A page opened at
+`http://0.0.0.0:8080` (the address `npm start` prints) or at a LAN IP has
+none. Without it, the coin toss threw before the first move, so every game
+sat on "Tossing a coin…" or a robot that never moved. `sha256` now falls back
+to a plain-JS SHA-256 that gives the same bytes (`fair.test.js` compares the
+two on every length from 0 to 300), so a peer with WebCrypto and one without
+still agree on every draw.
 
 **What this does not stop.** A peer can stall or leave, which looks like a
 disconnect. A modified client can also lie in real time; that lie is caught at

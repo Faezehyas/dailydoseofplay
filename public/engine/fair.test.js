@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { commit, verifyCommit, HashChain, ChainVerifier, SharedRandom, sha256, toHex, FairPlayError, canonical } from "./fair.js";
+import { commit, verifyCommit, HashChain, ChainVerifier, SharedRandom, sha256, sha256js, toHex, FairPlayError, canonical } from "./fair.js";
 import { localPair } from "./channel.js";
 import { Session, openSession } from "./session.js";
 
@@ -90,4 +90,31 @@ test("sessions refuse a peer from another game", async () => {
     ]),
     /version_mismatch/,
   );
+});
+
+test("the JS SHA-256 matches WebCrypto, including every padding edge", async () => {
+  assert.equal(toHex(sha256js(new Uint8Array(0))), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  assert.equal(toHex(sha256js(new TextEncoder().encode("abc"))), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  for (let n = 0; n <= 300; n++) {
+    const bytes = Uint8Array.from({ length: n }, (_, i) => (i * 31 + n * 7) & 255);
+    const expected = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    assert.deepEqual(sha256js(bytes), expected, `length ${n}`);
+  }
+});
+
+test("hashing and shared draws work without WebCrypto (plain-http pages)", async (t) => {
+  const real = globalThis.crypto;
+  const expected = toHex(await sha256("ddp"));
+  Object.defineProperty(globalThis, "crypto", { value: { getRandomValues: (a) => real.getRandomValues(a) }, configurable: true, writable: true });
+  t.after(() => Object.defineProperty(globalThis, "crypto", { value: real, configurable: true, writable: true }));
+  assert.equal(globalThis.crypto.subtle, undefined);
+  assert.equal(toHex(await sha256("ddp")), expected);
+  const { commitment, salt } = await commit({ a: 1 });
+  assert.equal(await verifyCommit(commitment, { a: 1 }, salt), true);
+  const a = await SharedRandom.create();
+  const b = await SharedRandom.create();
+  a.setPeer(b.tip, 0);
+  b.setPeer(a.tip, 1);
+  const [ra, rb] = await Promise.all([a.draw((k, v) => b.receive(k, v)), b.draw((k, v) => a.receive(k, v))]);
+  assert.equal(ra(), rb(), "both peers draw the same number");
 });
