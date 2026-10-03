@@ -236,6 +236,7 @@ function mountChess(session, root, shell) {
   function send(move) {
     selected = -1;
     promoFor = null;
+    promoBox.hidden = true;
     match.play(withTime(move));
     render();
   }
@@ -536,6 +537,7 @@ function mountChess(session, root, shell) {
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
     status.classList.toggle("check", phase === "playing" && st.turn === me && inCheck(st));
     renderBoard();
+    if (!promoFor) promoBox.hidden = true;
     renderTaken();
     renderMoves();
     renderActions();

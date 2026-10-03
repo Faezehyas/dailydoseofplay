@@ -185,6 +185,7 @@ test("two friends play Chess on the host's settings through the invite link, the
   await host.screenshot({ path: `${ARTIFACTS}/chess-3-promotion.png` });
   await host.click('.promo-opt[data-promo="n"]');
   await bothSee(9);
+  await host.locator("#chess-promo").waitFor({ state: "hidden" });
   assert.equal(await guest.evaluate(() => window.ddp.match.state.moves.at(-1).san), "bxa8=N");
   assert.equal(await knocks(host), 4 + 9);
   assert.equal(await knocks(guest), 4, "muted: no more knocks");
@@ -261,6 +262,7 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
     await page.tap(`.sq[data-sq="${move.to}"]`);
     if (move.promo) await page.tap(`.promo-opt[data-promo="${move.promo}"]`);
     await wait(page, (k) => window.ddp.match.state.moves.length > k || window.ddp.match.phase !== "playing", n);
+    assert.ok(await page.locator("#chess-promo").isHidden(), "the promotion picker closes");
     taps++;
   }
   await wait(page, () => window.ddp.match.phase === "over");
