@@ -1,0 +1,494 @@
+/* Connect 4 view. Uses the shared tokens from /engine/theme.css. */
+.connect-4 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.c4-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.c4-top > .btn {
+  flex: none;
+}
+
+/* Each name keeps its full width when it fits; long names share what's left. */
+.c4-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.c4-players .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.c4-players .who.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.c4-players .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c4-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.pill-disc {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 2px dashed var(--muted);
+}
+
+.pill-disc[data-c="coral"],
+.pill-disc[data-c="teal"] {
+  border: 0;
+  background: var(--disc);
+  box-shadow: inset 0 0 0 3px var(--disc-ring);
+}
+
+/* ---------- discs: coral moves first, teal second ---------- */
+[data-c="coral"],
+[data-v="coral"],
+.c4-board[data-me="coral"] {
+  --disc: var(--accent);
+  --disc-ring: color-mix(in srgb, var(--accent) 70%, var(--sunk));
+}
+
+[data-c="teal"],
+[data-v="teal"],
+.c4-board[data-me="teal"] {
+  --disc: var(--accent-2);
+  --disc-ring: color-mix(in srgb, var(--accent-2) 70%, var(--sunk));
+}
+
+/* ---------- score ---------- */
+.c4-score {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.c4-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.c4-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c4-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.c4-score .mine dd {
+  color: var(--accent);
+}
+
+.c4-score .theirs dd {
+  color: var(--accent-2);
+}
+
+/* ---------- status ---------- */
+.c4-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.c4-status.mine {
+  color: var(--accent);
+}
+
+.c4-config,
+.c4-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- clocks ---------- */
+.c4-clocks {
+  display: grid;
+  grid-template-columns: 4.2em minmax(0, 1fr) 4.2em;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.c4-clocks .clock {
+  padding: 2px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.c4-clocks .clock.theirs {
+  grid-column: 3;
+}
+
+.c4-clocks .clock.active {
+  color: var(--text);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2) inset;
+}
+
+.c4-clocks .clock.mine.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.c4-clocks .clock.low {
+  color: var(--danger);
+}
+
+.c4-clocks .move {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.c4-movebar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.c4-movebar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  transition: width 0.2s linear;
+}
+
+.c4-movebar.mine > span {
+  background: var(--accent);
+}
+
+.c4-movebar.low > span {
+  background: var(--danger);
+}
+
+.move-left {
+  flex: none;
+  min-width: 2.6em;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- settings (lobby) ---------- */
+.c4-settings {
+  text-align: left;
+}
+
+.c4-settings h2 {
+  font-size: 1.1rem;
+}
+
+.c4-seg {
+  border: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  min-width: 0;
+}
+
+.c4-seg legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.c4-seg legend small {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.seg-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seg-opt {
+  position: relative;
+}
+
+.seg-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.seg-opt span {
+  display: inline-grid;
+  align-content: center;
+  min-height: 40px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.seg-opt small {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.seg-opt input:checked + span {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+.seg-opt input:checked + span small {
+  color: inherit;
+}
+
+.seg-opt input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.c4-settings .hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- board ---------- */
+.c4-board-wrap {
+  display: grid;
+  justify-items: center;
+}
+
+/* The frame keeps the board's squares square: the board itself has no padding. */
+.c4-frame {
+  --cols: 7;
+  --rows: 6;
+  --board: color-mix(in srgb, var(--focus) 85%, var(--surface));
+  --hole: var(--bg);
+  width: 100%;
+  max-width: min(480px, max(260px, calc((100svh - 260px) * var(--cols) / var(--rows))));
+  padding: 6px;
+  border-radius: var(--radius);
+  background: var(--board);
+  box-shadow: var(--shadow), inset 0 -4px 0 color-mix(in srgb, var(--board) 80%, var(--sunk));
+}
+
+.c4-board {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  aspect-ratio: var(--cols) / var(--rows);
+}
+
+.c4-col {
+  display: grid;
+  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+
+.c4-col:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 6px var(--hole);
+}
+
+.c4-board.armed .c4-col:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .c4-board.armed .c4-col:not([aria-disabled="true"]):hover {
+    background: color-mix(in srgb, var(--surface) 18%, transparent);
+  }
+}
+
+.c4-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The hole. */
+.c4-cell::before {
+  content: "";
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  background: var(--hole);
+  box-shadow: inset 0 3px 4px color-mix(in srgb, var(--sunk) 35%, transparent);
+}
+
+/* A faint disc where your next one would land. */
+.c4-board.armed .c4-col:focus-visible .c4-cell.next::after {
+  content: "";
+  position: absolute;
+  inset: 15%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--disc) 30%, transparent);
+  box-shadow: inset 0 0 0 3px var(--disc);
+}
+
+@media (hover: hover) {
+  .c4-board.armed .c4-col:hover .c4-cell.next::after {
+    content: "";
+    position: absolute;
+    inset: 15%;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--disc) 30%, transparent);
+    box-shadow: inset 0 0 0 3px var(--disc);
+  }
+}
+
+.c4-disc {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  animation: c4-drop calc(0.12s + var(--fall) * 0.05s) cubic-bezier(0.5, 0, 1, 1) both;
+}
+
+/* Smaller than the hole, so a rim of the hole always frames the disc. */
+.c4-disc::before {
+  content: "";
+  position: absolute;
+  inset: 15%;
+  border-radius: 50%;
+  background: var(--disc-fill, var(--disc));
+  box-shadow: inset 0 0 0 4px var(--disc-ring);
+}
+
+@keyframes c4-drop {
+  from {
+    transform: translateY(calc(var(--fall) * -100%));
+  }
+}
+
+.c4-cell.last .c4-disc::after {
+  content: "";
+  position: absolute;
+  inset: 38%;
+  border-radius: 50%;
+  background: var(--sunk);
+}
+
+.c4-cell.win::before {
+  box-shadow: inset 0 3px 4px color-mix(in srgb, var(--sunk) 35%, transparent), 0 0 0 3px var(--text);
+}
+
+.c4-board.done .c4-cell:not(.win) .c4-disc {
+  --disc-fill: color-mix(in srgb, var(--disc) 65%, var(--sunk));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c4-disc {
+    animation: none;
+  }
+}
+
+/* ---------- game over ---------- */
+.c4-over {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.c4-over h2 {
+  font-size: 1.6rem;
+}
+
+.c4-over h2.win {
+  color: var(--accent);
+}
+
+.c4-over .detail {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.c4-over .detail.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.c4-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}

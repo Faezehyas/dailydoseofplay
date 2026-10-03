@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tic Tac Toe · Daily Dose of Play</title>
-    <meta name="description" content="Free Tic Tac Toe (noughts and crosses) with a friend or vs a robot. No sign-up." />
+    <title>Connect 4 · Daily Dose of Play</title>
+    <meta name="description" content="Free Connect 4 (four in a row) with a friend or vs a robot. No sign-up." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/engine/theme.css" />
     <link rel="stylesheet" href="./style.css" />
@@ -13,18 +13,19 @@
   <body>
     <main class="page">
       <section id="lobby" aria-live="polite"></section>
-      <section id="ttt-settings" class="card lobby-card" aria-label="Game settings" hidden></section>
+      <section id="c4-settings" class="card lobby-card c4-settings" aria-label="Game settings" hidden></section>
       <section id="game" hidden></section>
       <details class="card rules">
         <summary>How to play</summary>
         <ul>
-          <li>Two players share a grid. One plays X, the other plays O, and X always moves first.</li>
-          <li>Before a game, pick the board: <strong>3 × 3</strong>, where three in a row wins, or <strong>5 × 5</strong>, where you need four in a row.</li>
-          <li>Pick who moves first: a coin toss drawn by both browsers, you, or your opponent. When you play a friend, the settings of whoever creates the room apply to both of you.</li>
-          <li>Take turns marking one empty square. Line up your marks across, down or corner to corner to win. A full board with no line is a draw.</li>
+          <li>The board stands upright. Pick a column and your disc slides down to the lowest empty spot in it.</li>
+          <li>Take turns dropping one disc each. The first to line up <strong>four</strong> of their colour across, up and down, or on a slant wins. If every column fills up first, it's a draw.</li>
+          <li>Coral always moves first. Pick who that is: a coin toss drawn by both browsers, you, or your opponent.</li>
+          <li>Pick the board: the classic <strong>7 × 6</strong>, or a roomier 8 × 7, 8 × 8, 9 × 7 or 9 × 9. It's always four in a row.</li>
           <li>Clocks (optional): a limit for each move, and a total for each player's whole game. Whoever runs out of time loses the round.</li>
+          <li>Playing the robot? Choose Easy, Medium or Hard. When you play a friend, the settings of whoever creates the room apply to both of you.</li>
           <li>Press <strong>Rematch</strong> for another round with the same settings. The score counts your wins, draws and losses while you both stay.</li>
-          <li>On a keyboard, move between squares with the arrow keys and press Enter or Space to play.</li>
+          <li>On a keyboard, move between columns with the arrow keys and press Enter or Space to drop.</li>
           <li>Fair play: both browsers check every move with the same rules, so a move that breaks them stops the match. Each browser keeps its own player's clock.</li>
         </ul>
       </details>

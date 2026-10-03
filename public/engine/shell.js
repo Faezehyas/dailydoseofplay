@@ -1,5 +1,6 @@
-// UI shell shared by the home page and every game: header, theme toggle,
-// nickname storage, toasts and tiny DOM helpers.
+// UI shell shared by the home page and every game: header, theme and sound
+// toggles, nickname storage, toasts, tab-title alerts and tiny DOM helpers.
+import { soundOn, setSound } from "./sound.js";
 
 const THEME_KEY = "ddp-theme";
 const NAME_KEY = "ddp-name";
@@ -62,6 +63,8 @@ function effectiveDark() {
 const ICONS = {
   sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>',
   moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>',
+  soundOn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
+  soundOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
 };
 
 export function logoSvg() {
@@ -91,11 +94,33 @@ export function initShell({ title } = {}) {
   matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", renderThemeBtn);
   renderThemeBtn();
   const right = el("div", { class: "header-right" });
-  if (title) right.append(el("span", { class: "header-game" }, title));
+  if (title) {
+    const soundBtn = el("button", { class: "icon-btn", type: "button", id: "sound-toggle" });
+    const renderSoundBtn = () => {
+      const on = soundOn();
+      soundBtn.innerHTML = on ? ICONS.soundOn : ICONS.soundOff;
+      soundBtn.title = on ? "Mute sounds" : "Turn sounds on";
+      soundBtn.setAttribute("aria-label", soundBtn.title);
+      soundBtn.setAttribute("aria-pressed", on ? "false" : "true");
+    };
+    soundBtn.addEventListener("click", () => {
+      setSound(!soundOn());
+      renderSoundBtn();
+    });
+    renderSoundBtn();
+    right.append(el("span", { class: "header-game" }, title), soundBtn);
+  }
   right.append(themeBtn);
   header.append(brand, right);
   document.body.prepend(header);
   return header;
+}
+
+// Prefix the tab title (e.g. "Your turn") so a background tab shows it.
+let baseTitle = null;
+export function setTabAlert(text) {
+  if (baseTitle === null) baseTitle = document.title;
+  document.title = text ? `● ${text} · ${baseTitle}` : baseTitle;
 }
 
 let toastTimer = null;
