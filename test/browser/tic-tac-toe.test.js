@@ -73,6 +73,9 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   assert.equal(await guest.locator("#ttt-config").innerText(), "5 × 5, four in a row · 30 s a move · 2 min each");
   assert.equal(await host.locator("#ttt-config").innerText(), await guest.locator("#ttt-config").innerText());
   assert.match(await host.locator(".ttt-players").innerText(), /Ada[\s\S]*Bo/);
+  // "Ada vs Bo" stays together, centred over the scoreboard.
+  const centre = (page, sel) => page.locator(sel).evaluate((n) => { const r = n.getBoundingClientRect(); return r.left + r.width / 2; });
+  assert.ok(Math.abs((await centre(host, ".ttt-players")) - (await centre(host, "#ttt-score"))) < 2, "the players are centred");
   assert.match(await guest.locator(".ttt-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -189,6 +192,9 @@ test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on th
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
   assert.match(await page.locator(".ttt-players").innerText(), /Cleo[\s\S]*Robot/);
+  // On a phone the names use the full width, from the scoreboard's left edge.
+  const left = (sel) => page.locator(sel).evaluate((n) => n.getBoundingClientRect().left);
+  assert.ok(Math.abs((await left(".ttt-players")) - (await left("#ttt-score"))) < 1, "the names start at the scoreboard's edge");
   assert.match(await page.locator("#ttt-config").innerText(), /3 × 3, three in a row · 5 s a move · no game clock/);
   assert.equal(await page.evaluate(() => window.ddp.match.state.turn), 0, "the room setting says I start");
   assert.ok(await page.locator("#ttt-move-left").isVisible());
