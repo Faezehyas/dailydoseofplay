@@ -76,7 +76,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
-| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
+| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions and Backgammon's checkers and dice are CC0 recordings, see each game's `sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
 **Session flow.**
@@ -344,6 +344,18 @@ win, and when the opponent could bear off next turn it hits if it can.
 Medium beats Easy 75% of the time (1000 seeded games per pair). Each choice
 takes under 2 ms in Node; `robot.test.js` holds the levels apart and checks a
 crowded board with doubles stays under 100 ms.
+
+**Motion and sound.** The match state never waits for the screen. When a
+checker moves, the real one is drawn hidden where it lands, and a copy flies
+there over the board: lifted a little, along a low arc, for 240 to 620 ms
+depending on the distance (your own moves fly a third faster). A checker that
+is hit flies to the bar once the mover lands, and a borne-off checker shrinks
+into a slab in the tray. The opponent's play waits 250 ms after their dice
+land, then moves one checker at a time with a short pause between steps; your
+dice roll 400 ms after their last checker settles. New dice tumble in. Every
+landing plays a recorded wooden clack, and a roll plays dice on wood, through
+`playSample()` and the header's mute toggle. With `prefers-reduced-motion`,
+checkers move at once and the dice don't tumble.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
