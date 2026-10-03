@@ -1,8 +1,9 @@
 // Headless-browser test for Checkers: two browser contexts play a friend
 // match on the host's settings (clocks, host starts) through the invite link
 // over a real WebRTC DataChannel, then a rematch the friend loses on the move
-// clock; a full robot game on a phone; and a robot that moves first on a
-// plain-http page without WebCrypto. Skips if Playwright is missing.
+// clock; a full robot game on a phone; a robot that moves first on a
+// plain-http page without WebCrypto; and move sounds with the mute button.
+// Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -336,5 +337,53 @@ test("the robot moves first on a plain-http page without WebCrypto (http://0.0.0
   assert.equal(await page.locator("#ck-status").innerText(), "Your turn.");
   await playPath(page, await nextPath(page, "first"), "click");
   await wait(page, () => window.ddp.match.state.moves.length === 3);
+  assert.deepEqual(errors, []);
+});
+
+test("moves play a wooden clack, and the mute button silences them", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const ctx = await browser.newContext();
+  // Count the oscillators started (one per clack) and remember the context state.
+  await ctx.addInitScript(() => {
+    window.soundLog = { clacks: 0, state: null };
+    const proto = BaseAudioContext.prototype;
+    const create = proto.createOscillator;
+    proto.createOscillator = function (...args) {
+      window.soundLog.clacks++;
+      window.soundLog.state = this.state;
+      return create.apply(this, args);
+    };
+    localStorage.setItem("ddp-checkers-settings", JSON.stringify({ moveSeconds: 0, gameSeconds: 0, first: "host", level: "easy" }));
+  });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(`${srv.base}/checkers/`);
+  await page.click("#play-robot");
+  await wait(page, () => window.ddp.match?.canMove());
+  const clacks = () => page.evaluate(() => window.soundLog.clacks);
+  assert.equal(await clacks(), 0, "nothing plays before a move");
+
+  // My move, then the robot's: each lands with a clack.
+  await playPath(page, await nextPath(page, "first"), "click");
+  await wait(page, () => window.soundLog.clacks >= 1);
+  assert.equal(await page.evaluate(() => window.soundLog.state), "running");
+  const afterMine = await clacks();
+  await wait(page, () => window.ddp.match.canMove());
+  assert.ok((await clacks()) > afterMine, "the robot's move sounds too");
+
+  // Muted from the header: moves are silent.
+  await page.click("#sound-toggle");
+  assert.equal(await page.locator("#sound-toggle").getAttribute("aria-pressed"), "true");
+  const muted = await clacks();
+  const n = await moveCount(page);
+  await playPath(page, await nextPath(page, "first"), "click");
+  await wait(page, (k) => window.ddp.match.state.moves.length >= k + 2 && window.ddp.match.canMove(), n);
+  assert.equal(await clacks(), muted, "no sound while muted");
   assert.deepEqual(errors, []);
 });
