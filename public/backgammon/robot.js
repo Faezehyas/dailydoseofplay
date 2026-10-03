@@ -5,6 +5,8 @@
 // and how often it plays a random move instead; in a race, where nothing can
 // be hit, every level plays its best move.
 import { randInt } from "../engine/rng.js";
+import { matchRouter } from "../engine/session.js";
+import { TurnMatch } from "../engine/turn-match.js";
 import { BAR, OFF, CHECKERS, legalPlays, pipCount } from "./rules.js";
 
 export const LEVEL = {
@@ -163,3 +165,36 @@ export function chooseMove(state, me, rng = Math.random, { level = "medium", ran
   return { type: "play", steps: picks[randInt(rng, picks.length)].steps };
 }
 
+// Drives the robot's side of a session, like the engine's startTurnRobot,
+// except that the pause before each move is asked for each time, so it can
+// change during a game. choose(state, me, rng, ms) also gets that pause.
+export function startRobot(session, { rules, choose, delay, rng = Math.random }) {
+  const router = matchRouter(session);
+  let match = null;
+  let timer = null;
+  let destroyed = false;
+  function schedule() {
+    if (destroyed || timer || !match.canMove()) return;
+    const ms = delay(match.state, match.me);
+    timer = setTimeout(() => {
+      timer = null;
+      if (!destroyed && match.canMove()) match.play(choose(match.state, match.me, rng, ms));
+    }, ms);
+  }
+  function newMatch(m) {
+    match = new TurnMatch({ send: (msg) => session.send(msg), me: session.index, rules, m });
+    match.on("update", schedule);
+    router.start(match);
+  }
+  session.on("rematch-start", () => newMatch(match.m + 1));
+  newMatch(1);
+  return {
+    get match() {
+      return match;
+    },
+    destroy() {
+      destroyed = true;
+      clearTimeout(timer);
+    },
+  };
+}

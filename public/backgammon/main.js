@@ -2,14 +2,15 @@
 // The rules live in rules.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
-import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
+import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playSample, preload } from "../engine/sound.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
-import { chooseMove, inContact } from "./robot.js";
+import { chooseMove, inContact, startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
 
 const ROBOT_DELAY = 800;
+const ROBOT_RACING = 250; // the robot's pause once you let the game race your checkers home
 const ROLL_DELAY = 600; // before your dice roll themselves
 const PASS_DELAY = 1600; // after a passed turn, so the notice can be read
 const SETTLE_DELAY = 400; // after the opponent's checkers land, before your dice roll
@@ -38,11 +39,14 @@ const CLACKS = { place: { gain: 0.7 }, hit: { gain: 1, rate: 0.88 }, bar: { gain
 const clack = (kind) => playSample(CLACK, CLACKS[kind]);
 
 function robotChoice(level) {
-  return (state, me, rng) => {
-    if (isTimed(state) && timeLeft(state, me) < ROBOT_DELAY) return { timeout: true };
-    return { ...chooseMove(state, me, rng, { level }), ms: ROBOT_DELAY };
+  return (state, me, rng, ms) => {
+    if (isTimed(state) && timeLeft(state, me) < ms) return { timeout: true };
+    return { ...chooseMove(state, me, rng, { level }), ms };
   };
 }
+
+// True while you let the game move for you in a race: the robot then keeps the same quick pace.
+let racingForYou = false;
 
 startGameShell({
   slug: "backgammon",
@@ -50,7 +54,8 @@ startGameShell({
   tagline: "Roll, run and hit. Bring all fifteen checkers home and off the board first.",
   createRobot: (session) => {
     const config = settings.get();
-    return startTurnRobot(session, { rules: makeRules(config), choose: robotChoice(config.level), delay: ROBOT_DELAY });
+    const delay = (state, me) => (racingForYou && !inContact(state.pos, me) ? ROBOT_RACING : ROBOT_DELAY);
+    return startRobot(session, { rules: makeRules(config), choose: robotChoice(config.level), delay });
   },
   onSession: (session, root, shell) => mountBackgammon(session, root, shell),
 });
@@ -553,11 +558,12 @@ function mountBackgammon(session, root, shell) {
     await pause(BEFORE_MOVE);
     for (const s of played) {
       if (anim !== run || destroyed) return;
+      const quick = auto && racing();
       await moveOnScreen(opp, s.from, s.to, () => {
         run.dice.splice(run.dice.indexOf(s.die), 1);
         return applyStep(run.pos, opp, s.from, s.die);
-      }, 1);
-      await pause(BETWEEN_STEPS);
+      }, quick ? MY_PACE : 1);
+      await pause(quick ? BETWEEN_STEPS / 2 : BETWEEN_STEPS);
     }
     if (anim !== run) return;
     anim = null;
@@ -739,6 +745,7 @@ function mountBackgammon(session, root, shell) {
     undoBtn.disabled = !stage?.steps.length || !!auto;
     confirmBtn.disabled = !stage?.steps.length || steps().length > 0 || !!match?.working || !!auto;
     const race = racing();
+    racingForYou = session.mode === "robot" && race && !!auto;
     offer.hidden = !(race && auto === null && staging);
     autoBtn.hidden = !(race && auto !== null);
     autoBtn.textContent = auto ? "Stop" : "Play for me";
@@ -880,6 +887,7 @@ function mountBackgammon(session, root, shell) {
   return {
     destroy() {
       destroyed = true;
+      racingForYou = false;
       clearInterval(ticker);
       clearTimeout(rollTimer);
       clearTimeout(autoTimer);
