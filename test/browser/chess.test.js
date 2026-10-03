@@ -207,6 +207,9 @@ test("two friends play Chess on the host's settings through the invite link, the
   assert.deepEqual(await host.evaluate(() => [window.knocks, window.clacks]), [4 + 5, 4], "captures clack");
   assert.deepEqual(await guest.evaluate(() => [window.knocks, window.clacks]), [4, 0], "muted: no more sounds");
   assert.match(await host.locator(".chess-taken.mine").innerHTML(), /pc b/, "the host's captures are shown");
+  // On the friend's dark page, the black pieces Ada took get a light outline.
+  const edge = await guest.locator(".chess-taken.theirs .pc.b").first().evaluate((n) => getComputedStyle(n).stroke);
+  assert.equal(edge, "rgb(180, 188, 203)", "captured black pieces stay visible in dark mode");
   await wait(guest, () => window.ddp.match.canMove());
   await guest.click("#resign");
   assert.equal(await guest.locator("#resign").innerText(), "Tap again to resign");

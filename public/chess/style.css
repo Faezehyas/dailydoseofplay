@@ -11,6 +11,7 @@
   --pc-b: #2f2b28;
   --pc-b-line: #120f0d;
   --pc-b-detail: #d9cfc2;
+  --pc-b-edge: var(--pc-b-line); /* black pieces off the board, on the page */
   --hint: rgb(34 30 26 / 26%);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -26,6 +27,7 @@
     --sq-ink-light: #4c5568;
     --sq-ink-dark: #dfe4ee;
     --pc-b-line: #07080b;
+    --pc-b-edge: #b4bccb;
     --hint: rgb(10 12 18 / 34%);
   }
 }
@@ -36,6 +38,7 @@
   --sq-ink-light: #4c5568;
   --sq-ink-dark: #dfe4ee;
   --pc-b-line: #07080b;
+  --pc-b-edge: #b4bccb;
   --hint: rgb(10 12 18 / 34%);
 }
 
@@ -104,7 +107,7 @@
 
 .pill-color[data-color="b"] {
   background: var(--pc-b);
-  border: 2px solid var(--pc-b-line);
+  border: 2px solid var(--pc-b-edge);
 }
 
 /* ---------- score ---------- */
@@ -574,6 +577,11 @@
   width: 20px;
   height: 20px;
   margin-right: -5px;
+  stroke-width: 6;
+}
+
+.chess-taken .pc.b {
+  stroke: var(--pc-b-edge);
 }
 
 .chess-taken .lead {
