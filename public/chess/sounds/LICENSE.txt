@@ -1,0 +1,20 @@
+Piece-on-board recordings: Creative Commons CC0 1.0 (public domain).
+Source: "Chess_foley.mp3" by Amatsuuu on Freesound, "chess pieces hitting the
+wood table and board". Single knocks cut from the preview, trimmed to 0.26 s,
+faded, peak-normalized and converted to mono MP3.
+https://freesound.org/people/Amatsuuu/sounds/629181/
+
+move-1.mp3  <- knock at 4.79 s
+move-2.mp3  <- knock at 11.69 s
+move-3.mp3  <- knock at 12.42 s
+move-4.mp3  <- knock at 13.53 s
+
+Capture clacks: Creative Commons CC0 1.0 (public domain).
+Source: "Board Game Pieces.WAV" by taure on Freesound, "wooden board game
+pieces ... some clicks as they are set down". A sharp click cut from the
+preview, mixed over one of the knocks above at -8 dB, trimmed to 0.30 s,
+faded, peak-normalized and converted to mono MP3.
+https://freesound.org/people/taure/sounds/555190/
+
+capture-1.mp3  <- click at 108.59 s over move-2.mp3
+capture-2.mp3  <- click at 109.85 s over move-1.mp3
