@@ -1,7 +1,8 @@
 // Headless-browser test for Checkers: two browser contexts play a friend
 // match on the host's settings (clocks, host starts) through the invite link
 // over a real WebRTC DataChannel, then a rematch the friend loses on the move
-// clock; and a full robot game on a phone. Skips if Playwright is missing.
+// clock; a full robot game on a phone; and a robot that moves first on a
+// plain-http page without WebCrypto. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -308,5 +309,32 @@ test("Checkers vs the robot on a 360 px phone: a full game by touch, then a rema
   assert.deepEqual(await page.evaluate(() => window.ddp.match.state.board), await page.evaluate(() => window.ddp.robot.match.state.board));
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
+  assert.deepEqual(errors, []);
+});
+
+test("the robot moves first on a plain-http page without WebCrypto (http://0.0.0.0, a LAN IP)", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const ctx = await browser.newContext();
+  // Browsers only give secure origins (https, localhost) crypto.subtle.
+  await ctx.addInitScript(() => {
+    Object.defineProperty(Crypto.prototype, "subtle", { get: () => undefined });
+    localStorage.setItem("ddp-checkers-settings", JSON.stringify({ moveSeconds: 0, gameSeconds: 0, first: "guest", level: "hard" }));
+  });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(`${srv.base}/checkers/`);
+  assert.equal(await page.evaluate(() => crypto.subtle), undefined);
+  await page.click("#play-robot");
+  await wait(page, () => window.ddp.match?.state?.moves.length === 1);
+  assert.equal(await page.evaluate(() => window.ddp.match.state.first), 1, "the robot started");
+  assert.equal(await page.locator("#ck-status").innerText(), "Your turn.");
+  await playPath(page, await nextPath(page, "first"), "click");
+  await wait(page, () => window.ddp.match.state.moves.length === 3);
   assert.deepEqual(errors, []);
 });
