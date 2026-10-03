@@ -72,9 +72,10 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `channel.js` | `Emitter` and `localPair()`, an in-memory channel with the same interface as `PeerChannel` (used for the robot and the tests) |
 | `session.js` | `Session`: names exchange (`$hello` with a protocol version), buffering of game messages, rematch votes (`$rematch`), goodbye (`$bye`). No DOM. |
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, and holds messages for a rematch that hasn't started yet |
-| `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
+| `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
+| `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
 | `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
@@ -122,20 +123,23 @@ handler is attached.
 
 - **Board and fleet:** 10×10, fleet of 5, 4, 3, 3 and 2.
 - **Placement:** ships are placed at random; you can shuffle, drag them, press R while dragging to rotate, or tap a ship to rotate it. Ships may not touch side by side; diagonal contact is allowed.
-- **Turns:** a hit lets you fire again; a miss passes the turn.
+- **Turns:** a hit lets you fire again; a miss, or a hit that sinks a ship, passes the turn.
 - **Sinking:** a sunk ship is revealed, and the squares beside it are marked as clear water.
-- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Shooting a gift's square gives it to the shooter; the weapon inside is shown only then. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears.
-- **Turn clock (friend games):** 40 s per shot, like papergames' per-turn clock. When it runs out, that player's own browser fires a random shot. Each browser runs the clock locally, so it is a courtesy against stalling, not an enforced rule.
+- **Gifts:** after every 6 moves (one fire action is one move), a mystery gift ("?") appears on an unexplored square of each board, at most 2 waiting per board. Only a shot aimed at a gift's own square picks it up (the aimed square of a big missile, nuclear missile or carpet bomb counts); the weapon inside is shown only then. A gift hit by a splash or missile rain aimed elsewhere is destroyed with its square, since nobody can aim at it any more. Each player sees only the gifts on the board they fire at, never the opponent's gifts or pickups. A gift whose square becomes cleared water after a sinking disappears too.
+- **Time limits (room settings):** like papergames, games are timed. Under **Game settings** the player picks a time per shot (10, 20, 30 or 40 s, or none) and a time for each player (3, 5 or 10 min, or none); the default is 30 s a shot and 10 min each. When the time for a shot runs out, that player's browser fires a random shot; when a player's own clock runs out, they lose. In a friend game the room creator's settings apply (the host sends `setup {config}` before the first match, as in Tic Tac Toe). Against the robot only the human's clock runs: the robot reports no time spent. Fleet placement isn't timed.
 
 **Weapons:**
 
 | Weapon | Effect |
 |---|---|
 | Shot | 1 square, unlimited |
-| Simple missile | 1 square; a bonus shot, so the turn continues even on a miss |
 | Big missile | 5-square plus shape |
-| Missile rain | 7 random unexplored squares |
+| Missile rain | 7 random unexplored squares; not aimed, so it fires from a Launch rain button rather than a tap on the board |
 | Nuclear missile | 14 squares: a 4×4 block with two opposite corners spared |
+| Carpet bomb | The whole row or column through the aimed square (`dir` is `row` or `col`) |
+
+Gift odds are 3 : 2 : 1 : 1 for big missile, missile rain, nuclear missile and
+carpet bomb.
 
 Splash squares that were already explored are skipped.
 
@@ -191,8 +195,9 @@ friends with no server-side referee.
 |---|---|---|
 | `ready {commit, chain}` | each | Fleet commitment and `SharedRandom` chain tip |
 | `draw {k, v}` | each | Reveal for shared draw *k*. Handled outside the step queue, because a queued step may be waiting for it. |
-| `fire {w, at}` | shooter | Weapon and aimed square (rain has no `at`) |
+| `fire {w, at, ms, dir}` | shooter | Weapon, aimed square (rain has no `at`), the time spent on the shot, and the carpet bomb's `row` or `col`. Both peers deduct `ms` from the shooter's clock. |
 | `result {hits, sunk}` | defender | 0 or 1 per fired square, plus newly sunk ships |
+| `timeout {}` | player on turn | Their own clock ran out: they lose, and the reveal follows |
 | `reveal {fleet, salt}` | each | After the game ends |
 | `abort {reason}` | either | A protocol violation was detected |
 
@@ -201,7 +206,14 @@ promise queue. Both peers therefore take the same steps in the same order:
 apply the shot, check gift timing, draw. The draw counter stays in step.
 
 The `m` field and `matchRouter()` keep a rematch from mixing with the
-previous match.
+previous match. `setup {config}` (the room's time limits) has no match
+number: the view handles it before handing other messages to
+`matchRouter()`.
+
+Clocks follow Tic Tac Toe's rules (below): each browser times only its own
+player, measured from when the previous volley landed on its screen. The
+rules refuse a shot whose `ms` is over the time left, and a browser that sees
+the opponent 5 s past their limit with no shot stops the match.
 
 ### Robot (`robot.js`)
 
@@ -221,7 +233,7 @@ its moves are easy to follow.
 
 Tic Tac Toe has no hidden information, so it runs on `TurnMatch`. What it adds
 is room settings and clocks, both of which later games (Connect 4, Gomoku)
-can copy.
+can copy; the settings panel itself is the engine's `settings.js`.
 
 **Room settings.** Before a game, the player picks the board (3×3 with three
 in a row, or 5×5 with four), a limit per move, a total per player, and who
@@ -247,6 +259,32 @@ other messages to `matchRouter()`.
 A modified client could under-report its `ms`. The 5 s check bounds how long it
 can stall, but not small savings on each move. That is the same trade-off as
 everywhere else here: fine between friends, not a referee.
+
+## Connect 4 in depth
+
+Connect 4 copies Tic Tac Toe's room settings, `setup {config}` handshake and
+clocks, with no engine change. The config adds the board (7×6, 8×7, 8×8, 9×7
+or 9×9, always four in a row) and the robot level; the rules ignore the level.
+A move is `{ col }`, and the disc lands on the lowest free square, so a full
+column is the only illegal drop. The state keeps `heights` per column next to
+the board, so both peers find the landing square the same way.
+
+**Robot** (`robot.js`). It takes a win, blocks a loss, and otherwise runs a
+negamax search with alpha-beta:
+
+- Before expanding a node it plays forced moves: win now, block the only threat, and never drop under the opponent's winning square. Two threats at once count as a loss.
+- Leaves are scored by open lines (weighted by how full they are), a bonus for threes whose gap sits on the row that suits the owner (odd rows for the first player, even for the second), and centre discs. Line counts and the score are updated on each drop, so scoring a leaf is a lookup.
+- Moves are tried centre first, then by their static score, so alpha-beta cuts more.
+
+| Level | Depth | Random column | Random column can lose at once? |
+|---|---|---|---|
+| Easy | 4 | 30% | yes |
+| Medium | 5 | 10% | no |
+| Hard | 6 | 3% | no |
+
+Over 200 games on 7×6, Hard beats Easy 93% of the time and Medium beats Easy
+83%. Hard answers in 3 ms at the median and under 50 ms at worst on 9×9.
+`robot.test.js` checks the order of the levels and the 100 ms limit.
 
 ## Gomoku in depth
 
@@ -308,6 +346,62 @@ list is Sea Battle's and the shared UI sounds, so these stay in the game
 folder. Audio starts on the first click or key press; until then sounds are
 skipped rather than queued, so a friend who opened the invite link but hasn't
 clicked yet doesn't get a burst of them later.
+
+## Backgammon in depth
+
+Backgammon is the first `TurnMatch` game with dice. It copies Tic Tac Toe's
+room settings (`setup {config}`, plus a robot level) and clocks. There is no
+doubling cube and no gammon: the first to bear off all fifteen checkers wins
+one game.
+
+**Position.** Each side counts points from its own home board: `pos[p][n]`
+is how many of player p's checkers stand on p's point n, with the bar at 25
+and borne-off checkers at 0. Your point n is the opponent's 25 − n, so the
+move generator, the view and the robot run the same code for either player.
+
+**A turn is two moves.**
+
+- `{ type: "roll", ms }`: `needsRandom` is true, so both peers draw the dice through `SharedRandom`, and neither side can choose or predict them. The view sends it by itself when the turn starts. A roll with no legal play passes the turn inside the rules, so both peers pass it without another message.
+- `{ type: "play", steps: [[from, die], …], ms }`: the whole turn, sent on Confirm. Picking checkers and Undo stay in the view. The rules replay each step and refuse a play that doesn't use as many dice as it could, or that plays the smaller die when only one fits. Bearing off the last checker wins at once.
+- The roll's and the play's `ms` share the turn's limit (`state.spent`), and both come off the player's clock.
+
+**Why the engine got `draws`.** Every roll is one shared draw. A chain of
+256 links covers the coin toss and 255 rolls. Sensible games need 50 to 150
+rolls, but in random-vs-random games about 2 in 1000 go past 255, and the
+match would stop with "hash chain exhausted". There was no way around it
+inside the game folder: the chain is built in `TurnMatch`'s constructor.
+Backgammon's rules ask for `draws: 1024`, which takes about 10 ms to build in
+Chromium against 2 ms for 256. Other games keep the default, and the
+protocol is unchanged.
+
+**Robot.** It lists every distinct legal play for the roll (with a double,
+steps go from non-increasing points, so each final position comes up once)
+and scores the position each one leaves, in pips: the pip lead, made points
+weighted by where they stand, primes, checkers on the bar and borne off, and
+the pips its blots could lose to the opponent's next roll. It always takes a
+win, and when the opponent could bear off next turn it hits if it can.
+
+| Level | Blot risk | Random play | Wins vs Hard | Wins vs a random player |
+|---|---|---|---|---|
+| Easy | direct shots, one blot at a time | 30% of turns | 12% | 97% |
+| Medium | direct shots, one blot at a time | 8% | 34% | 99% |
+| Hard | every one of the 36 rolls, blocked paths included | never | — | 100% |
+
+Medium beats Easy 75% of the time (1000 seeded games per pair). Each choice
+takes under 2 ms in Node; `robot.test.js` holds the levels apart and checks a
+crowded board with doubles stays under 100 ms.
+
+**Motion and sound.** The match state never waits for the screen. When a
+checker moves, the real one is drawn hidden where it lands, and a copy flies
+there over the board: lifted a little, along a low arc, for 240 to 620 ms
+depending on the distance (your own moves fly a third faster). A checker that
+is hit flies to the bar once the mover lands, and a borne-off checker shrinks
+into a slab in the tray. The opponent's play waits 250 ms after their dice
+land, then moves one checker at a time with a short pause between steps; your
+dice roll 400 ms after their last checker settles. New dice tumble in. Every
+landing plays a recorded wooden clack, and a roll plays dice on wood, through
+`playSample()` and the header's mute toggle. With `prefers-reduced-motion`,
+checkers move at once and the dice don't tumble.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 

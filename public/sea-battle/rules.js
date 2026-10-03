@@ -15,24 +15,44 @@ export const HIT = 2;
 export const CLEAR = 3; // known water next to a sunk ship (ships never touch side by side)
 
 // Gifts: every GIFT_EVERY moves one gift pops on each board (max MAX_GIFTS
-// waiting per board). Firing at a gift's square collects it for the shooter.
+// waiting per board). Only a shot aimed at a gift's own square collects it;
+// a gift hit by a splash or missile rain is destroyed with its square.
 export const GIFT_EVERY = 6;
 export const MAX_GIFTS = 2;
 export const RAIN_COUNT = 7;
 
 export const WEAPONS = {
-  shot: { label: "Shot", gift: false, help: "1 square. Hit to fire again." },
-  missile: { label: "Simple missile", gift: true, weight: 40, help: "1 square. A bonus shot: your turn continues even on a miss." },
+  shot: { label: "Shot", gift: false, help: "1 square. Hit to fire again; sinking a ship ends your turn." },
   big: { label: "Big missile", gift: true, weight: 30, help: "5-square splash (plus shape)." },
   rain: { label: "Missile rain", gift: true, weight: 20, help: "7 random unexplored squares, agreed by both players." },
   nuke: { label: "Nuclear missile", gift: true, weight: 10, help: "14-square splash." },
+  carpet: { label: "Carpet bomb", gift: true, weight: 10, help: "A whole row or column. Press R to switch." },
 };
+// A carpet bomb covers the row or the column of the aimed square.
+export const DIRS = ["row", "col"];
 export const GIFT_TYPES = Object.keys(WEAPONS).filter((w) => WEAPONS[w].gift);
+
+// Time limits a room picks (0 = no limit). A shot carries the time its player
+// spent ("ms"), and both peers deduct it from that player's clock. When the
+// time for a shot runs out, a random shot is fired; when a player's clock runs
+// out, they lose.
+export const SHOT_SECONDS = [10, 20, 30, 40, 0];
+export const GAME_SECONDS = [180, 300, 600, 0];
+export const DEFAULT_CONFIG = { shotSeconds: 30, gameSeconds: 600 };
+
+// Any unknown or missing value falls back to the default.
+export function normalizeConfig(raw) {
+  const c = raw && typeof raw === "object" ? raw : {};
+  const pick = (v, allowed, fallback) => (allowed.includes(v) ? v : fallback);
+  return {
+    shotSeconds: pick(c.shotSeconds, SHOT_SECONDS, DEFAULT_CONFIG.shotSeconds),
+    gameSeconds: pick(c.gameSeconds, GAME_SECONDS, DEFAULT_CONFIG.gameSeconds),
+  };
+}
 
 // Splash patterns as [dRow, dCol] around the aimed square.
 export const PATTERNS = {
   shot: [[0, 0]],
-  missile: [[0, 0]],
   big: [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]],
   // 4x4 block with two opposite corners spared: 14 squares.
   nuke: (() => {
@@ -153,19 +173,30 @@ export function newBoard() {
 }
 
 export function newInventory() {
-  return { missile: 0, big: 0, rain: 0, nuke: 0 };
+  return { big: 0, rain: 0, nuke: 0, carpet: 0 };
 }
 
-// boards[p] is player p's waters (fired at by the other player).
-export function newMatchState(first) {
+// boards[p] is player p's waters (fired at by the other player). Without a
+// config there are no clocks.
+export function newMatchState(first, { shotSeconds = 0, gameSeconds = 0 } = {}) {
   return {
     boards: [newBoard(), newBoard()],
     inventory: [newInventory(), newInventory()],
     turn: first,
     moves: 0,
     winner: -1,
+    reason: null, // "fleet" | "timeout" once over
     giftsSpawned: 0,
+    shotMs: shotSeconds * 1000,
+    clocks: gameSeconds ? [gameSeconds * 1000, gameSeconds * 1000] : null,
   };
+}
+
+export const isTimed = (state) => state.shotMs > 0 || state.clocks !== null;
+
+// Milliseconds `player` may still spend on this shot (Infinity without clocks).
+export function timeLeft(state, player) {
+  return Math.min(state.shotMs || Infinity, state.clocks ? state.clocks[player] : Infinity);
 }
 
 export const other = (p) => 1 - p;
@@ -184,18 +215,20 @@ export function weaponAvailable(state, shooter, weapon) {
   return weapon === "shot" || state.inventory[shooter][weapon] > 0;
 }
 
-// Squares a fired weapon covers, for every weapon except rain. Only squares
-// that are still unexplored are fired at.
-export function patternCells(weapon, target) {
+// Squares a fired weapon covers, for every weapon except rain (dir is the
+// carpet bomb's "row" or "col"). Only squares that are still unexplored are
+// fired at.
+export function patternCells(weapon, target, dir = "row") {
   const r = rowOf(target);
   const c = colOf(target);
+  if (weapon === "carpet") return Array.from({ length: SIZE }, (_, k) => (dir === "col" ? idx(k, c) : idx(r, k)));
   const out = [];
   for (const [dr, dc] of PATTERNS[weapon]) if (inBounds(r + dr, c + dc)) out.push(idx(r + dr, c + dc));
   return out;
 }
 
-export function aimedCells(board, weapon, target) {
-  return patternCells(weapon, target).filter((i) => board.cells[i] === UNKNOWN);
+export function aimedCells(board, weapon, target, dir) {
+  return patternCells(weapon, target, dir).filter((i) => board.cells[i] === UNKNOWN);
 }
 
 export function unexplored(board) {
@@ -210,9 +243,15 @@ export function rainCells(board, rng) {
 }
 
 // Validate a fire request against public state. Returns cells (or null for rain).
-export function checkFire(state, shooter, weapon, target) {
+// ms is the time the shooter spent on this shot (required when timed); dir is
+// the carpet bomb's direction.
+export function checkFire(state, shooter, weapon, target, ms, dir) {
   if (state.winner !== -1) throw new RuleError("game is over");
   if (state.turn !== shooter) throw new RuleError("not your turn");
+  if (isTimed(state)) {
+    if (!Number.isInteger(ms) || ms < 0) throw new RuleError("shot time missing");
+    if (ms > timeLeft(state, shooter)) throw new RuleError("time ran out");
+  }
   if (!weaponAvailable(state, shooter, weapon)) throw new RuleError("weapon not available");
   const board = state.boards[other(shooter)];
   if (weapon === "rain") {
@@ -220,8 +259,9 @@ export function checkFire(state, shooter, weapon, target) {
     return null;
   }
   if (!Number.isInteger(target) || target < 0 || target >= CELLS) throw new RuleError("bad target");
-  if ((weapon === "shot" || weapon === "missile") && board.cells[target] !== UNKNOWN) throw new RuleError("square already explored");
-  const cells = aimedCells(board, weapon, target);
+  if (weapon === "shot" && board.cells[target] !== UNKNOWN) throw new RuleError("square already explored");
+  if (weapon === "carpet" && !DIRS.includes(dir)) throw new RuleError("bad direction");
+  const cells = aimedCells(board, weapon, target, dir);
   if (cells.length === 0) throw new RuleError("nothing to hit there");
   return cells;
 }
@@ -262,8 +302,10 @@ function sunkShipValid(board, ship, hitNow) {
 }
 
 // Apply a resolved fire to the shared public state (both peers run this).
-// Throws RuleError on an impossible answer. Returns a list of events.
-export function applyFire(state, shooter, weapon, cells, hits, sunk) {
+// ms (checked by checkFire) is the time spent; target is the aimed square,
+// which alone can pick up a gift. Throws RuleError on an impossible answer.
+// Returns a list of events.
+export function applyFire(state, shooter, weapon, cells, hits, sunk, { ms = 0, target } = {}) {
   const defender = other(shooter);
   const board = state.boards[defender];
   if (!Array.isArray(hits) || hits.length !== cells.length || !hits.every((h) => h === 0 || h === 1)) {
@@ -271,6 +313,7 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
   }
   if (!Array.isArray(sunk)) throw new RuleError("malformed sunk list");
   const events = [];
+  if (state.clocks) state.clocks[shooter] -= ms;
   if (weapon !== "shot") state.inventory[shooter][weapon] -= 1;
   const hitNow = new Set(board.cells.flatMap((v, i) => (v === HIT ? [i] : [])));
   cells.forEach((i, k) => {
@@ -292,13 +335,16 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
     }
     events.push({ type: "sunk", ship: clean });
   }
-  // Gifts under any fired square go to the shooter. A gift whose square just
-  // became cleared water (beside a sunk ship) can't be shot any more: it's removed.
+  // A gift goes to the shooter who aimed at its square (rain isn't aimed).
+  // A gift whose square was blown up by a splash or rain, or just became
+  // cleared water beside a sunk ship, can't be clicked any more: it's destroyed.
   const keep = [];
   for (const g of board.gifts) {
-    if (cells.includes(g.cell)) {
+    if (weapon !== "rain" && g.cell === target && cells.includes(g.cell)) {
       state.inventory[shooter][g.type] += 1;
       events.push({ type: "gift", gift: g.type, cell: g.cell, by: shooter });
+    } else if (cells.includes(g.cell)) {
+      events.push({ type: "gift-lost", cell: g.cell, by: shooter });
     } else if (board.cells[g.cell] === UNKNOWN) {
       keep.push(g);
     }
@@ -307,8 +353,10 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
   state.moves += 1;
   if (board.sunk.length === FLEET.length) {
     state.winner = shooter;
+    state.reason = "fleet";
     events.push({ type: "win", winner: shooter });
-  } else if (weapon === "missile" || hits.some(Boolean)) {
+  } else if (sunk.length === 0 && hits.some(Boolean)) {
+    // A hit fires again; sinking a ship always ends the turn.
     events.push({ type: "again", player: shooter });
   } else {
     state.turn = defender;
@@ -317,6 +365,17 @@ export function applyFire(state, shooter, weapon, cells, hits, sunk) {
   // Out of squares to explore without a winner can only mean a lie; stop.
   if (state.winner === -1 && unexplored(board).length === 0) throw new RuleError("board exhausted without a sinking");
   return events;
+}
+
+// A player whose own clock ran out says so, and loses.
+export function applyTimeout(state, player) {
+  if (state.winner !== -1) throw new RuleError("game is over");
+  if (state.turn !== player) throw new RuleError("not your turn");
+  if (!state.clocks) throw new RuleError("this game has no clock");
+  state.clocks[player] = 0;
+  state.winner = other(player);
+  state.reason = "timeout";
+  return [{ type: "timeout", player }, { type: "win", winner: other(player) }];
 }
 
 export function giftsDue(state) {

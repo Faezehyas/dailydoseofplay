@@ -9,7 +9,7 @@
 //   * hunt mode: restricted to a parity lattice of the smallest ship left,
 //     and it goes out of its way for gifts;
 //   * weapons: splash weapons are aimed where they cover the most density.
-import { randomFleet, remainingShips, shipCells, orthoNeighbors, aimedCells, other, CELLS, SIZE, UNKNOWN, HIT, MISS, CLEAR, rowOf, colOf } from "./rules.js";
+import { randomFleet, remainingShips, shipCells, orthoNeighbors, aimedCells, patternCells, other, idx, CELLS, SIZE, UNKNOWN, HIT, MISS, CLEAR, rowOf, colOf } from "./rules.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 
@@ -67,7 +67,7 @@ function bestOf(candidates, score, rng) {
   return { cell: best[Math.floor(rng() * best.length)], score: bestScore };
 }
 
-// Pick { weapon, target } for `me` in public match state.
+// Pick { weapon, target, dir? } for `me` in public match state (dir: carpet bomb).
 export function chooseMove(state, me, rng = Math.random) {
   const board = state.boards[other(me)];
   const inv = state.inventory[me];
@@ -90,20 +90,40 @@ export function chooseMove(state, me, rng = Math.random) {
       if (inv[weapon] > 0) {
         const aim = bestOf(
           [...Array(CELLS).keys()],
-          (i) => aimedCells(board, weapon, i).reduce((s, c) => s + density[c] + (gifts.has(c) ? giftBonus : 0), 0),
+          // Only the aimed square picks a gift up; one caught in the splash is lost.
+          (i) => aimedCells(board, weapon, i).reduce((s, c) => s + density[c] + (c === i && gifts.has(c) ? giftBonus : 0), 0),
           rng,
         );
         if (aim.score > 0) return { weapon, target: aim.cell };
       }
     }
+    if (inv.carpet > 0) {
+      // The densest row or column. Line k < SIZE is row k, the rest are columns.
+      // Aimed at a gift on the line, it picks the gift up too.
+      const line = (k) => {
+        const dir = k < SIZE ? "row" : "col";
+        const squares = patternCells("carpet", k < SIZE ? idx(k, 0) : idx(0, k - SIZE), dir);
+        return { dir, target: squares.find((c) => gifts.has(c)) ?? squares[0] };
+      };
+      const aim = bestOf(
+        [...Array(2 * SIZE).keys()],
+        (k) => {
+          const { target, dir } = line(k);
+          return aimedCells(board, "carpet", target, dir).reduce((s, c) => s + density[c] + (c === target && gifts.has(c) ? giftBonus : 0), 0);
+        },
+        rng,
+      );
+      if (aim.score > 0) return { weapon: "carpet", ...line(aim.cell) };
+    }
     if (inv.rain > 0) return { weapon: "rain" };
   }
-  if (inv.missile > 0) return { weapon: "missile", target: single.cell };
   return { weapon: "shot", target: single.cell };
 }
 
-// Drive the robot's side of a session. Returns { destroy }.
-export function startRobot(session, { delay = 650, rng = Math.random } = {}) {
+// Drive the robot's side of a session. Returns { destroy }. config: the
+// room's time limits; the robot reports no time spent, so only the human's
+// clock runs.
+export function startRobot(session, { delay = 650, rng = Math.random, config = null } = {}) {
   let match = null;
   let timer = null;
   let destroyed = false;
@@ -114,13 +134,13 @@ export function startRobot(session, { delay = 650, rng = Math.random } = {}) {
     timer = setTimeout(() => {
       timer = null;
       if (destroyed || !match.canFire()) return;
-      const { weapon, target } = chooseMove(match.state, match.me, rng);
-      match.fire(weapon, target);
+      const { weapon, target, dir } = chooseMove(match.state, match.me, rng);
+      match.fire(weapon, target, 0, dir);
     }, delay + Math.floor(rng() * delay * 0.5));
   }
 
   function newMatch(m) {
-    match = new SeaBattleMatch({ send: (msg) => session.send(msg), me: session.index, fleet: randomFleet(rng), m });
+    match = new SeaBattleMatch({ send: (msg) => session.send(msg), me: session.index, fleet: randomFleet(rng), m, config });
     match.on("update", schedule);
     router.start(match);
     match.ready();

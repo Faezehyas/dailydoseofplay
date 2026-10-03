@@ -8,6 +8,7 @@
 //   newState(first)                 -> state with state.turn (0|1) and state.winner (-1 | 0 | 1 | 2 for a draw)
 //   applyMove(state, player, move, rng) -> events[]; mutates state; throws RuleError if illegal
 //   needsRandom(state, move)        -> optional; true if this move's outcome uses rng (e.g. rolling dice)
+//   draws                           -> optional; the most shared random draws one match may need (default 256)
 // rules.js must be pure: no DOM, timers, network or Math.random (use rng).
 //
 // Messages (all carry m = match number): chain {tip}, draw {k, v}, move {move}, abort {reason}
@@ -34,7 +35,7 @@ export class TurnMatch extends Emitter {
     this.state = null;
     this.peerTip = null;
     this.working = false;
-    this.srReady = SharedRandom.create();
+    this.srReady = SharedRandom.create(rules.draws);
     this.queue = this.srReady.then((sr) => {
       this.sr = sr;
       this.send({ t: "chain", tip: sr.tip });

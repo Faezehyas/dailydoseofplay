@@ -19,7 +19,7 @@
     {
       "slug": "connect-4",
       "name": "Connect 4",
-      "status": "soon",
+      "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Drop discs, line up four before your friend does."
@@ -51,7 +51,7 @@
     {
       "slug": "backgammon",
       "name": "Backgammon",
-      "status": "soon",
+      "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Race your checkers home with a little luck and a lot of tactics."

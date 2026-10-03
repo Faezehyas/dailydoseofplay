@@ -1,0 +1,12 @@
+Checker recordings: Creative Commons CC0 1.0 (public domain).
+Source: OpenGameArt (https://opengameart.org), "Boardgame piece wobbles" by Aidan_Walker; single hits cut out, faded, resampled to 44.1 kHz and converted to mono MP3.
+
+checker-1.mp3  <- "Boardgame piece wobbles", wobble05.ogg 0.131-0.291 s   https://opengameart.org/content/boardgame-piece-wobbles
+checker-2.mp3  <- "Boardgame piece wobbles", wobble02.ogg 0.548-0.683 s   https://opengameart.org/content/boardgame-piece-wobbles
+checker-3.mp3  <- "Boardgame piece wobbles", wobble03.ogg 0.496-0.636 s   https://opengameart.org/content/boardgame-piece-wobbles
+
+Dice recordings: Creative Commons CC0 1.0 (public domain).
+Source: BigSoundBank (https://bigsoundbank.com), trimmed, faded and converted to mono MP3.
+
+dice-1.mp3  <- "Two dice on wooden table", 21.573-22.353 s   https://bigsoundbank.com/two-dice-on-wooden-table-s0581.html
+dice-2.mp3  <- "Two dice on wooden table", 19.467-19.907 s   https://bigsoundbank.com/two-dice-on-wooden-table-s0581.html
