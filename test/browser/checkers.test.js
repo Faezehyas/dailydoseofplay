@@ -2,8 +2,8 @@
 // match on the host's settings (clocks, host starts) through the invite link
 // over a real WebRTC DataChannel, then a rematch the friend loses on the move
 // clock; a full robot game on a phone; a robot that moves first on a
-// plain-http page without WebCrypto; and move sounds with the mute button.
-// Skips if Playwright is missing.
+// plain-http page without WebCrypto; move sounds with the mute button; and a
+// move dot centred where a piece was just captured. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -385,5 +385,50 @@ test("moves play a wooden clack, and the mute button silences them", { skip: !pw
   await playPath(page, await nextPath(page, "first"), "click");
   await wait(page, (k) => window.ddp.match.state.moves.length >= k + 2 && window.ddp.match.canMove(), n);
   assert.equal(await clacks(), muted, "no sound while muted");
+  assert.deepEqual(errors, []);
+});
+
+test("a move dot stays centred on a square where a piece was just captured", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => localStorage.setItem("ddp-checkers-settings", JSON.stringify({ moveSeconds: 0, gameSeconds: 0, first: "host", level: "easy" })));
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(`${srv.base}/checkers/`);
+  await page.click("#play-robot");
+  await wait(page, () => window.ddp.match?.canMove());
+  // The robot just jumped 19 -> 33 over my man on 26; my man on 40 can now jump to 26.
+  await page.evaluate(() => {
+    const board = Array(64).fill(-1);
+    Object.assign(board, { 33: 1, 40: 0, 42: 0, 10: 1, 62: 0 });
+    for (const match of [window.ddp.match, window.ddp.robot.match]) {
+      match.state.board = board.slice();
+      match.state.moves = [[19, 33]];
+    }
+    window.ddp.match.emit("update");
+  });
+  assert.equal(await page.locator(`${square(26)} .piece.ghost`).count(), 1, "the captured man fades out");
+  await page.click(square(40));
+  const layout = await page.evaluate(() => {
+    const cell = document.querySelector('.ck-sq[data-sq="26"]');
+    const box = (r) => [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)];
+    return {
+      target: cell.classList.contains("target"),
+      rows: getComputedStyle(cell).gridTemplateRows.split(" ").length,
+      dotArea: getComputedStyle(cell, "::after").gridArea,
+      cell: box(cell.getBoundingClientRect()),
+      ghost: box(cell.querySelector(".piece.ghost").getBoundingClientRect()),
+    };
+  });
+  assert.ok(layout.target);
+  assert.equal(layout.rows, 1, "the ghost and the dot share one grid cell");
+  assert.match(layout.dotArea, /^1 \/ 1/);
+  assert.deepEqual(layout.ghost, layout.cell, "and both sit in the middle of the square");
   assert.deepEqual(errors, []);
 });
