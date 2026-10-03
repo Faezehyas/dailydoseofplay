@@ -4,6 +4,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playSample, preload } from "../engine/sound.js";
 import {
   makeRules,
   normalizeConfig,
@@ -34,6 +35,8 @@ const COLOR_NAMES = ["White", "Black"];
 const PIECE_NAMES = ["", "pawn", "knight", "bishop", "rook", "queen", "king"];
 const VALUES = [0, 1, 3, 3, 5, 9, 0];
 const PROMOS = [["q", QUEEN], ["r", ROOK], ["b", BISHOP], ["n", KNIGHT]];
+// Real recordings (CC0, see sounds/LICENSE.txt) of a piece set down on a wooden board.
+const KNOCKS = [1, 2, 3, 4].map((k) => new URL(`./sounds/move-${k}.mp3`, import.meta.url).href);
 
 // Original piece art on a 100×100 grid; class "d" is a detail line, "e" an eye.
 const BASE = '<path d="M24 78h52a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4v-2a4 4 0 0 1 4-4z"/>';
@@ -53,6 +56,15 @@ const pieceSvg = (piece) => `<svg viewBox="6 3 88 88" class="pc ${colorOf(piece)
 const pieceName = (piece) => `${COLOR_NAMES[colorOf(piece)].toLowerCase()} ${PIECE_NAMES[typeOf(piece)]}`;
 
 const settings = mountSettings(document.getElementById("chess-settings"), document.getElementById("lobby"));
+preload(KNOCKS);
+
+// A piece lands: a capture lands a little harder; castling is the king, then the rook.
+function knock(moved) {
+  if (moved.san.startsWith("O-O")) {
+    playSample(KNOCKS, { gain: 0.7 });
+    setTimeout(() => playSample(KNOCKS, { gain: 0.5, rate: 1.08 }), 150);
+  } else playSample(KNOCKS, moved.captured ? { gain: 0.95, rate: 0.9 } : { gain: 0.7 });
+}
 
 startGameShell({
   slug: "chess",
@@ -598,6 +610,7 @@ function mountChess(session, root, shell) {
     match.on("events", ({ player, events }) => {
       turnStart = performance.now();
       const moved = events.find((e) => e.type === "moved");
+      if (moved) knock(moved);
       if (moved && player === opp && moved.check && match.state.winner === -1) toast("Check!");
     });
     match.on("over", ({ winner }) => {

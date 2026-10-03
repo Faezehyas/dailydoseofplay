@@ -75,7 +75,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
-| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
+| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions and Chess's piece knocks are CC0 recordings, see each game's `sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
 **Session flow.**
@@ -296,6 +296,12 @@ picked (150, 40 or 0 centipawns), and how often it plays a random safe move
 (20 %, 5 % or never). A node budget keeps answers bounded and deterministic in
 tests; in the browser a 250 ms time cap also applies, so a slow phone gets a
 shallower search instead of a frozen page.
+
+**Sound.** Every move, yours or the opponent's, lands with one of four CC0
+recordings of a piece set down on a wooden board (`chess/sounds/LICENSE.txt`),
+played through the engine's `playSample()`, so the header's mute toggle covers
+it. A capture lands harder (louder and a little deeper), and castling knocks
+twice: the king, then the rook.
 
 **Colours.** The board and pieces have their own light and dark tokens at the
 top of `chess/style.css`, because a white piece must stay white in both

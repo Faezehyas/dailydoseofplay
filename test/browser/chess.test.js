@@ -36,6 +36,16 @@ const noHorizontalScroll = (page) => page.evaluate(() => document.documentElemen
 const pick = (page, name, value) => page.click(`#chess-settings label:has(input[name="chess-${name}"][value="${value}"])`);
 const sq = (name) => (Number(name[1]) - 1) * 8 + "abcdefgh".indexOf(name[0]);
 const square = (page, name) => page.locator(`.sq[data-sq="${sq(name)}"]`);
+// Counts recorded knocks played (short samples; the engine's noise buffers are seconds long).
+const countKnocks = () => {
+  window.knocks = 0;
+  const start = AudioBufferSourceNode.prototype.start;
+  AudioBufferSourceNode.prototype.start = function (...args) {
+    if (this.buffer?.duration < 0.5) window.knocks++;
+    return start.apply(this, args);
+  };
+};
+const knocks = (page) => page.evaluate(() => window.knocks);
 
 test("two friends play Chess on the host's settings through the invite link, then a rematch", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
@@ -49,6 +59,7 @@ test("two friends play Chess on the host's settings through the invite link, the
   async function open(name, nickname, opts = {}) {
     const ctx = await browser.newContext({ viewport: { width: 1200, height: 1000 }, ...opts });
     await ctx.addInitScript((n) => localStorage.setItem("ddp-name", n), nickname);
+    await ctx.addInitScript(countKnocks);
     const page = await ctx.newPage();
     page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
     return page;
@@ -133,6 +144,8 @@ test("two friends play Chess on the host's settings through the invite link, the
   await wait(guest, () => window.ddp.match.phase === "over");
   assert.deepEqual(await host.evaluate(() => window.ddp.match.state), await guest.evaluate(() => window.ddp.match.state));
   assert.equal(await host.evaluate(() => window.ddp.match.state.moves.map((m) => m.san).join(" ")), "f3 e5 g4 Qh4#");
+  assert.equal(await knocks(host), 4, "every move lands with a knock");
+  assert.equal(await knocks(guest), 4);
   assert.equal(await guest.locator("#chess-result").innerText(), "Victory!");
   assert.equal(await host.locator("#chess-result").innerText(), "Defeat");
   assert.equal(await host.locator("#chess-detail").innerText(), "Bo checkmated you with Qh4#.");
@@ -154,7 +167,9 @@ test("two friends play Chess on the host's settings through the invite link, the
   assert.equal(await moveCount(host), 0, "a fresh board");
   assert.deepEqual(await guest.evaluate(() => window.ddp.match.state.clocks), [300_000, 300_000]);
 
-  // Game 2: a pawn runs through to a8 and becomes a knight (dragged with the mouse), then the friend resigns.
+  // Game 2: the friend mutes sounds in the header. A pawn runs through to a8 and becomes
+  // a knight (dragged with the mouse), then the friend resigns.
+  await guest.click("#sound-toggle");
   for (const [page, from, to] of [[host, "e2", "e4"], [guest, "d7", "d5"], [host, "e4", "d5"], [guest, "c7", "c6"], [host, "d5", "c6"], [guest, "g8", "f6"], [host, "c6", "b7"], [guest, "b8", "d7"]]) {
     await tapMove(page, from, to);
   }
@@ -171,6 +186,8 @@ test("two friends play Chess on the host's settings through the invite link, the
   await host.click('.promo-opt[data-promo="n"]');
   await bothSee(9);
   assert.equal(await guest.evaluate(() => window.ddp.match.state.moves.at(-1).san), "bxa8=N");
+  assert.equal(await knocks(host), 4 + 9);
+  assert.equal(await knocks(guest), 4, "muted: no more knocks");
   assert.match(await host.locator(".chess-taken.mine").innerHTML(), /pc b/, "the host's captures are shown");
   await wait(guest, () => window.ddp.match.canMove());
   await guest.click("#resign");
@@ -202,7 +219,9 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
     await srv.close();
   });
   const errors = [];
-  const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" })).newPage();
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" });
+  await ctx.addInitScript(countKnocks);
+  const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
 
   await page.goto(`${srv.base}/`);
@@ -248,6 +267,7 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   const st = await page.evaluate(() => window.ddp.match.state);
   assert.ok(st.reason, `the game ended by rule: ${st.reason}`);
   assert.ok(st.moves.length >= 2 * taps - 1, "the robot answered every move");
+  assert.ok((await knocks(page)) >= st.moves.length, "a knock for every move, two for castling");
   assert.match(await page.locator("#chess-result").innerText(), /^(Victory!|Defeat|Draw)$/);
   assert.ok(await noHorizontalScroll(page));
   await page.waitForTimeout(300);
