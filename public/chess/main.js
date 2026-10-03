@@ -2,7 +2,7 @@
 // The rules live in rules.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
-import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
+import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playSample, preload } from "../engine/sound.js";
 import {
@@ -25,11 +25,10 @@ import {
   QUEEN,
   KING,
 } from "./rules.js";
-import { chooseMove } from "./robot.js";
+import { startRobot } from "./robot.js";
 import { mountSettings, LEVEL_NAMES } from "./settings.js";
 
-const ROBOT_DELAY = 500;
-const ROBOT_THINK_MS = 250; // search cap, so a slow phone still answers quickly
+const ROBOT_SEARCH_MS = 250; // search cap, so a slow phone still answers quickly
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const COLOR_NAMES = ["White", "Black"];
 const PIECE_NAMES = ["", "pawn", "knight", "bishop", "rook", "queen", "king"];
@@ -72,17 +71,7 @@ startGameShell({
   tagline: "Sixty-four squares, two armies, one king to trap. Your move.",
   createRobot(session) {
     const config = settings.get();
-    return startTurnRobot(session, {
-      rules: makeRules(config),
-      // Charge the robot's clock for the delay plus the search, like a player.
-      choose(state, me, rng) {
-        const t0 = performance.now();
-        const move = chooseMove(state, me, rng, { level: config.level, timeMs: ROBOT_THINK_MS });
-        const ms = Math.round(ROBOT_DELAY + performance.now() - t0);
-        return ms > timeLeft(state, me) ? { timeout: true } : { ...move, ms };
-      },
-      delay: ROBOT_DELAY,
-    });
+    return startRobot(session, { rules: makeRules(config), level: config.level, timeMs: ROBOT_SEARCH_MS });
   },
   onSession: (session, root, shell) => mountChess(session, root, shell),
 });

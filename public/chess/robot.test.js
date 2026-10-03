@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { rngFromSeed } from "../engine/rng.js";
-import { chooseMove, scoreMoves, evaluateState, LEVELS } from "./robot.js";
+import { chooseMove, scoreMoves, evaluateState, thinkTime, LEVELS } from "./robot.js";
 import { newState as newTimedState, stateFromFen, applyMove, listMoves, legalMoves, isAttacked, parseSquare, BLACK, DRAW } from "./rules.js";
 
 const newState = (first) => newTimedState(first, { moveSeconds: 0, gameSeconds: 0 });
@@ -143,4 +143,22 @@ test("each level answers fast, even in a busy middlegame", () => {
   const move = chooseMove(busy[0], 0, () => 0.5, { level: "hard", maxNodes: Infinity, depth: 6, timeMs: 30 });
   assert.ok(performance.now() - t0 < 150);
   assert.ok(listMoves(busy[0]).some((m) => m.from === move.from && m.to === move.to));
+});
+
+test("it pauses like a person: quick in the opening and with a forced move, longer later, never draining its clock", () => {
+  const rng = rngFromSeed("think");
+  const opening = newState(0);
+  for (let k = 0; k < 20; k++) {
+    const ms = thinkTime(opening, 0, rng);
+    assert.ok(ms >= 700 && ms <= 1300, `opening ${ms}`);
+  }
+  const middle = fen("r1bq1rk1/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP3PPP/R2QKB1R w KQ - 0 8");
+  middle.moves = Array(14).fill({});
+  for (let k = 0; k < 20; k++) {
+    const ms = thinkTime(middle, 0, rng);
+    assert.ok(ms >= 1200 && ms <= 2500, `middlegame ${ms}`);
+  }
+  assert.equal(thinkTime(fen("7k/8/8/8/8/8/6q1/7K w - - 0 1"), 0, rng), 500, "a forced move");
+  middle.clocks = [9_000, 9_000];
+  assert.ok(thinkTime(middle, 0, rng) <= 300, "short on time");
 });

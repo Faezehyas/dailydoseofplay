@@ -3,6 +3,8 @@
 // searched until the position is quiet. Levels change the depth, how far it
 // strays from its best move, and how often it plays a random safe move.
 import { randInt } from "../engine/rng.js";
+import { TurnMatch } from "../engine/turn-match.js";
+import { matchRouter } from "../engine/session.js";
 import {
   genMoves,
   makeMove,
@@ -12,6 +14,8 @@ import {
   inCheck,
   insufficientMaterial,
   positionKey,
+  isTimed,
+  timeLeft,
   toMove,
   mFrom,
   mTo,
@@ -364,3 +368,51 @@ export function chooseMove(state, me, rng = Math.random, { level = "easy", ...ov
   return toMove(picks[randInt(rng, picks.length)].m);
 }
 
+// How long the robot "thinks" before moving, in ms: quick with a forced move
+// or in the opening, longer later, and never so long that its clock runs low.
+export function thinkTime(state, me, rng = Math.random) {
+  if (legalMoves(state).length <= 1) return 500;
+  let ms = state.moves.length < 8 ? 700 + 600 * rng() : 1200 + 1300 * rng();
+  if (state.clocks) ms = Math.min(ms, state.clocks[me] / 30);
+  if (state.moveMs) ms = Math.min(ms, state.moveMs / 4);
+  return Math.round(Math.max(300, ms));
+}
+
+// Drive the robot's side of a session: the engine's startTurnRobot, but with a
+// pause that varies like a person's. Its clock pays for the pause and the search.
+export function startRobot(session, { rules, level = "easy", rng = Math.random, think = thinkTime, timeMs = Infinity }) {
+  const router = matchRouter(session);
+  let match = null;
+  let timer = null;
+  let destroyed = false;
+  function schedule() {
+    if (destroyed || timer || !match.canMove()) return;
+    const started = performance.now();
+    timer = setTimeout(() => {
+      timer = null;
+      if (destroyed || !match.canMove()) return;
+      const st = match.state;
+      const move = chooseMove(st, match.me, rng, { level, timeMs });
+      const ms = Math.round(performance.now() - started);
+      match.play(isTimed(st) && ms > timeLeft(st, match.me) ? { timeout: true } : { ...move, ms });
+    }, think(match.state, match.me, rng));
+  }
+  function newMatch(m) {
+    clearTimeout(timer);
+    timer = null;
+    match = new TurnMatch({ send: (msg) => session.send(msg), me: session.index, rules, m });
+    match.on("update", schedule);
+    router.start(match);
+  }
+  session.on("rematch-start", () => newMatch(match.m + 1));
+  newMatch(1);
+  return {
+    get match() {
+      return match;
+    },
+    destroy() {
+      destroyed = true;
+      clearTimeout(timer);
+    },
+  };
+}

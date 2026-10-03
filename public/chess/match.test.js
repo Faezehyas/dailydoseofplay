@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { localPair } from "../engine/channel.js";
 import { openSession, matchRouter } from "../engine/session.js";
-import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
+import { TurnMatch } from "../engine/turn-match.js";
 import { rngFromSeed } from "../engine/rng.js";
 import { makeRules, parseSquare, colorOfPlayer, WHITE, DRAW } from "./rules.js";
-import { chooseMove } from "./robot.js";
+import { chooseMove, startRobot } from "./robot.js";
 
 const rules = makeRules({ moveSeconds: 0, gameSeconds: 0 });
 const fast = (state, me, rng) => chooseMove(state, me, rng, { level: "easy", maxNodes: 1500 });
@@ -100,14 +100,14 @@ test("promotion and resigning go over the wire", async () => {
   assert.deepEqual(a.state, b.state);
 });
 
-test("the robot plays whole games over startTurnRobot and accepts a rematch", async () => {
+test("the robot plays whole games over startRobot and accepts a rematch", async () => {
   const [x, y] = localPair();
   const [human, bot] = await Promise.all([
     openSession({ channel: x, mode: "robot", index: 0, name: "Me", game: "chess" }),
     openSession({ channel: y, mode: "robot", index: 1, name: "Robot", game: "chess" }),
   ]);
   bot.on("rematch", (v) => v.them && !v.me && bot.requestRematch());
-  const robot = startTurnRobot(bot, { rules, choose: fast, delay: 0, rng: rngFromSeed("bot") });
+  const robot = startRobot(bot, { rules, level: "easy", think: () => 0, rng: rngFromSeed("bot") });
   const router = matchRouter(human);
   const rng = rngFromSeed("human");
   for (let m = 1; m <= 2; m++) {
@@ -149,4 +149,22 @@ test("timed games: move times spend the same clocks on both sides, and a timeout
   assert.equal(b.state.winner, 1);
   assert.equal(b.state.reason, "timeout");
   assert.deepEqual(a.state, b.state);
+});
+
+test("the robot's clock pays for its pause and its search", async () => {
+  const timed = makeRules({ moveSeconds: 30, gameSeconds: 180, first: "host" });
+  const [x, y] = localPair();
+  const [human, bot] = await Promise.all([
+    openSession({ channel: x, mode: "robot", index: 0, name: "Me", game: "chess" }),
+    openSession({ channel: y, mode: "robot", index: 1, name: "Robot", game: "chess" }),
+  ]);
+  const robot = startRobot(bot, { rules: timed, think: () => 120 });
+  const me = new TurnMatch({ send: (msg) => human.send(msg), me: 0, rules: timed });
+  matchRouter(human).start(me);
+  await until(() => me.canMove());
+  await me.play({ ...mv("e2e4"), ms: 1000 });
+  await until(() => me.state.moves.length === 2);
+  const spent = 180_000 - me.state.clocks[1];
+  assert.ok(spent >= 120 && spent < 2000, `robot spent ${spent} ms`);
+  robot.destroy();
 });

@@ -297,6 +297,12 @@ picked (150, 40 or 0 centipawns), and how often it plays a random safe move
 tests; in the browser a 250 ms time cap also applies, so a slow phone gets a
 shallower search instead of a frozen page.
 
+The search takes milliseconds, so the robot pauses like a person before
+moving: 0.7–1.3 s in the opening, 1.2–2.5 s later, 0.5 s for a forced move,
+and never more than a thirtieth of its clock. The engine's `startTurnRobot()`
+only takes a fixed delay, so `robot.js` has its own `startRobot()`, the same
+loop with a pause per move. Its clock pays for the pause and the search.
+
 **Sound.** Every move, yours or the opponent's, lands with one of four CC0
 recordings of a piece set down on a wooden board (`chess/sounds/LICENSE.txt`),
 played through the engine's `playSample()`, so the header's mute toggle covers

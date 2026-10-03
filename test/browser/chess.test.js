@@ -211,7 +211,7 @@ test("two friends play Chess on the host's settings through the invite link, the
   assert.deepEqual(errors, []);
 });
 
-test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move clock", { skip: !pw && "Playwright not installed", timeout: 180_000 }, async (t) => {
+test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move clock", { skip: !pw && "Playwright not installed", timeout: 300_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
   const srv = await startServer();
   const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
@@ -247,6 +247,7 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
     window.chessRules = await import("/chess/rules.js");
   });
   let taps = 0;
+  const replies = [];
   while ((await page.evaluate(() => window.ddp.match.phase)) === "playing") {
     await wait(page, () => window.ddp.match.canMove() || window.ddp.match.phase !== "playing");
     const move = await page.evaluate(() => {
@@ -263,6 +264,10 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
     if (move.promo) await page.tap(`.promo-opt[data-promo="${move.promo}"]`);
     await wait(page, (k) => window.ddp.match.state.moves.length > k || window.ddp.match.phase !== "playing", n);
     assert.ok(await page.locator("#chess-promo").isHidden(), "the promotion picker closes");
+    // How long the robot takes to answer.
+    const t0 = Date.now();
+    await wait(page, (k) => window.ddp.match.state.moves.length > k + 1 || window.ddp.match.phase !== "playing", n);
+    if ((await page.evaluate(() => window.ddp.match.phase)) === "playing") replies.push(Date.now() - t0);
     taps++;
   }
   await wait(page, () => window.ddp.match.phase === "over");
@@ -270,6 +275,9 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   assert.ok(st.reason, `the game ended by rule: ${st.reason}`);
   assert.ok(st.moves.length >= 2 * taps - 1, "the robot answered every move");
   assert.ok((await knocks(page)) >= st.moves.length, "a knock for every move, two for castling");
+  assert.ok(Math.min(...replies) >= 250, `the robot never answers instantly: ${replies}`);
+  const average = replies.reduce((a, b) => a + b, 0) / replies.length;
+  assert.ok(average >= 700, `the robot takes its time: ${Math.round(average)} ms on average`);
   assert.match(await page.locator("#chess-result").innerText(), /^(Victory!|Defeat|Draw)$/);
   assert.ok(await noHorizontalScroll(page));
   await page.waitForTimeout(300);
