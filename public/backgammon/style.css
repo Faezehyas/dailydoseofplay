@@ -7,15 +7,23 @@
   margin: 0 auto;
 }
 
+/* "You vs Robot" stays together, centred over the scoreboard, with Leave on
+   the right; the empty first column balances Leave. No grid gap, so on a
+   phone that empty column takes no room from the names. */
 .bg-top {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+}
+
+.bg-top > .bg-players {
+  grid-column: 2;
 }
 
 .bg-top > .btn {
-  flex: none;
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 8px;
 }
 
 /* Each name keeps its full width when it fits; long names share what's left. */
@@ -24,7 +32,6 @@
   grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
   align-items: center;
   gap: 6px;
-  flex: 1 1 auto;
   min-width: 0;
   font-weight: 700;
 }
@@ -495,11 +502,16 @@
   cursor: pointer;
 }
 
-.bg-cell.src > .checker:last-of-type {
+.bg-cell.src > .checker.top {
   box-shadow: inset 0 0 0 2px var(--accent-ink), 0 0 0 2px var(--focus);
 }
 
-.bg-cell.selected > .checker:last-of-type {
+/* Your checkers can be dragged on a touch screen without scrolling the page. */
+.bg-board.armed .bg-cell.src {
+  touch-action: none;
+}
+
+.bg-cell.selected > .checker.top {
   transform: scale(1.12);
   box-shadow: inset 0 0 0 2px var(--accent-ink), 0 0 0 3px var(--text);
 }
@@ -508,22 +520,28 @@
   background: color-mix(in srgb, var(--accent) 45%, var(--surface));
 }
 
-.bg-cell.dest::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 4%;
-  width: 70%;
+/* Where a picked checker would land: the next free spot on the point… */
+.slot {
+  flex: none;
+  width: 88%;
   aspect-ratio: 1;
   border-radius: 50%;
   border: 3px dashed var(--accent);
-  transform: translateX(-50%);
   animation: bg-pulse 1s ease-in-out infinite alternate;
 }
 
-.bg-cell.dest.bottom::after {
-  top: 4%;
-  bottom: auto;
+/* …or around a full stack's top checker, or the blot it would hit. */
+.checker.target::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px dashed var(--accent);
+  animation: bg-pulse 1s ease-in-out infinite alternate;
+}
+
+.bg-cell.point.dest.over::before {
+  background: color-mix(in srgb, var(--accent) 75%, var(--surface));
 }
 
 .bg-cell.tray.dest {
@@ -531,9 +549,8 @@
   box-shadow: 0 0 0 2px var(--accent) inset;
 }
 
-.bg-cell.tray.dest::after {
-  top: auto;
-  bottom: 4px;
+.bg-cell.tray.dest.over {
+  background: color-mix(in srgb, var(--accent) 25%, var(--surface));
 }
 
 @keyframes bg-pulse {
@@ -542,22 +559,19 @@
   }
 }
 
-/* The opponent's last play: a dot by each point it touched. */
-.bg-cell.point.hot:not(.dest)::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 2%;
-  width: 7px;
-  height: 7px;
+/* The opponent's last play: a faint outline where a checker left, a ring on each that arrived. */
+.vacated {
+  flex: none;
+  width: 88%;
+  aspect-ratio: 1;
   border-radius: 50%;
-  background: var(--accent-2);
-  transform: translateX(-50%);
+  border: 2px solid var(--accent-2);
+  opacity: 0.55;
 }
 
-.bg-cell.point.hot.bottom:not(.dest)::after {
-  top: 2%;
-  bottom: auto;
+.checker.arrived {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 
 .bg-board.done .checker {
@@ -660,6 +674,12 @@
   visibility: hidden;
 }
 
+/* A checker you are dragging. */
+.checker.ghost.held {
+  z-index: 6;
+  transform: scale(1.15);
+}
+
 .die.tumble {
   animation: bg-tumble 0.6s cubic-bezier(0.2, 0.75, 0.3, 1) both;
 }
@@ -692,7 +712,33 @@
 
 @media (prefers-reduced-motion: reduce) {
   .die.tumble,
-  .bg-cell.dest::after {
+  .slot,
+  .checker.target::after {
     animation: none;
   }
+}
+
+/* ---------- racing home ---------- */
+.bg-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.bg-offer p {
+  flex: 1 1 220px;
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.bg-offer-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
 }

@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { localPair } from "../engine/channel.js";
 import { openSession, matchRouter } from "../engine/session.js";
-import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
+import { TurnMatch } from "../engine/turn-match.js";
 import { rngFromSeed } from "../engine/rng.js";
 import { makeRules, CHECKERS, OFF } from "./rules.js";
-import { chooseMove } from "./robot.js";
+import { chooseMove, startRobot } from "./robot.js";
 
 const rules = makeRules({ moveSeconds: 0, gameSeconds: 0 });
 const tick = () => new Promise((r) => setTimeout(r, 1));
@@ -72,15 +72,19 @@ test("an illegal play is refused locally; a forged play from the peer aborts the
   assert.match((await aborted).reason, /broke the rules: move out of turn/);
 });
 
-test("the robot plays whole games over startTurnRobot and accepts a rematch", async () => {
+test("the robot plays whole games over startRobot, with the pause it is given, and accepts a rematch", async () => {
   const [x, y] = localPair();
   const [human, bot] = await Promise.all([
     openSession({ channel: x, mode: "robot", index: 0, name: "A", game: "backgammon" }),
     openSession({ channel: y, mode: "robot", index: 1, name: "Robot", game: "backgammon" }),
   ]);
   bot.on("rematch", (v) => v.them && !v.me && bot.requestRematch());
-  const choose = (state, me, rng) => chooseMove(state, me, rng, { level: "hard" });
-  const robot = startTurnRobot(bot, { rules, choose, delay: 0, rng: rngFromSeed("bot") });
+  // The pause is asked for before each move; the move reports it as its time.
+  const asked = [];
+  const delay = (state) => (asked.push(state.ply), state.ply % 2 ? 0 : 1);
+  const told = [];
+  const choose = (state, me, rng, ms) => (told.push(ms), chooseMove(state, me, rng, { level: "hard" }));
+  const robot = startRobot(bot, { rules, choose, delay, rng: rngFromSeed("bot") });
   const router = matchRouter(human);
   const rng = rngFromSeed("human");
   for (let m = 1; m <= 2; m++) {
@@ -99,6 +103,8 @@ test("the robot plays whole games over startTurnRobot and accepts a rematch", as
       await started;
     }
   }
+  assert.ok(asked.length > 20);
+  assert.ok(told.length > 20 && told.every((ms) => ms === 0 || ms === 1));
   robot.destroy();
 });
 
