@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4e2"/>
+      <stop offset="1" stop-color="#f6dcc0"/>
+    </linearGradient>
+    <clipPath id="board">
+      <rect x="40" y="22" width="196" height="156" rx="12"/>
+    </clipPath>
+  </defs>
+  <rect width="320" height="200" fill="url(#paper)"/>
+  <g clip-path="url(#board)">
+    <g stroke="#fff" stroke-width="2.5">
+      <rect x="40" y="22" width="40" height="40" fill="#ffe9a8"/><rect x="80" y="22" width="40" height="40" fill="#ffd0c2"/><rect x="120" y="22" width="40" height="40" fill="#c9eedc"/><rect x="160" y="22" width="40" height="40" fill="#d3e6ff"/><rect x="200" y="22" width="40" height="40" fill="#ecdcff"/>
+      <rect x="40" y="62" width="40" height="40" fill="#d3e6ff"/><rect x="80" y="62" width="40" height="40" fill="#ecdcff"/><rect x="120" y="62" width="40" height="40" fill="#ffe9a8"/><rect x="160" y="62" width="40" height="40" fill="#ffd0c2"/><rect x="200" y="62" width="40" height="40" fill="#c9eedc"/>
+      <rect x="40" y="102" width="40" height="40" fill="#ffd0c2"/><rect x="80" y="102" width="40" height="40" fill="#c9eedc"/><rect x="120" y="102" width="40" height="40" fill="#d3e6ff"/><rect x="160" y="102" width="40" height="40" fill="#ecdcff"/><rect x="200" y="102" width="40" height="40" fill="#ffe9a8"/>
+      <rect x="40" y="142" width="40" height="40" fill="#ecdcff"/><rect x="80" y="142" width="40" height="40" fill="#ffe9a8"/><rect x="120" y="142" width="40" height="40" fill="#ffd0c2"/><rect x="160" y="142" width="40" height="40" fill="#c9eedc"/><rect x="200" y="142" width="40" height="40" fill="#d3e6ff"/>
+    </g>
+    <!-- a slide -->
+    <g fill="none" stroke-linecap="round">
+      <path d="M182 42 C222 70 150 100 182 128 C196 140 214 150 222 162" stroke="#000" stroke-opacity=".12" stroke-width="22" transform="translate(3 4)"/>
+      <path d="M182 42 C222 70 150 100 182 128 C196 140 214 150 222 162" stroke="#cc4343" stroke-width="22"/>
+      <path d="M182 42 C222 70 150 100 182 128 C196 140 214 150 222 162" stroke="#ffb4b4" stroke-width="17"/>
+      <path d="M182 42 C222 70 150 100 182 128 C196 140 214 150 222 162" stroke="#ff6b6b" stroke-width="10"/>
+    </g>
+    <rect x="166" y="30" width="26" height="11" rx="4" fill="#c27f3e" stroke="#7a4a20" stroke-width="2" transform="rotate(30 179 36)"/>
+    <!-- a ladder -->
+    <g stroke-linecap="round">
+      <path d="M64 170 L128 40 M82 178 L146 48" stroke="#000" stroke-opacity=".12" stroke-width="7" transform="translate(3 4)"/>
+      <path d="M70 162 L86 170 M78 146 L94 154 M86 130 L102 138 M94 114 L110 122 M102 98 L118 106 M110 82 L126 90 M118 66 L134 74 M126 50 L142 58" stroke="#c27f3e" stroke-width="5"/>
+      <path d="M64 170 L128 40 M82 178 L146 48" stroke="#7a4a20" stroke-width="7"/>
+      <path d="M64 170 L128 40 M82 178 L146 48" stroke="#e7ad6a" stroke-width="3"/>
+    </g>
+    <!-- numbers -->
+    <g font-family="ui-rounded, system-ui, sans-serif" font-size="11" font-weight="800" fill="#6b5848">
+      <text x="45" y="35">100</text><text x="85" y="35">99</text><text x="125" y="35">98</text><text x="165" y="35">97</text><text x="205" y="35">96</text>
+    </g>
+  </g>
+  <rect x="40" y="22" width="196" height="156" rx="12" fill="none" stroke="#e7d7bf" stroke-width="3"/>
+  <!-- trophy on 100 -->
+  <g transform="translate(60 50) scale(.55)" stroke="#d1901a" stroke-width="3" stroke-linejoin="round">
+    <path d="M-20 -30 H20 C20 -8 12 2 0 4 C-12 2 -20 -8 -20 -30 Z" fill="#fff3c4"/>
+    <path d="M-20 -24 C-34 -24 -32 -6 -14 -6 M20 -24 C34 -24 32 -6 14 -6" fill="none" stroke-width="4"/>
+    <path d="M-4 3 H4 V13 H12 V20 H-12 V13 H-4 Z" fill="#fff3c4"/>
+  </g>
+  <!-- pawns: coral climbing, teal on the slide -->
+  <g transform="translate(112 92) scale(1.05)" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke">
+    <ellipse cx="0" cy="-3" rx="17" ry="6.5" fill="#cc5038"/>
+    <path d="M-13.5 -6 C-15 -22 -10 -32 0 -32 C10 -32 15 -22 13.5 -6 Z" fill="#ff6b4a"/>
+    <circle cx="0" cy="-42" r="11.5" fill="#ffe0c4"/>
+    <path d="M-11.6 -42.5 A11.6 11.6 0 0 1 11.6 -42.5 C7 -46.5 -2 -48 -11.6 -42.5 Z" fill="#b84a33" stroke="none"/>
+    <circle cx="-4" cy="-41" r="1.7" fill="#2b2b36" stroke="none"/><circle cx="4" cy="-41" r="1.7" fill="#2b2b36" stroke="none"/>
+    <path d="M-4 -36.6 Q0 -33.4 4 -36.6" fill="none" stroke="#2b2b36" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(198 132) rotate(-22) scale(1.05)" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke">
+    <ellipse cx="0" cy="-3" rx="17" ry="6.5" fill="#1f6767"/>
+    <path d="M-13.5 -6 C-15 -22 -10 -32 0 -32 C10 -32 15 -22 13.5 -6 Z" fill="#2b8a8a"/>
+    <circle cx="0" cy="-42" r="11.5" fill="#ffe0c4"/>
+    <path d="M-11.6 -42.5 A11.6 11.6 0 0 1 11.6 -42.5 C7 -46.5 -2 -48 -11.6 -42.5 Z" fill="#1f6767" stroke="none"/>
+    <circle cx="-4" cy="-41" r="1.7" fill="#2b2b36" stroke="none"/><circle cx="4" cy="-41" r="1.7" fill="#2b2b36" stroke="none"/>
+    <path d="M-4 -35 Q0 -38 4 -35" fill="none" stroke="#2b2b36" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+  <!-- the spinner -->
+  <g transform="translate(272 128)">
+    <circle r="36" fill="#ff6b4a"/>
+    <path d="M0 0 L0 -31 A31 31 0 0 1 26.8 -15.5 Z" fill="#ff6b6b" stroke="#fff" stroke-width="1.5"/>
+    <path d="M0 0 L26.8 -15.5 A31 31 0 0 1 26.8 15.5 Z" fill="#ffad4d" stroke="#fff" stroke-width="1.5"/>
+    <path d="M0 0 L26.8 15.5 A31 31 0 0 1 0 31 Z" fill="#ffc23a" stroke="#fff" stroke-width="1.5"/>
+    <path d="M0 0 L0 31 A31 31 0 0 1 -26.8 15.5 Z" fill="#4cc38a" stroke="#fff" stroke-width="1.5"/>
+    <path d="M0 0 L-26.8 15.5 A31 31 0 0 1 -26.8 -15.5 Z" fill="#4ea8ff" stroke="#fff" stroke-width="1.5"/>
+    <path d="M0 0 L-26.8 -15.5 A31 31 0 0 1 0 -31 Z" fill="#a980ff" stroke="#fff" stroke-width="1.5"/>
+    <path d="M0 -26 L4 -3 L2 9 H-2 L-4 -3 Z" fill="#fdfdfd" stroke="#2b2b36" stroke-width="1.6" stroke-linejoin="round" transform="rotate(48)"/>
+    <circle r="5.5" fill="#ff6b4a" stroke="#fff" stroke-width="2"/>
+  </g>
+  <g fill="#ffc23a">
+    <path d="M276 38l4 9 10 1-7 7 2 10-9-5-9 5 2-10-7-7 10-1z"/>
+    <circle cx="22" cy="150" r="5"/>
+    <circle cx="300" cy="182" r="4"/>
+    <circle cx="252" cy="70" r="3"/>
+  </g>
+</svg>

@@ -55,6 +55,14 @@
       "players": "2 players",
       "maxPlayers": 2,
       "description": "Race your checkers home with a little luck and a lot of tactics."
+    },
+    {
+      "slug": "chutes-and-ladders",
+      "name": "Chutes and Ladders",
+      "status": "ready",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Spin, climb the ladders, slide down the chutes. First to square 100 wins."
     }
   ]
 }

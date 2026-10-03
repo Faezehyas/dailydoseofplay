@@ -11,5 +11,6 @@ is in `CONTRIBUTING.md`. Each game's slug is already in `public/games.json` with
 - [x] **Chess** (`chess`): FIDE rules with castling, en passant and promotion; automatic draws on stalemate, threefold repetition, the 50-move rule and insufficient material; optional clocks; resign. `TurnMatch`; alpha-beta robot with Easy, Medium and Hard levels.
 - [x] **Checkers** (`checkers`): 8×8 English draughts, mandatory captures, multi-jumps, kings, a draw after 40 turns with no capture or new king; optional clocks; the room picks who starts. `TurnMatch`, where a move is a full jump path; alpha-beta robot with Easy, Medium and Hard.
 - [x] **Backgammon** (`backgammon`): dice via `needsRandom` (a `{type: "roll"}` move drawn by both peers), bearing off, hitting, the bar; optional clocks; the room picks who starts; no cube or gammons. `TurnMatch`; play-scoring robot at three levels.
+- [x] **Chutes and Ladders** (`chutes-and-ladders`): the classic 1943 board (nine ladders, ten chutes) and a 1–6 spinner drawn by both peers; the room picks the finish rule (exact spin, bounce back or any spin), whether a 6 spins again, and who starts. `TurnMatch`; there are no choices, so the robot only spins. Two players: the engine's sessions are two-player.
 
 When a game ships, tick it here and set its `games.json` status to `ready`.
