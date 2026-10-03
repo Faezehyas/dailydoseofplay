@@ -98,7 +98,7 @@ test("move generation matches the published perft counts", () => {
 test("a legal move updates the board, the turn and the notation", () => {
   const s = newState(1);
   const events = applyMove(s, 1, mv("g1f3"));
-  assert.deepEqual(events, [{ type: "moved", player: 1, from: sq("g1"), to: sq("f3"), san: "Nf3", captured: 0, check: false }]);
+  assert.deepEqual(events, [{ type: "moved", player: 1, from: sq("g1"), to: sq("f3"), san: "Nf3", captured: 0, capturedAt: -1, check: false }]);
   assert.equal(s.board[sq("f3")], KNIGHT);
   assert.equal(s.board[sq("g1")], EMPTY);
   assert.equal(s.turn, 0);
@@ -165,7 +165,9 @@ test("en passant: only right after the double step, and the passed pawn is remov
   const s = newState(0);
   play(s, "e2e4", "a7a6", "e4e5", "d7d5");
   assert.equal(squareName(s.ep), "d6");
-  play(s, "e5d6");
+  const [moved] = applyMove(s, 0, mv("e5d6"));
+  assert.equal(moved.capturedAt, sq("d5"), "the passed pawn is taken from d5");
+  assert.equal(moved.captured, PAWN);
   assert.equal(s.moves.at(-1).san, "exd6");
   assert.equal(s.board[sq("d5")], EMPTY);
   assert.equal(s.board[sq("d6")], PAWN);

@@ -303,11 +303,14 @@ and never more than a thirtieth of its clock. The engine's `startTurnRobot()`
 only takes a fixed delay, so `robot.js` has its own `startRobot()`, the same
 loop with a pause per move. Its clock pays for the pause and the search.
 
-**Sound.** Every move, yours or the opponent's, lands with one of four CC0
-recordings of a piece set down on a wooden board (`chess/sounds/LICENSE.txt`),
-played through the engine's `playSample()`, so the header's mute toggle covers
-it. A capture lands harder (louder and a little deeper), and castling knocks
-twice: the king, then the rook.
+**Motion and sound.** A move glides from its old square to the new one in
+190 ms (castling slides the rook too); a taken piece tips over and fades with
+a small ring as the attacker lands on it. A dragged piece is already in place,
+so it doesn't slide. With "reduce motion" set in the OS, nothing animates.
+When the piece lands it plays one of four CC0 recordings of a piece set down
+on a wooden board; a capture plays a sharper wooden clack instead, and
+castling knocks twice, king then rook (`chess/sounds/LICENSE.txt`). Sounds go
+through the engine's `playSample()`, so the header's mute toggle covers them.
 
 **Colours.** The board and pieces have their own light and dark tokens at the
 top of `chess/style.css`, because a white piece must stay white in both

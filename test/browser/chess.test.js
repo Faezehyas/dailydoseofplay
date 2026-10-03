@@ -36,16 +36,26 @@ const noHorizontalScroll = (page) => page.evaluate(() => document.documentElemen
 const pick = (page, name, value) => page.click(`#chess-settings label:has(input[name="chess-${name}"][value="${value}"])`);
 const sq = (name) => (Number(name[1]) - 1) * 8 + "abcdefgh".indexOf(name[0]);
 const square = (page, name) => page.locator(`.sq[data-sq="${sq(name)}"]`);
-// Counts recorded knocks played (short samples; the engine's noise buffers are seconds long).
-const countKnocks = () => {
+// Counts recorded piece sounds (short samples; the engine's noise buffers are
+// seconds long). Capture clacks are the longer ones. Also counts animations.
+const countEffects = () => {
   window.knocks = 0;
+  window.clacks = 0;
+  window.anims = 0;
   const start = AudioBufferSourceNode.prototype.start;
   AudioBufferSourceNode.prototype.start = function (...args) {
-    if (this.buffer?.duration < 0.5) window.knocks++;
+    const d = this.buffer?.duration;
+    if (d < 0.5) window[d > 0.28 ? "clacks" : "knocks"]++; // knocks are 0.26 s, clacks 0.30 s
     return start.apply(this, args);
   };
+  const animate = Element.prototype.animate;
+  Element.prototype.animate = function (...args) {
+    window.anims++;
+    return animate.apply(this, args);
+  };
 };
-const knocks = (page) => page.evaluate(() => window.knocks);
+const effects = (page) => page.evaluate(() => ({ knocks: window.knocks, clacks: window.clacks, anims: window.anims }));
+const knocks = async (page) => (await effects(page)).knocks;
 
 test("two friends play Chess on the host's settings through the invite link, then a rematch", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
@@ -59,7 +69,7 @@ test("two friends play Chess on the host's settings through the invite link, the
   async function open(name, nickname, opts = {}) {
     const ctx = await browser.newContext({ viewport: { width: 1200, height: 1000 }, ...opts });
     await ctx.addInitScript((n) => localStorage.setItem("ddp-name", n), nickname);
-    await ctx.addInitScript(countKnocks);
+    await ctx.addInitScript(countEffects);
     const page = await ctx.newPage();
     page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
     return page;
@@ -108,13 +118,15 @@ test("two friends play Chess on the host's settings through the invite link, the
     await wait(host, (k) => window.ddp.match.state.moves.length === k, n);
     await wait(guest, (k) => window.ddp.match.state.moves.length === k, n);
   }
-  // Moves by tapping the piece, then its destination.
+  // Moves by tapping the piece, then its destination. Both boards animate it.
   async function tapMove(page, from, to) {
     const n = await moveCount(page);
+    const before = [(await effects(host)).anims, (await effects(guest)).anims];
     await wait(page, () => window.ddp.match.canMove());
     await square(page, from).click();
     await square(page, to).click();
     await bothSee(n + 1);
+    assert.ok((await effects(host)).anims > before[0] && (await effects(guest)).anims > before[1], `${from}-${to} slides on both boards`);
   }
 
   // Game 1: the fastest mate. The host moves by tap, keyboard and drag; the friend by tap.
@@ -144,7 +156,8 @@ test("two friends play Chess on the host's settings through the invite link, the
   await wait(guest, () => window.ddp.match.phase === "over");
   assert.deepEqual(await host.evaluate(() => window.ddp.match.state), await guest.evaluate(() => window.ddp.match.state));
   assert.equal(await host.evaluate(() => window.ddp.match.state.moves.map((m) => m.san).join(" ")), "f3 e5 g4 Qh4#");
-  assert.equal(await knocks(host), 4, "every move lands with a knock");
+  await host.waitForTimeout(400); // the last piece lands, then knocks
+  assert.deepEqual(await host.evaluate(() => [window.knocks, window.clacks]), [4, 0], "every move lands with a knock");
   assert.equal(await knocks(guest), 4);
   assert.equal(await guest.locator("#chess-result").innerText(), "Victory!");
   assert.equal(await host.locator("#chess-result").innerText(), "Defeat");
@@ -183,12 +196,16 @@ test("two friends play Chess on the host's settings through the invite link, the
   await host.locator("#chess-promo").waitFor();
   assert.equal(await host.locator(".promo-opt").count(), 4);
   await host.screenshot({ path: `${ARTIFACTS}/chess-3-promotion.png` });
+  const guestAnims = (await effects(guest)).anims;
   await host.click('.promo-opt[data-promo="n"]');
   await bothSee(9);
   await host.locator("#chess-promo").waitFor({ state: "hidden" });
   assert.equal(await guest.evaluate(() => window.ddp.match.state.moves.at(-1).san), "bxa8=N");
-  assert.equal(await knocks(host), 4 + 9);
-  assert.equal(await knocks(guest), 4, "muted: no more knocks");
+  assert.ok((await effects(guest)).anims >= guestAnims + 3, "the friend sees the pawn slide and the rook knocked off");
+  await host.waitForTimeout(400);
+  // Four of the nine moves were captures: exd5, dxc6, cxb7 and bxa8=N.
+  assert.deepEqual(await host.evaluate(() => [window.knocks, window.clacks]), [4 + 5, 4], "captures clack");
+  assert.deepEqual(await guest.evaluate(() => [window.knocks, window.clacks]), [4, 0], "muted: no more sounds");
   assert.match(await host.locator(".chess-taken.mine").innerHTML(), /pc b/, "the host's captures are shown");
   await wait(guest, () => window.ddp.match.canMove());
   await guest.click("#resign");
@@ -221,7 +238,7 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   });
   const errors = [];
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" });
-  await ctx.addInitScript(countKnocks);
+  await ctx.addInitScript(countEffects);
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
 
@@ -274,7 +291,9 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   const st = await page.evaluate(() => window.ddp.match.state);
   assert.ok(st.reason, `the game ended by rule: ${st.reason}`);
   assert.ok(st.moves.length >= 2 * taps - 1, "the robot answered every move");
-  assert.ok((await knocks(page)) >= st.moves.length, "a knock for every move, two for castling");
+  const fx = await effects(page);
+  assert.ok(fx.knocks + fx.clacks >= st.moves.length - 1, `a sound for every move: ${JSON.stringify(fx)}`);
+  assert.ok(fx.clacks > 0, "captures clack");
   assert.ok(Math.min(...replies) >= 250, `the robot never answers instantly: ${replies}`);
   const average = replies.reduce((a, b) => a + b, 0) / replies.length;
   assert.ok(average >= 700, `the robot takes its time: ${Math.round(average)} ms on average`);

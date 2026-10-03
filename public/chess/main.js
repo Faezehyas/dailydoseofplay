@@ -24,18 +24,24 @@ import {
   ROOK,
   QUEEN,
   KING,
+  ROOK_HOP,
 } from "./rules.js";
 import { startRobot } from "./robot.js";
 import { mountSettings, LEVEL_NAMES } from "./settings.js";
 
 const ROBOT_SEARCH_MS = 250; // search cap, so a slow phone still answers quickly
+const SLIDE_MS = 190;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const COLOR_NAMES = ["White", "Black"];
 const PIECE_NAMES = ["", "pawn", "knight", "bishop", "rook", "queen", "king"];
 const VALUES = [0, 1, 3, 3, 5, 9, 0];
 const PROMOS = [["q", QUEEN], ["r", ROOK], ["b", BISHOP], ["n", KNIGHT]];
-// Real recordings (CC0, see sounds/LICENSE.txt) of a piece set down on a wooden board.
-const KNOCKS = [1, 2, 3, 4].map((k) => new URL(`./sounds/move-${k}.mp3`, import.meta.url).href);
+// Real recordings (CC0, see sounds/LICENSE.txt): a piece set down on a wooden
+// board, and for captures a sharper wooden clack over the knock.
+const sample = (name) => new URL(`./sounds/${name}.mp3`, import.meta.url).href;
+const KNOCKS = [1, 2, 3, 4].map((k) => sample(`move-${k}`));
+const CLACKS = [1, 2].map((k) => sample(`capture-${k}`));
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Original piece art on a 100×100 grid; class "d" is a detail line, "e" an eye.
 const BASE = '<path d="M24 78h52a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4v-2a4 4 0 0 1 4-4z"/>';
@@ -55,14 +61,15 @@ const pieceSvg = (piece) => `<svg viewBox="6 3 88 88" class="pc ${colorOf(piece)
 const pieceName = (piece) => `${COLOR_NAMES[colorOf(piece)].toLowerCase()} ${PIECE_NAMES[typeOf(piece)]}`;
 
 const settings = mountSettings(document.getElementById("chess-settings"), document.getElementById("lobby"));
-preload(KNOCKS);
+preload([...KNOCKS, ...CLACKS]);
 
-// A piece lands: a capture lands a little harder; castling is the king, then the rook.
+// A piece lands: a capture clacks; castling knocks twice, the king then the rook.
 function knock(moved) {
-  if (moved.san.startsWith("O-O")) {
+  if (moved.captured) playSample(CLACKS, { gain: 0.8 });
+  else if (moved.san.startsWith("O-O")) {
     playSample(KNOCKS, { gain: 0.7 });
-    setTimeout(() => playSample(KNOCKS, { gain: 0.5, rate: 1.08 }), 150);
-  } else playSample(KNOCKS, moved.captured ? { gain: 0.95, rate: 0.9 } : { gain: 0.7 });
+    setTimeout(() => playSample(KNOCKS, { gain: 0.5, rate: 1.08 }), 120);
+  } else playSample(KNOCKS, { gain: 0.7 });
 }
 
 startGameShell({
@@ -106,6 +113,9 @@ function mountChess(session, root, shell) {
   let focusSq = -1; // the square that takes Tab focus
   let promoFor = null; // { from, to } while the promotion picker is open
   let resignArmed = 0;
+  let landing = null; // the move just applied, to animate after the board redraws
+  let dropping = false; // true while a drag-and-drop plays its move
+  let dropped = null; // a move dropped in place: no slide needed
 
   // One session handler: "setup" is for this view, everything else goes to the matches.
   let route = () => {};
@@ -223,6 +233,7 @@ function mountChess(session, root, shell) {
   }
 
   function send(move) {
+    dropped = dropping ? move : null;
     selected = -1;
     promoFor = null;
     promoBox.hidden = true;
@@ -275,7 +286,11 @@ function mountChess(session, root, shell) {
     ghost.remove();
     squares[from]?.classList.remove("lifted");
     const target = e.type === "pointerup" && document.elementFromPoint(e.clientX, e.clientY)?.closest(".sq");
-    if (target && board.contains(target) && Number(target.dataset.sq) !== from) onSquare(Number(target.dataset.sq));
+    if (target && board.contains(target) && Number(target.dataset.sq) !== from) {
+      dropping = true;
+      onSquare(Number(target.dataset.sq));
+      dropping = false;
+    }
   }
   addEventListener("pointermove", onPointerMove);
   addEventListener("pointerup", endDrag);
@@ -513,6 +528,59 @@ function mountChess(session, root, shell) {
     resignHint.textContent = can ? "" : "You can resign on your turn.";
   }
 
+  // ---------- animation ----------
+  // The piece glides from its old square; the sound plays as it lands.
+  function animateMove(moved) {
+    const still = reducedMotion() || (dropped && dropped.from === moved.from && dropped.to === moved.to);
+    dropped = null;
+    if (!still) {
+      slide(moved.from, moved.to);
+      if (moved.san.startsWith("O-O")) slide(...ROOK_HOP[moved.to], 120);
+    }
+    if (moved.captured && !reducedMotion()) takeAway(moved, still ? 0 : SLIDE_MS * 0.6);
+    setTimeout(() => !destroyed && knock(moved), still ? 0 : SLIDE_MS);
+  }
+
+  function slide(from, to, delay = 0) {
+    const target = squares[to];
+    const a = squares[from].getBoundingClientRect();
+    const b = target.getBoundingClientRect();
+    target.classList.add("moving");
+    target.firstChild
+      .animate([{ transform: `translate(${a.left - b.left}px, ${a.top - b.top}px)` }, { transform: "none" }], {
+        duration: SLIDE_MS,
+        delay,
+        easing: "cubic-bezier(0.25, 0.8, 0.35, 1)",
+        fill: "backwards",
+      })
+      .finished.catch(() => {})
+      .finally(() => target.classList.remove("moving"));
+  }
+
+  // The taken piece is knocked off its square with a small burst.
+  function takeAway(moved, delay) {
+    const wrap = board.parentElement;
+    const r = squares[moved.capturedAt].getBoundingClientRect();
+    const w = wrap.getBoundingClientRect();
+    const loser = ((colorOfPlayer(match.state, moved.player) ^ 1) << 3) | moved.captured;
+    const fx = el("div", { class: "chess-fx", "aria-hidden": "true" });
+    fx.innerHTML = `${pieceSvg(loser)}<span class="burst"></span>`;
+    Object.assign(fx.style, { left: `${r.left - w.left}px`, top: `${r.top - w.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+    wrap.append(fx);
+    fx.firstChild.animate(
+      [
+        { transform: "none", opacity: 1 },
+        { transform: "scale(1.2) rotate(-10deg)", opacity: 0.9, offset: 0.3 },
+        { transform: "translateY(25%) scale(0.35) rotate(20deg)", opacity: 0 },
+      ],
+      { duration: 360, delay, easing: "ease-in", fill: "both" },
+    );
+    fx.lastChild
+      .animate([{ transform: "scale(0.3)", opacity: 0.9 }, { transform: "scale(1.25)", opacity: 0 }], { duration: 420, delay: delay + 30, easing: "ease-out", fill: "both" })
+      .finished.catch(() => {})
+      .finally(() => fx.remove());
+  }
+
   function render() {
     if (destroyed) return;
     const st = match?.state;
@@ -526,6 +594,10 @@ function mountChess(session, root, shell) {
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
     status.classList.toggle("check", phase === "playing" && st.turn === me && inCheck(st));
     renderBoard();
+    if (landing && squares.length) {
+      animateMove(landing);
+      landing = null;
+    }
     if (!promoFor) promoBox.hidden = true;
     renderTaken();
     renderMoves();
@@ -581,6 +653,8 @@ function mountChess(session, root, shell) {
     promoFor = null;
     promoBox.hidden = true;
     resignArmed = 0;
+    landing = null;
+    dropped = null;
     squares = [];
     board.replaceChildren();
     for (const { taken } of pills) {
@@ -601,7 +675,7 @@ function mountChess(session, root, shell) {
     match.on("events", ({ player, events }) => {
       turnStart = performance.now();
       const moved = events.find((e) => e.type === "moved");
-      if (moved) knock(moved);
+      if (moved) landing = moved;
       if (moved && player === opp && moved.check && match.state.winner === -1) toast("Check!");
     });
     match.on("over", ({ winner }) => {

@@ -394,6 +394,34 @@
   opacity: 0.3;
 }
 
+/* A sliding piece passes over the squares on its way. */
+.sq.moving {
+  z-index: 3;
+}
+
+/* A captured piece knocked off its square, with a small burst: above the
+   resting pieces, under the one sliding in. */
+.chess-fx {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.chess-fx .pc {
+  grid-area: 1 / 1;
+}
+
+.chess-fx .burst {
+  grid-area: 1 / 1;
+  width: 86%;
+  height: 86%;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  opacity: 0;
+}
+
 .chess-ghost {
   position: fixed;
   top: 0;

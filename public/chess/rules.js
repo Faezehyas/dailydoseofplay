@@ -487,7 +487,8 @@ export function applyMove(state, player, move) {
   if (state.halfmove === 0) state.positions = [key];
   else state.positions.push(key);
 
-  const events = [{ type: "moved", player, ...record, captured: undo.captured & 7, check }];
+  // capturedAt differs from `to` only for en passant.
+  const events = [{ type: "moved", player, ...record, captured: undo.captured & 7, capturedAt: undo.captured ? undo.capSq : -1, check }];
   let reason = null;
   if (!reply.length) reason = check ? "checkmate" : "stalemate";
   else if (insufficientMaterial(state.board)) reason = "material";
