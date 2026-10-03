@@ -8,6 +8,7 @@ text and code are original.
 
 - Sea Battle: Battleship rules, with gifts and special weapons; optional shot and game clocks.
 - Tic Tac Toe: 3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks.
+- Connect 4: drop discs and line up four, on a 7×6 board or bigger; optional clocks; an Easy, Medium or Hard robot.
 - Gomoku: five in a row on a 15×15 board; optional move and game clocks.
 
 More are coming, one at a time; see [GAMES.md](GAMES.md).
@@ -28,6 +29,7 @@ npm start                 # http://localhost:8080  (PORT=3000 npm start to chang
 - Home: http://localhost:8080/
 - Sea Battle: http://localhost:8080/sea-battle/
 - Tic Tac Toe: http://localhost:8080/tic-tac-toe/
+- Connect 4: http://localhost:8080/connect-4/
 - Gomoku: http://localhost:8080/gomoku/
 - Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?room=CODE` joins a room.
 - Health: http://localhost:8080/healthz
@@ -58,6 +60,7 @@ public/
   engine/          shared browser engine: lobby, signaling client, WebRTC, sessions, fair play, UI shell
   sea-battle/      Sea Battle: rules, protocol, robot, view, tests
   tic-tac-toe/     Tic Tac Toe: rules, robot, view, tests (TurnMatch protocol)
+  connect-4/       Connect 4: rules, robot, view, tests (TurnMatch protocol)
   gomoku/          Gomoku: rules, robot, view, tests (TurnMatch protocol)
 test/              integration and browser tests
 app.yaml           Wasmer Edge app config (name dailydoseofplay, owner faezeh_yass)

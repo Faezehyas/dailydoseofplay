@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4e2"/>
+      <stop offset="1" stop-color="#f6dcc0"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="200" fill="url(#paper)"/>
+  <g stroke="#e8c9a8" stroke-width="2" opacity=".7">
+    <path d="M0 30h320M0 60h320M0 90h320M0 120h320M0 150h320M0 180h320"/>
+  </g>
+  <rect x="84" y="46" width="152" height="132" rx="10" fill="#3b4256"/>
+  <path d="M78 178h164" stroke="#3b4256" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#fff4e2">
+    <circle cx="100" cy="142" r="8"/>
+    <circle cx="100" cy="122" r="8"/>
+    <circle cx="100" cy="102" r="8"/>
+    <circle cx="100" cy="82" r="8"/>
+    <circle cx="100" cy="62" r="8"/>
+    <circle cx="120" cy="122" r="8"/>
+    <circle cx="120" cy="102" r="8"/>
+    <circle cx="120" cy="82" r="8"/>
+    <circle cx="120" cy="62" r="8"/>
+    <circle cx="140" cy="122" r="8"/>
+    <circle cx="140" cy="102" r="8"/>
+    <circle cx="140" cy="82" r="8"/>
+    <circle cx="140" cy="62" r="8"/>
+    <circle cx="160" cy="102" r="8"/>
+    <circle cx="160" cy="82" r="8"/>
+    <circle cx="160" cy="62" r="8"/>
+    <circle cx="180" cy="82" r="8"/>
+    <circle cx="180" cy="62" r="8"/>
+    <circle cx="200" cy="122" r="8"/>
+    <circle cx="200" cy="102" r="8"/>
+    <circle cx="200" cy="82" r="8"/>
+    <circle cx="200" cy="62" r="8"/>
+    <circle cx="220" cy="162" r="8"/>
+    <circle cx="220" cy="142" r="8"/>
+    <circle cx="220" cy="122" r="8"/>
+    <circle cx="220" cy="102" r="8"/>
+    <circle cx="220" cy="82" r="8"/>
+    <circle cx="220" cy="62" r="8"/>
+  </g>
+  <g>
+    <circle cx="100" cy="162" r="8" fill="#2b8a8a"/>
+    <circle cx="120" cy="162" r="8" fill="#ff6b4a"/>
+    <circle cx="120" cy="142" r="8" fill="#2b8a8a"/>
+    <circle cx="140" cy="162" r="8" fill="#2b8a8a"/>
+    <circle cx="140" cy="142" r="8" fill="#ff6b4a"/>
+    <circle cx="160" cy="162" r="8" fill="#2b8a8a"/>
+    <circle cx="160" cy="142" r="8" fill="#2b8a8a"/>
+    <circle cx="160" cy="122" r="8" fill="#ff6b4a"/>
+    <circle cx="180" cy="162" r="8" fill="#ff6b4a"/>
+    <circle cx="180" cy="142" r="8" fill="#2b8a8a"/>
+    <circle cx="180" cy="122" r="8" fill="#2b8a8a"/>
+    <circle cx="180" cy="102" r="8" fill="#ff6b4a"/>
+    <circle cx="200" cy="162" r="8" fill="#ff6b4a"/>
+    <circle cx="200" cy="142" r="8" fill="#2b8a8a"/>
+  </g>
+  <g fill="none" stroke="#fff4e2" stroke-width="2">
+    <circle cx="120" cy="162" r="10.5"/>
+    <circle cx="140" cy="142" r="10.5"/>
+    <circle cx="160" cy="122" r="10.5"/>
+    <circle cx="180" cy="102" r="10.5"/>
+  </g>
+  <circle cx="220" cy="30" r="9" fill="#2b8a8a"/>
+  <path d="M214 10v6M220 8v7M226 10v6" stroke="#3b4256" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#ffc23a">
+    <path d="M44 56l4 9 10 1-7 7 2 10-9-5-9 5 2-10-7-7 10-1z"/>
+    <circle cx="276" cy="112" r="5"/>
+    <circle cx="52" cy="150" r="4"/>
+  </g>
+</svg>
