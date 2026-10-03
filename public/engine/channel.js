@@ -28,7 +28,7 @@ class LocalEnd extends Emitter {
     if (!this.open) return false;
     const wire = JSON.stringify(msg); // same serialisation as the real wire
     const other = this.other;
-    setTimeout(() => other.open && other.emit("message", JSON.parse(wire)), this.latency);
+    this.#deliver(() => other.open && other.emit("message", JSON.parse(wire)));
     return true;
   }
   close() {
@@ -36,11 +36,18 @@ class LocalEnd extends Emitter {
     this.open = false;
     this.emit("close");
     const other = this.other;
-    setTimeout(() => {
+    this.#deliver(() => {
       if (!other.open) return;
       other.open = false;
       other.emit("close");
-    }, this.latency);
+    });
+  }
+  // Without latency, deliver on a microtask rather than a timer: like a real
+  // DataChannel, the robot's link must keep working when the page's timers
+  // are throttled (background tab) or faked (a test clock).
+  #deliver(fn) {
+    if (this.latency) setTimeout(fn, this.latency);
+    else queueMicrotask(fn);
   }
 }
 
