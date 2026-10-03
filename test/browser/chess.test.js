@@ -97,6 +97,9 @@ test("two friends play Chess on the host's settings through the invite link, the
   assert.equal(await host.locator("#chess-config").innerText(), await guest.locator("#chess-config").innerText());
   assert.equal(await guest.evaluate(() => window.ddp.match.rules.config.first), "host");
   assert.match(await host.locator(".chess-players").innerText(), /Ada[\s\S]*Bo/);
+  // "Ada vs Bo" stays together, centred over the scoreboard.
+  const centre = (page, sel) => page.locator(sel).evaluate((n) => { const r = n.getBoundingClientRect(); return r.left + r.width / 2; });
+  assert.ok(Math.abs((await centre(host, ".chess-players")) - (await centre(host, "#chess-score"))) < 2, "the players are centred");
   assert.match(await guest.locator(".chess-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
