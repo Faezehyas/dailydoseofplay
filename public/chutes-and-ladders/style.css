@@ -1,0 +1,903 @@
+/* Chutes and Ladders view. Shared tokens come from /engine/theme.css; the
+   board's own palette (pastel squares, chutes, wood, lawn) is defined here
+   for light and dark. Yours is coral (--accent), theirs teal (--accent-2). */
+.chutes-ladders {
+  --cl-t0: #ffe9a8;
+  --cl-t1: #ffd0c2;
+  --cl-t2: #c9eedc;
+  --cl-t3: #d3e6ff;
+  --cl-t4: #ecdcff;
+  --cl-grid: rgb(255 255 255 / 75%);
+  --cl-num: #6b5848;
+  --cl-halo: rgb(255 255 255 / 80%);
+  --cl-frame: #fffaf2;
+  --cl-frame-edge: #e7d7bf;
+  --cl-wood: #c27f3e;
+  --cl-wood-hi: #e7ad6a;
+  --cl-wood-dark: #7a4a20;
+  --cl-shadow: rgb(60 40 20 / 18%);
+  --cl-c0: #ff6b6b;
+  --cl-c0-rim: #cc4343;
+  --cl-c1: #4ea8ff;
+  --cl-c1-rim: #2c74c7;
+  --cl-c2: #4cc38a;
+  --cl-c2-rim: #2a8a5c;
+  --cl-c3: #a980ff;
+  --cl-c3-rim: #7650cc;
+  --cl-c4: #ffad4d;
+  --cl-c4-rim: #d17a22;
+  --cl-c5: #ff86bb;
+  --cl-c5-rim: #cc5389;
+  --cl-lawn: #9bd876;
+  --cl-lawn-dark: #6bb54e;
+  --cl-skin: #ffe0c4;
+  --cl-ink: #2b2b36;
+  --cl-gold: #ffc23a;
+  --cl-gold-dark: #d1901a;
+  --cl-pawn-edge: #ffffff;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .chutes-ladders {
+    --cl-t0: #4b4228;
+    --cl-t1: #4d3530;
+    --cl-t2: #25463a;
+    --cl-t3: #283a55;
+    --cl-t4: #3d3152;
+    --cl-grid: rgb(18 21 28 / 55%);
+    --cl-num: #d6dae3;
+    --cl-halo: rgb(18 21 28 / 75%);
+    --cl-frame: #1b1f29;
+    --cl-frame-edge: #2f3646;
+    --cl-wood: #b97a3e;
+    --cl-wood-hi: #dca263;
+    --cl-wood-dark: #5a3615;
+    --cl-shadow: rgb(0 0 0 / 35%);
+    --cl-lawn: #2f5a2c;
+    --cl-lawn-dark: #3f7a37;
+    --cl-skin: #f3d2b4;
+    --cl-pawn-edge: #12151c;
+  }
+}
+
+:root[data-theme="dark"] .chutes-ladders {
+  --cl-t0: #4b4228;
+  --cl-t1: #4d3530;
+  --cl-t2: #25463a;
+  --cl-t3: #283a55;
+  --cl-t4: #3d3152;
+  --cl-grid: rgb(18 21 28 / 55%);
+  --cl-num: #d6dae3;
+  --cl-halo: rgb(18 21 28 / 75%);
+  --cl-frame: #1b1f29;
+  --cl-frame-edge: #2f3646;
+  --cl-wood: #b97a3e;
+  --cl-wood-hi: #dca263;
+  --cl-wood-dark: #5a3615;
+  --cl-shadow: rgb(0 0 0 / 35%);
+  --cl-lawn: #2f5a2c;
+  --cl-lawn-dark: #3f7a37;
+  --cl-skin: #f3d2b4;
+  --cl-pawn-edge: #12151c;
+}
+
+.cl-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cl-top > .btn {
+  flex: none;
+}
+
+/* ---------- players ---------- */
+.cl-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.cl-players .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.cl-players .who.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.cl-players .who.p1.active {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px var(--accent-2) inset;
+}
+
+.cl-players .swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.cl-players .p1 .swatch {
+  background: var(--accent-2);
+}
+
+.cl-players .label {
+  display: grid;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.cl-players .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cl-players .where {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cl-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- score and status ---------- */
+.cl-score {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.cl-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.cl-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cl-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.cl-score .mine dd {
+  color: var(--accent);
+}
+
+.cl-score .theirs dd {
+  color: var(--accent-2);
+}
+
+.cl-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.cl-status.mine {
+  color: var(--accent);
+}
+
+.cl-config,
+.cl-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- layout: board, with the spinner beside it on wide screens ---------- */
+.cl-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.cl-board-wrap {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+}
+
+@media (min-width: 860px) {
+  .cl-main {
+    grid-template-columns: minmax(0, 1fr) 240px;
+  }
+
+  .cl-side {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+/* ---------- board ---------- */
+/* As big as fits: the full width on a phone, the screen's height on a laptop. */
+.cl-board {
+  display: block;
+  width: min(100%, 680px, max(300px, calc((100svh - 230px) * 0.91)));
+  height: auto;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: inherit;
+}
+
+.cl-board .frame {
+  fill: var(--cl-frame);
+  stroke: var(--cl-frame-edge);
+  stroke-width: 3;
+}
+
+.cl-board .sq.t0 { fill: var(--cl-t0); }
+.cl-board .sq.t1 { fill: var(--cl-t1); }
+.cl-board .sq.t2 { fill: var(--cl-t2); }
+.cl-board .sq.t3 { fill: var(--cl-t3); }
+.cl-board .sq.t4 { fill: var(--cl-t4); }
+
+.cl-board .sq.goal {
+  fill: var(--cl-gold);
+}
+
+.cl-board .grid-lines path {
+  fill: none;
+  stroke: var(--cl-grid);
+  stroke-width: 3;
+}
+
+/* Numbers sit above the ladders and chutes, with a halo to stay readable. */
+.cl-board .num {
+  fill: var(--cl-num);
+  font-size: 20px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: var(--cl-halo);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.cl-board .num.goal {
+  fill: #5a3a00;
+  stroke: #ffe08a;
+}
+
+.cl-board .mark {
+  fill: none;
+  stroke-width: 5;
+  opacity: 0.85;
+}
+
+.cl-board .mark.last-p0 {
+  stroke: var(--accent);
+}
+
+.cl-board .mark.last-p1 {
+  stroke: var(--accent-2);
+  stroke-dasharray: 10 7;
+}
+
+/* pictures at the ends of ladders and chutes */
+.cl-board .ico-badge {
+  fill: var(--cl-halo);
+  opacity: 0.7;
+}
+
+.cl-board .ico .o {
+  stroke: var(--cl-ink);
+  stroke-width: 1.8px;
+  stroke-linejoin: round;
+}
+
+/* trophy on 100 */
+.cl-board .trophy-cup {
+  fill: #fff3c4;
+  stroke: var(--cl-gold-dark);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.cl-board .trophy-handles {
+  fill: none;
+  stroke: var(--cl-gold-dark);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.cl-board .trophy-star {
+  fill: var(--cl-gold);
+  stroke: var(--cl-gold-dark);
+  stroke-width: 1.5;
+}
+
+/* ladders */
+.cl-board .ladder path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.cl-board .ladder-shadow {
+  stroke: var(--cl-shadow);
+  stroke-width: 10;
+}
+
+.cl-board .ladder-rung {
+  stroke: var(--cl-wood);
+  stroke-width: 7;
+}
+
+.cl-board .ladder-rail {
+  stroke: var(--cl-wood-dark);
+  stroke-width: 11;
+}
+
+.cl-board .ladder-rail-hi {
+  stroke: var(--cl-wood-hi);
+  stroke-width: 5;
+}
+
+/* chutes: a coloured trough with a darker rim, ribs and a shine */
+.cl-board .chute path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.cl-board .chute-shadow {
+  stroke: var(--cl-shadow);
+  stroke-width: 42;
+}
+
+/* Rim, raised walls, the bed and a shine: reads as a trough, not a tube. */
+.cl-board .chute-rim {
+  stroke: var(--rim);
+  stroke-width: 42;
+}
+
+.cl-board .chute-wall {
+  stroke: color-mix(in srgb, var(--bed) 55%, #fff);
+  stroke-width: 34;
+}
+
+.cl-board .chute-bed {
+  stroke: var(--bed);
+  stroke-width: 22;
+}
+
+.cl-board .chute-shine {
+  stroke: rgb(255 255 255 / 35%);
+  stroke-width: 5;
+}
+
+.cl-board .chute-lip {
+  fill: var(--rim);
+}
+
+.cl-board .chute-lip-in {
+  fill: var(--bed);
+}
+
+.cl-board .chute-deck {
+  fill: var(--cl-wood);
+  stroke: var(--cl-wood-dark);
+  stroke-width: 3;
+}
+
+.cl-board .chute-rail {
+  fill: none;
+  stroke: var(--rim);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.cl-board .chute.c0 { --bed: var(--cl-c0); --rim: var(--cl-c0-rim); }
+.cl-board .chute.c1 { --bed: var(--cl-c1); --rim: var(--cl-c1-rim); }
+.cl-board .chute.c2 { --bed: var(--cl-c2); --rim: var(--cl-c2-rim); }
+.cl-board .chute.c3 { --bed: var(--cl-c3); --rim: var(--cl-c3-rim); }
+.cl-board .chute.c4 { --bed: var(--cl-c4); --rim: var(--cl-c4-rim); }
+.cl-board .chute.c5 { --bed: var(--cl-c5); --rim: var(--cl-c5-rim); }
+
+/* lawn */
+.cl-board .lawn-ground {
+  fill: var(--cl-lawn);
+}
+
+.cl-board .lawn-blades {
+  fill: none;
+  stroke: var(--cl-lawn-dark);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.cl-board .flower-stem {
+  stroke: var(--cl-lawn-dark);
+  stroke-width: 3;
+}
+
+.cl-board .flower-petal {
+  fill: #fff;
+}
+
+.cl-board .f1 .flower-petal {
+  fill: #ffb3d1;
+}
+
+.cl-board .f2 .flower-petal {
+  fill: #c7b3ff;
+}
+
+.cl-board .flower-heart {
+  fill: var(--cl-gold);
+}
+
+.cl-board .sign-post {
+  stroke: var(--cl-wood-dark);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.cl-board .sign-board {
+  fill: #fff6dc;
+  stroke: var(--cl-wood-dark);
+  stroke-width: 3;
+}
+
+.cl-board .sign-text {
+  fill: var(--cl-wood-dark);
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-anchor: middle;
+}
+
+/* pawns */
+.cl-board .pawn-shadow {
+  fill: rgb(0 0 0 / 22%);
+}
+
+.cl-board .pawn-fig > * {
+  stroke: var(--cl-pawn-edge);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+
+.cl-board .pawn-body,
+.cl-board .pawn-base {
+  fill: var(--pawn);
+}
+
+.cl-board .pawn-base {
+  filter: brightness(0.75);
+}
+
+.cl-board .pawn-arm {
+  fill: none;
+  stroke: var(--pawn) !important;
+  stroke-width: 6 !important;
+  stroke-linecap: round;
+}
+
+.cl-board .pawn-head {
+  fill: var(--cl-skin);
+}
+
+.cl-board .pawn-hair {
+  fill: var(--pawn);
+  filter: brightness(0.7);
+  stroke: none !important;
+}
+
+.cl-board .pawn-eye {
+  fill: var(--cl-ink);
+  stroke: none !important;
+}
+
+.cl-board .pawn-smile {
+  fill: none;
+  stroke: var(--cl-ink) !important;
+  stroke-width: 1.6 !important;
+  stroke-linecap: round;
+}
+
+.cl-board .pawn.waiting .pawn-bob {
+  animation: cl-bob 1.2s ease-in-out infinite;
+}
+
+.cl-board .pawn.waiting .pawn-shadow {
+  fill: color-mix(in srgb, var(--pawn) 45%, transparent);
+  animation: cl-shadow 1.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes cl-bob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes cl-shadow {
+  50% {
+    transform: scale(0.8);
+  }
+}
+
+.cl-board .pawn.p0 {
+  --pawn: var(--accent);
+}
+
+.cl-board .pawn.p1 {
+  --pawn: var(--accent-2);
+}
+
+/* effects */
+.cl-board .fx-star {
+  fill: var(--cl-gold);
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.cl-board .fx-star.s1 {
+  fill: #fff3a8;
+}
+
+.cl-board .fx-dust {
+  fill: rgb(200 180 150 / 70%);
+}
+
+.cl-board .fx-confetti.c0 { fill: var(--cl-c0); }
+.cl-board .fx-confetti.c1 { fill: var(--cl-c1); }
+.cl-board .fx-confetti.c2 { fill: var(--cl-c2); }
+.cl-board .fx-confetti.c3 { fill: var(--cl-c3); }
+.cl-board .fx-confetti.c4 { fill: var(--cl-gold); }
+
+/* ---------- spinner ---------- */
+.cl-side {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.cl-spin-panel {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.cl-dial {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: default;
+  --who: var(--muted);
+}
+
+.cl-dial[data-who="p0"] {
+  --who: var(--accent);
+}
+
+.cl-dial[data-who="p1"] {
+  --who: var(--accent-2);
+}
+
+.cl-dial.armed {
+  cursor: pointer;
+  animation: cl-ready 1.6s ease-in-out infinite;
+}
+
+@keyframes cl-ready {
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+}
+
+.cl-spinner {
+  display: block;
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+}
+
+.cl-spinner .dial-rim {
+  fill: var(--who);
+  transition: fill 0.3s ease;
+}
+
+.cl-spinner .dial-ring {
+  fill: none;
+  stroke: rgb(255 255 255 / 70%);
+  stroke-width: 2;
+}
+
+.cl-spinner .wedge {
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.cl-spinner .w1 { fill: var(--cl-c0); }
+.cl-spinner .w2 { fill: var(--cl-c4); }
+.cl-spinner .w3 { fill: var(--cl-gold); }
+.cl-spinner .w4 { fill: var(--cl-c2); }
+.cl-spinner .w5 { fill: var(--cl-c1); }
+.cl-spinner .w6 { fill: var(--cl-c3); }
+
+.cl-spinner .wedge-num {
+  fill: #fff;
+  font-size: 26px;
+  font-weight: 900;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgb(0 0 0 / 22%);
+  stroke-width: 3;
+}
+
+.cl-spinner .peg {
+  fill: #fff;
+  stroke: rgb(0 0 0 / 25%);
+  stroke-width: 1;
+}
+
+.cl-spinner .arrow-body {
+  fill: #fdfdfd;
+  stroke: var(--cl-ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.cl-spinner .arrow-shadow {
+  fill: rgb(0 0 0 / 25%);
+}
+
+.cl-spinner .arrow-shine {
+  fill: var(--who);
+  transition: fill 0.3s ease;
+}
+
+.cl-spinner .hub {
+  fill: var(--who);
+  stroke: #fff;
+  stroke-width: 3;
+  transition: fill 0.3s ease;
+}
+
+.cl-spinner .hub-dot {
+  fill: #fff;
+}
+
+.cl-spin-value {
+  position: absolute;
+  right: -6px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--who);
+  color: var(--text);
+  font-size: 1.5rem;
+  font-weight: 900;
+  box-shadow: var(--shadow);
+  font-variant-numeric: tabular-nums;
+}
+
+.cl-spin-value:empty {
+  display: none;
+}
+
+.cl-spin-value[data-who="p0"] {
+  border-color: var(--accent);
+}
+
+.cl-spin-value[data-who="p1"] {
+  border-color: var(--accent-2);
+}
+
+.cl-spin-value.pop {
+  animation: cl-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes cl-pop {
+  from {
+    transform: scale(0.3);
+  }
+}
+
+.cl-spin-btn {
+  width: 100%;
+  max-width: 200px;
+}
+
+.cl-spin-btn.attention {
+  animation: cl-nudge 1.6s ease-in-out infinite;
+}
+
+@keyframes cl-nudge {
+  0%,
+  70%,
+  100% {
+    transform: none;
+  }
+  80% {
+    transform: scale(1.05);
+  }
+  90% {
+    transform: scale(0.98);
+  }
+}
+
+/* ---------- log ---------- */
+.cl-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.cl-log li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  line-height: 1.25;
+  opacity: 0.75;
+}
+
+.cl-log li.fresh {
+  opacity: 1;
+  animation: cl-in 0.3s ease-out;
+}
+
+@keyframes cl-in {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+
+.cl-log .dot {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 900;
+  font-size: 0.8rem;
+}
+
+.cl-log .p1 .dot {
+  background: var(--accent-2);
+}
+
+.cl-log .ladder {
+  border-color: color-mix(in srgb, var(--ok) 55%, var(--border));
+}
+
+.cl-log .chute {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+
+/* Phones: spinner and button side by side, a shorter log. */
+@media (max-width: 859px) {
+  .cl-spin-panel {
+    grid-template-columns: 120px minmax(0, 1fr);
+    align-items: center;
+    padding: 10px;
+  }
+
+  .cl-dial {
+    max-width: 120px;
+  }
+
+  .cl-spin-value {
+    width: 36px;
+    height: 36px;
+    font-size: 1.15rem;
+  }
+
+  .cl-spin-btn {
+    max-width: none;
+  }
+
+  .cl-log li:nth-child(n + 3) {
+    display: none;
+  }
+}
+
+/* ---------- game over ---------- */
+.cl-over {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  animation: cl-in 0.3s ease-out;
+}
+
+.cl-over h2 {
+  font-size: 1.6rem;
+}
+
+.cl-over h2.win {
+  color: var(--accent);
+}
+
+.cl-over .detail {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.cl-over .detail.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.cl-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
