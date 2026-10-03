@@ -1,0 +1,513 @@
+/* Checkers view. Uses the shared tokens from /engine/theme.css. */
+.checkers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.ck-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ck-top > .btn {
+  flex: none;
+}
+
+/* Each name keeps its full width when it fits; long names share what's left. */
+.ck-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.ck-players .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.ck-players .who.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.ck-players .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ck-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* The player's colour, with their pieces left. */
+.pill-disc {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.pill-disc[data-c="a"],
+.pill-disc[data-c="b"] {
+  background: var(--pc);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pc) 65%, var(--sunk));
+}
+
+.pill-disc[data-c="a"] {
+  --pc: var(--accent);
+}
+
+.pill-disc[data-c="b"] {
+  --pc: var(--accent-2);
+}
+
+/* ---------- score ---------- */
+.ck-score {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.ck-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.ck-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ck-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.ck-score .mine dd {
+  color: var(--accent);
+}
+
+.ck-score .theirs dd {
+  color: var(--accent-2);
+}
+
+/* ---------- status ---------- */
+.ck-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.ck-status.mine {
+  color: var(--accent);
+}
+
+.ck-config,
+.ck-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- clocks ---------- */
+.ck-clocks {
+  display: grid;
+  grid-template-columns: 4.2em minmax(0, 1fr) 4.2em;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.ck-clocks .clock {
+  padding: 2px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ck-clocks .clock.theirs {
+  grid-column: 3;
+}
+
+.ck-clocks .clock.active {
+  color: var(--text);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2) inset;
+}
+
+.ck-clocks .clock.mine.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.ck-clocks .clock.low {
+  color: var(--danger);
+}
+
+.ck-clocks .move {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ck-movebar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ck-movebar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-2);
+  transition: width 0.2s linear;
+}
+
+.ck-movebar.mine > span {
+  background: var(--accent);
+}
+
+.ck-movebar.low > span {
+  background: var(--danger);
+}
+
+.move-left {
+  flex: none;
+  min-width: 2.6em;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- settings (lobby) ---------- */
+.ck-settings {
+  text-align: left;
+}
+
+.ck-settings h2 {
+  font-size: 1.1rem;
+}
+
+.ck-seg {
+  border: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  min-width: 0;
+}
+
+.ck-seg legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.seg-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seg-opt {
+  position: relative;
+}
+
+.seg-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.seg-opt span {
+  display: inline-grid;
+  align-content: center;
+  min-height: 40px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.seg-opt input:checked + span {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+.seg-opt input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.ck-settings .hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- board ---------- */
+.ck-board-wrap {
+  display: grid;
+  justify-items: center;
+}
+
+.ck-board {
+  --dark: color-mix(in srgb, var(--text) 20%, var(--surface-2));
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+  border: 6px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.ck-sq {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Everything in a square shares its centre: a piece, the fading ghost of a
+   captured one, and the move dot or ring. */
+.ck-sq > *,
+.ck-sq::after {
+  grid-area: 1 / 1;
+}
+
+.ck-sq.dark {
+  background: var(--dark);
+  cursor: default;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ck-sq.dark:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+  z-index: 1;
+}
+
+.ck-sq.last {
+  background: color-mix(in srgb, var(--hit-2) 30%, var(--dark));
+}
+
+.ck-sq.trail {
+  background: color-mix(in srgb, var(--focus) 22%, var(--dark));
+}
+
+.ck-board.armed .ck-sq.can,
+.ck-board.armed .ck-sq.picked,
+.ck-board.armed .ck-sq.target,
+.ck-board.armed .ck-sq.end {
+  cursor: pointer;
+}
+
+/* A dot on each square the picked piece can land on next. */
+.ck-sq.target::after {
+  content: "";
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--focus) 70%, transparent);
+}
+
+.ck-sq.end::after {
+  content: "";
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--focus) 70%, transparent);
+}
+
+@media (hover: hover) {
+  .ck-board.armed .ck-sq.target:hover::after {
+    width: 40%;
+  }
+  .ck-board.armed .ck-sq.can:hover .piece {
+    transform: translateY(-2px);
+  }
+}
+
+/* ---------- pieces ---------- */
+.piece {
+  --pc: var(--accent);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 78%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--pc);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--pc) 65%, var(--sunk)),
+    0 2px 3px color-mix(in srgb, var(--sunk) 40%, transparent);
+  transition: transform 0.12s ease;
+}
+
+.piece.b {
+  --pc: var(--accent-2);
+}
+
+/* The ridge of a plain man; a king shows its crown instead. */
+.piece:not(.king)::after {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--pc) 70%, var(--sunk));
+}
+
+.piece .crown {
+  width: 58%;
+  height: 58%;
+  fill: var(--accent-ink);
+  stroke: color-mix(in srgb, var(--pc) 60%, var(--sunk));
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.ck-sq.can .piece {
+  outline: 2px dashed var(--focus);
+  outline-offset: 2px;
+}
+
+.ck-sq.picked .piece {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  transform: scale(1.06);
+}
+
+.ck-sq.taking .piece {
+  opacity: 0.35;
+}
+
+.piece.landed {
+  animation: ck-land 0.25s ease-out;
+}
+
+.piece.ghost {
+  animation: ck-vanish 0.6s ease-in forwards;
+}
+
+@keyframes ck-land {
+  from {
+    transform: scale(0.75);
+  }
+}
+
+@keyframes ck-vanish {
+  to {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+.ck-board.done .piece {
+  opacity: 0.8;
+}
+
+/* ---------- game over ---------- */
+.ck-over {
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.ck-over h2 {
+  font-size: 1.6rem;
+}
+
+.ck-over h2.win {
+  color: var(--accent);
+}
+
+.ck-over .detail {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.ck-over .detail.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.ck-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}

@@ -74,9 +74,9 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, and holds messages for a rematch that hasn't started yet |
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
-| `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on) |
+| `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
-| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions and Backgammon's checkers and dice are CC0 recordings, see each game's `sounds/LICENSE.txt`) |
+| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle's splashes and explosions are CC0 recordings, see `public/sea-battle/sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
 
 **Session flow.**
@@ -174,6 +174,15 @@ Every value was fixed when the tip was published, so the second peer to
 reveal can't change its value after seeing the first. Nobody can compute a
 future value from the published ones. Each draw costs one message per peer,
 with no extra commit round.
+
+**Hashing on plain http.** Browsers only give `crypto.subtle` to secure
+origins: https, `localhost` and `127.0.0.1`. A page opened at
+`http://0.0.0.0:8080` (the address `npm start` prints) or at a LAN IP has
+none. Without it, the coin toss threw before the first move, so every game
+sat on "Tossing a coin…" or a robot that never moved. `sha256` now falls back
+to a plain-JS SHA-256 that gives the same bytes (`fair.test.js` compares the
+two on every length from 0 to 300), so a peer with WebCrypto and one without
+still agree on every draw.
 
 **What this does not stop.** A peer can stall or leave, which looks like a
 disconnect. A modified client can also lie in real time; that lie is caught at
@@ -300,6 +309,43 @@ can change on its own.
   stop: arrow keys move between points (roving `tabindex`), and Enter or Space
   plays. At 360 px a point is about 21 px wide, so the board fills the width with
   no horizontal scroll.
+
+## Checkers in depth
+
+Checkers follows papergames' variant, English draughts: 8×8, 12 men each,
+forced captures, multi-jumps that must be finished, and kings that move one
+square in all four diagonals. A man that reaches the far row is crowned and
+its turn ends. A player with no piece, or no legal move, loses. After 40 turns
+in a row (20 each) with no capture and no new king, the game is drawn.
+
+It reuses Tic Tac Toe's room settings and clocks unchanged: `setup {config}`
+from the host, `makeRules(config)`, and `ms` on every move. The settings add
+a robot level, which stays in the browser and never goes in `setup`.
+
+**A move is the whole path.** `{ path: [from, landing, ..., to] }` covers a
+step or a full multi-jump in one message, so a turn is one TurnMatch move and
+the protocol needs nothing new. `rules.js` lists every legal path (only
+captures when one exists, each jumped as far as it goes) and accepts a move
+only if its path is one of them. The view builds the path one tap at a time
+and sends it when it is complete. Player 0's men start at the bottom and
+player 1's at the top; the view turns the board for player 1.
+
+**Robot.** Alpha-beta search to depth 4, 5 or 6 for Easy, Medium and Hard,
+with 30 %, 10 % and 0 % random moves. Captures extend the search, so it never
+stops in the middle of an exchange. The score counts material (a king is 1.5
+men), how far men have advanced, a guarded back row, central kings and
+mobility; the side that is ahead also likes trades and kings near the enemy,
+so won endgames finish before the 40-turn draw. A node budget caps each move
+at about 35 ms on a laptop. Before searching it takes a move that leaves the
+opponent stuck, and avoids one that lets the opponent do that.
+
+**Sounds.** `sounds.js` synthesizes a wooden clack per landing, a knock per
+captured piece and a chime for a new king with WebAudio, and follows the
+header's mute button (`soundOn()` from `engine/sound.js`). The engine's sound
+list is Sea Battle's and the shared UI sounds, so these stay in the game
+folder. Audio starts on the first click or key press; until then sounds are
+skipped rather than queued, so a friend who opened the invite link but hasn't
+clicked yet doesn't get a burst of them later.
 
 ## Backgammon in depth
 
