@@ -2,7 +2,8 @@
 // position it leaves (pips, made points, primes, blots the opponent can hit,
 // checkers on the bar and borne off). It always takes a win, and hits when the
 // opponent could otherwise finish next turn. The level sets how much it sees
-// and how often it plays a random move instead.
+// and how often it plays a random move instead; in a race, where nothing can
+// be hit, every level plays its best move.
 import { randInt } from "../engine/rng.js";
 import { BAR, OFF, CHECKERS, legalPlays, pipCount } from "./rules.js";
 
@@ -148,7 +149,8 @@ export function chooseMove(state, me, rng = Math.random, { level = "medium", ran
     const hits = plays.filter((pl) => pl.pos[1 - me][BAR] > state.pos[1 - me][BAR]);
     if (hits.length) pool = hits;
   }
-  if (pool === plays && rng() < (randomChance ?? chance)) return { type: "play", steps: pool[randInt(rng, pool.length)].steps };
+  const race = !inContact(state.pos, me);
+  if (pool === plays && !race && rng() < (randomChance ?? chance)) return { type: "play", steps: pool[randInt(rng, pool.length)].steps };
   let best = -Infinity;
   let picks = [];
   for (const pl of pool) {
@@ -160,3 +162,4 @@ export function chooseMove(state, me, rng = Math.random, { level = "medium", ran
   }
   return { type: "play", steps: picks[randInt(rng, picks.length)].steps };
 }
+

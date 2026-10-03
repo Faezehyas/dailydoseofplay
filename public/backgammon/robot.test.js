@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { rngFromSeed } from "../engine/rng.js";
-import { chooseMove } from "./robot.js";
+import { chooseMove, evaluate } from "./robot.js";
 import { newState as newTimedState, applyMove, legalPlays, CHECKERS, BAR, OFF } from "./rules.js";
 
 const newState = (first = 0) => newTimedState(first, { moveSeconds: 0, gameSeconds: 0 });
@@ -75,6 +75,30 @@ test("it keeps its checkers safe when it can: 8/2 6/2 leaves no blot", () => {
   assert.ok(legalPlays(s.pos, 0, s.dice).length > 5);
   for (const level of ["easy", "medium", "hard"]) {
     assert.equal(notation(chooseMove(s, 0, rngFromSeed(level), { level, randomChance: 0 }).steps), "8/2 6/2", level);
+  }
+});
+
+test("in a race every level plays its best move, even at its most random", () => {
+  // Nobody can be hit: you are bearing off, they are all at home.
+  const races = [
+    [{ 6: 2, 5: 2, 4: 2, 3: 2, 2: 2, 1: 2 }, { 6: 3, 5: 3, 4: 3, 3: 3, 2: 3 }],
+    [{ 9: 2, 7: 3, 6: 4, 3: 3, 1: 1 }, { 6: 5, 5: 5, 2: 2 }],
+  ];
+  for (const [mine, theirs] of races) {
+    for (let a = 1; a <= 6; a++) {
+      for (let b = a; b <= 6; b++) {
+        const s = rolled(mine, theirs, a, b);
+        if (s.turn !== 0) continue;
+        const best = Math.max(...legalPlays(s.pos, 0, s.dice).map((pl) => evaluate(pl.pos, 0)));
+        for (const level of ["easy", "medium", "hard"]) {
+          for (let seed = 0; seed < 5; seed++) {
+            const t = structuredClone(s);
+            applyMove(t, 0, chooseMove(s, 0, rngFromSeed(`${level}-${seed}`), { level, randomChance: 1 }));
+            if (t.winner === -1) assert.ok(evaluate(t.pos, 0) > best - 1e-9, `${level} ${a}-${b}`);
+          }
+        }
+      }
+    }
   }
 });
 
