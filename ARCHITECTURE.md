@@ -521,6 +521,113 @@ signaling socket as soon as one DataChannel opens. Four players would need a
 hub or mesh of channels, a total order for messages, N-party draws and a way
 to drop a player mid-game; that belongs in the engine as its own change.
 
+## Dots and Boxes in depth
+
+Dots and Boxes runs on `TurnMatch` with no engine change. It copies Tic Tac
+Toe's room settings and clocks (`setup {config}`, `makeRules(config)`, `ms`
+on every move) and adds a board size (3×3 to 6×6 boxes) and a robot level,
+which stays in the browser. There is no luck, so nothing needs `needsRandom`;
+only the coin toss for who starts is shared.
+
+**Rules.** A move is `{ line, ms }`. Lines are numbered horizontal first, row
+by row, then vertical (`rules.js` explains the formula), and `geometry(n)`
+lists each box's four lines and each line's one or two boxes, so every check
+is a lookup. A line that draws a box's fourth side claims it for whoever drew
+it, even if the other player drew the first three. If a line closes one box
+or two, the same player moves again; otherwise the turn passes. When every
+box is claimed the higher score wins, and an even split (possible on 4×4 and
+6×6) is a draw (`winner` 2). The event `{ type: "line", player, line, boxes,
+again }` carries everything the view animates.
+
+**Clocks and extra turns.** Every line is its own move, so a box's extra line
+gets a fresh line limit, and each line's `ms` comes off the game clock. The
+rules check it the same way on both sides. What needed care is when a clock
+starts, because the opponent's lines are replayed at a readable pace:
+
+- Your own clock starts when their last line has finished playing out on your
+  screen, not when it arrived: you can't draw while it replays, and a long
+  chain can take several seconds to replay.
+- The opponent's clock on your screen starts later by about the time their
+  browser needs to replay your lines (both run the same pacing code). Without
+  that, their bar would run out early on your screen.
+- The 5 s claim against a stalled opponent also allows 1.3 s for each line of
+  your last turn, so a long chain you took can never look like their timeout.
+
+A modified client could still under-report `ms`, as in the other games.
+
+**Robot** (`robot.js`, its own `startRobot()` so it can pause like a person:
+0.65–1.3 s to start a turn, 0.4–0.6 s to take another box).
+
+| Level | Boxes on offer | Otherwise |
+|---|---|---|
+| Easy | takes one 85% of the time | a safe line 60% of the time, else any line |
+| Medium | always takes them all | a random safe line; with none left, opens whatever gives away the fewest boxes |
+| Hard | takes them all, or all but the last two (four in a loop) to keep control | searches the last safe lines and the endgame exactly |
+
+Hard's strategy is the classic one, worked out by search rather than by rules
+of thumb:
+
+- **Endgame arithmetic.** Once no safe line is left (every line would give
+  away a box's third side), the board breaks into chains (ending at the edge)
+  and loops. Whoever must move opens one, and the other player either takes it
+  all and opens the next, or takes all but two of a chain (all but four of a
+  loop) and leaves them with one line, the double-cross, so the opener has to
+  take those and open the next. `chainValue()` works out the best order with
+  memoized recursion over the multiset of lengths. A two-box chain is opened in
+  the middle, so it can't be declined.
+- **Junctions.** When some box still has fewer than two sides drawn, the
+  components join at it and the arithmetic no longer applies. The robot then
+  tries every opening line and simulates the capture: the taker grabs the
+  shortest run first, so the run left to decline is the long one.
+- **Safe lines.** With 16 or fewer safe lines left, it searches them, together
+  with deliberate sacrifices, down to the endgame values above. That is
+  exactly the fight over the parity of long chains. Earlier it plays a random
+  safe line. A shared memo keyed on the drawn lines (two exact numbers)
+  carries over between moves, and a budget of 20,000 positions bounds every
+  move.
+
+Checked against an exhaustive search, Hard picks a best line in every one of
+800 3×3 positions with 10 to 14 lines left and 400 4×4 positions with 12 left
+(`robot.test.js` repeats this on 200 3×3 positions). Over 200 games, Hard beats
+Medium 81% of the time on 4×4 (14% draws) and 90% on 6×6, and both beat Easy
+98% of the time. Hard takes under 0.1 ms at the median and 35 ms at worst on
+6×6 in Node.
+
+**Board.** One inline SVG: a sheet of graph paper (`--db-*` tokens with a dark
+set), ink dots, and lines drawn as quadratic curves with a fixed hand wobble
+per line, so both screens show the same sketch. Lines are coral for you and
+teal for the opponent on each screen. A claimed box gets a tint, quick
+pencil hatching and its owner's initial. Every line has an invisible diamond
+tap target reaching to the two box centres beside it, so the targets tile the
+board: a tap anywhere picks the nearest line, about 47 px across on a phone
+even on 6×6. A hover, or the keyboard cursor, sketches the line in dashes
+first. The board is one tab stop: the arrow keys step half a box at a time
+(alternating across and down, so every line can be reached), a live region
+reads out the line ("Across from B2 to C2: free"), and Enter or Space draws.
+
+**Motion.** The match state never waits for the screen. Every line is queued:
+the opponent's get a beat before each line, a 330 ms pen stroke with a
+graphite tip leading it, then each box it closes pops (the tint springs out
+with an overshoot, the hatching scribbles in, the initial lands, a ring and a
+few flecks fly off). Two boxes closed by one line pop 110 ms apart, a run of
+three or more swells box by box when the turn ends, and the winner's boxes do
+the same at the end. Your own strokes take 170 ms. A backlog plays at double
+speed; a hidden tab, or `prefers-reduced-motion` (read when each animation
+starts, so tests can switch it mid-game), applies lines at once. Animations
+belong to a match generation, so a rematch drops the old queue and its counts.
+The result waits for the last box, and fits on screen on a laptop and on a
+360 px phone (where the tally hides once the game is over).
+
+**Sound** (`sounds.js`, synthesized like Chutes and Ladders', behind the
+header's mute toggle): a pencil scratch per line (grains of filtered noise
+shaped to the stroke's length, over a darker rub, with a tap at the end), a
+pop and a mallet note per box that climbs a pentatonic scale through a turn's
+run, a sparkle when a run of three or more ends, a soft thud for a line that
+can't be drawn, the turn chime, and tunes for a win, a loss and a draw. Levels
+were set by rendering each sound offline: the scratch and box pops peak around
+0.25–0.3, like Chutes and Ladders' hops, and the chime and tunes match its
+own.
+
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
 | Reference | Here | Why |
