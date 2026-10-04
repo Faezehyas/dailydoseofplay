@@ -466,6 +466,14 @@ the top checker of a full stack or the blot it would hit. After the
 opponent's play, each checker that arrived gets a ring and each place one
 left keeps a faint outline, until your play goes out.
 
+**Forced moves.** When you have no choice, the view moves for you: a step
+is forced when it is the only legal one, or when every legal way to play the
+rest of the roll ends in the same position (`legalPlays()` finds one). Forced
+steps play themselves after 550 ms; a turn that was forced all the way is
+confirmed too, with a toast, so the turn passes. Undo takes back the last step
+you chose, with any forced steps after it, and is off while every step was
+forced.
+
 **Racing home.** Once no checker can be hit (`inContact()` is false for good),
 the game offers once per match to move for you. Yes plays each of your turns
 one step at a time with Hard's choice, then confirms; Stop, or "Play for me"
