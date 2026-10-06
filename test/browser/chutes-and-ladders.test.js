@@ -1,8 +1,9 @@
 // Headless-browser test for Chutes and Ladders: two browser contexts play a
 // friend match on the host's settings (bounce back, a 6 spins again, host
 // starts) through the invite link over a real WebRTC DataChannel, then a
-// rematch; and a robot game on a phone with the spinner, hops, sounds, the
-// mute button and the keyboard. Skips if Playwright is missing.
+// rematch; four friends in four browsers through the hub; a robot game on a
+// phone with the spinner, hops, sounds, the mute button and the keyboard; and
+// a game against three robots. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -83,8 +84,11 @@ test("two friends play Chutes and Ladders on the host's settings through the inv
   assert.match(invite, new RegExp(`/chutes-and-ladders/\\?room=${code}$`));
 
   // The friend (360 px phone, dark) opens the link and spins by tapping.
+  // The room takes up to four, so the host starts it once Bo is in.
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await host.locator("#roster li.ready", { hasText: "Bo" }).waitFor();
+  await host.click("#start-game");
   await host.locator("#cl-board").waitFor();
   await guest.locator("#cl-board").waitFor();
   await guest.locator("#cl-config").filter({ hasText: "bounce" }).waitFor();
@@ -232,5 +236,107 @@ test("Chutes and Ladders vs the robot on a 360 px phone: spinner, hops, sounds, 
   await page.screenshot({ path: `${ARTIFACTS}/cl-6-robot-dark.png`, fullPage: true });
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
+  assert.deepEqual(errors, []);
+});
+
+test("four friends fill a Chutes and Ladders room and play a full game, then a rematch", { skip: !pw && "Playwright not installed", timeout: 240_000 }, async (t) => {
+  mkdirSync(ARTIFACTS, { recursive: true });
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-background-timer-throttling"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  async function open(nickname, opts = {}) {
+    const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 }, reducedMotion: "reduce", ...opts });
+    await ctx.addInitScript((n) => localStorage.setItem("ddp-name", n), nickname);
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errors.push(`${nickname}: ${e.message}`));
+    return page;
+  }
+  const host = await open("Ada");
+  await host.goto(`${srv.base}/chutes-and-ladders/`);
+  assert.equal(await host.locator("#play-friend").innerText(), "Play with friends");
+  await host.click("#play-friend");
+  await host.locator("#room-code").waitFor();
+  const invite = (await host.locator("#invite-link").inputValue()).replace(/^https?:\/\/[^/]+/, srv.base);
+  const friends = [];
+  for (const [name, opts] of [["Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" }], ["Cy", {}], ["Di", {}]]) {
+    const page = await open(name, opts);
+    await page.goto(invite);
+    friends.push(page);
+  }
+  // The fourth player fills the room, so the game starts by itself.
+  const pages = [host, ...friends];
+  for (const p of pages) await wait(p, () => window.ddp.match?.phase === "playing");
+  assert.deepEqual(await Promise.all(pages.map((p) => p.evaluate(() => window.ddp.session.index))), [0, 1, 2, 3]);
+  for (const p of pages) {
+    assert.equal(await p.locator(".cl-board .pawn").count(), 4, "four pawns on the board");
+    assert.equal(await p.locator(".cl-players .who").count(), 4);
+    assert.equal(await p.locator("#cl-score > div").count(), 4);
+  }
+  assert.match(await friends[1].locator(".cl-players").innerText(), /Cy \(you\)[\s\S]*Ada[\s\S]*Bo[\s\S]*Di/, "you first, then the others in seat order");
+  assert.ok(await noHorizontalScroll(friends[0]), "four players fit a 360 px phone");
+  await friends[0].screenshot({ path: `${ARTIFACTS}/cl-7-four-mobile-dark.png`, fullPage: true });
+
+  async function playOut() {
+    await Promise.all(pages.map((p) => spinUntilOver(p)));
+    for (const p of pages) await wait(p, () => window.ddp.match.phase === "over", undefined, 60_000);
+    const states = await Promise.all(pages.map(state));
+    for (const st of states.slice(1)) assert.deepEqual(st, states[0], "all four browsers end on the same state");
+    assert.equal(states[0].pos[states[0].winner], 100);
+    assert.ok(states[0].spins.every((n) => n > 0), "everyone spun");
+    return states[0];
+  }
+  const won = await playOut();
+  const winnerPage = pages[won.winner];
+  await winnerPage.locator("#cl-result").filter({ hasText: "You win!" }).waitFor();
+  for (const p of pages.filter((p) => p !== winnerPage)) {
+    await p.locator("#cl-detail").waitFor();
+    assert.match(await p.locator("#cl-detail").innerText(), /reached 100 in \d+ spins?[\s\S]*Behind: .* and .*/);
+  }
+  await host.screenshot({ path: `${ARTIFACTS}/cl-8-four-over.png`, fullPage: true });
+
+  // A rematch needs all four.
+  for (const p of pages.slice(0, 3)) await p.click("#rematch");
+  await friends[2].locator("#rematch-status").filter({ hasText: "Ada, Bo and Cy want a rematch!" }).waitFor();
+  await host.locator("#rematch-status").filter({ hasText: "Waiting for Di" }).waitFor();
+  await friends[2].click("#rematch");
+  for (const p of pages) await wait(p, () => window.ddp.match.m === 2 && window.ddp.match.phase === "playing");
+  await playOut();
+
+  // One player leaves: the game ends for the others.
+  await friends[1].close();
+  for (const p of [host, friends[0], friends[2]]) {
+    await p.locator("#ended").waitFor({ timeout: 20_000 });
+    assert.match(await p.locator("#ended").innerText(), /Cy (left the game|.*lost)/);
+  }
+  assert.deepEqual(errors, []);
+});
+
+test("Chutes and Ladders against three robots", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, reducedMotion: "reduce" })).newPage();
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(`${srv.base}/chutes-and-ladders/`);
+  await pick(page, "robots", 3);
+  await page.click("#play-robot");
+  await wait(page, () => window.ddp.match?.phase === "playing");
+  assert.match(await page.locator(".cl-players").innerText(), /Robot 1[\s\S]*Robot 2[\s\S]*Robot 3/);
+  assert.ok(await noHorizontalScroll(page));
+  await spinUntilOver(page);
+  const st = await state(page);
+  assert.equal(st.players, 4);
+  assert.equal(st.pos[st.winner], 100);
+  for (let k = 0; k < 3; k++) assert.deepEqual(await page.evaluate((k) => window.ddp.robots[k].match.state, k), st, `robot ${k + 1} agrees`);
+  await page.locator("#cl-result").waitFor();
+  await page.screenshot({ path: `${ARTIFACTS}/cl-9-three-robots.png`, fullPage: true });
   assert.deepEqual(errors, []);
 });
