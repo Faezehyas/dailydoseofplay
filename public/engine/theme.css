@@ -390,6 +390,39 @@ input[type="text"] {
   color: var(--muted);
 }
 
+.roster {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+
+.roster li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  color: var(--muted);
+}
+
+.roster li.ready {
+  border-style: solid;
+  color: var(--text);
+}
+
+.roster small {
+  color: var(--muted);
+}
+
+#start-game {
+  width: 100%;
+  margin: 8px 0;
+}
+
 .spinner {
   width: 18px;
   height: 18px;

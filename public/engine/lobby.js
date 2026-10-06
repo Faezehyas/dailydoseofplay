@@ -1,35 +1,39 @@
-// Game page shell: lobby (play with a friend / play vs robot), invite link,
-// WebRTC connection, and hand-off of a Session to the game.
+// Game page shell: lobby (play with friends / play vs robot), invite link,
+// waiting room, and hand-off of a Session to the game. How players get
+// connected lives in room.js; this file is only the UI around it.
 //
-//   startGameShell({ slug, title, tagline, createRobot, onSession })
+//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots })
 //
 // onSession(session, root) mounts the game in `root` and returns { destroy }.
-// createRobot(session) drives the robot's side of a local in-memory channel.
+// createRobot(session) drives one robot seat over an in-memory group.
+// maxPlayers must match the game's entry in games.json (the server enforces it).
 import { initShell, el, $, toast, copyText, getNickname, setNickname } from "./shell.js";
-import { RoomClient } from "./signaling.js";
-import { PeerChannel } from "./peer.js";
-import { localPair } from "./channel.js";
-import { openSession } from "./session.js";
+import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 
 const ERRORS = {
   no_such_room: "That room doesn't exist any more. Ask your friend for a fresh invite link.",
-  room_full: "That room already has two players.",
+  room_full: "That room is already full.",
   bad_game: "This game isn't available right now.",
   server_full: "The lobby is full right now. Please try again in a minute.",
   connect_failed: "Couldn't reach the lobby server. Check your connection and try again.",
   closed: "Lost connection to the lobby server.",
+  lobby_lost: "Lost connection to the lobby server.",
+  host_gone: "Your friend left before the game started.",
+  host_left: "Your friend closed the room. Ask them for a new invite link.",
+  version_mismatch: "Your friend has a different version of this page. Both of you, please reload.",
 };
 
 const NO_TURN_HELP =
-  "Couldn't connect to your friend. Games here run directly between your two browsers, and some networks " +
+  "Couldn't connect to your friend. Games here run directly between your browsers, and some networks " +
   "(mobile data, office or school Wi-Fi, VPNs, strict firewalls) block direct connections. We don't run a relay " +
   "(TURN) server, so there's no fallback. Try both joining from home Wi-Fi, turn off VPNs, or play vs the robot.";
 
-export function startGameShell({ slug, title, tagline = "", createRobot, onSession }) {
+export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1 }) {
   initShell({ title });
   const lobbyRoot = $("#lobby");
   const gameRoot = $("#game");
-  const state = { rooms: null, peer: null, session: null, game: null, robot: null, attempt: 0 };
+  const duel = maxPlayers === 2;
+  const state = { room: null, session: null, game: null, robot: null, robots: [], attempt: 0 };
   window.ddp = state; // handy for debugging and browser tests
 
   const params = new URLSearchParams(location.search);
@@ -86,7 +90,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       el(
         "div",
         { class: "lobby-actions" },
-        el("button", { class: "btn primary big", id: "play-friend", type: "button", onclick: host }, "Play with a friend"),
+        el("button", { class: "btn primary big", id: "play-friend", type: "button", onclick: host }, duel ? "Play with a friend" : "Play with friends"),
         el("button", { class: "btn big", id: "play-robot", type: "button", onclick: playRobot }, "Play vs robot"),
       ),
       el("div", { class: "divider" }, el("span", {}, "or join with a code")),
@@ -94,8 +98,8 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     );
   }
 
-  function showWaiting(code) {
-    const link = `${location.origin}/${slug}/?room=${code}`;
+  function showWaiting(room) {
+    const link = `${location.origin}/${slug}/?room=${room.code}`;
     const linkInput = el("input", { id: "invite-link", type: "text", readonly: true, value: link, "aria-label": "Invite link" });
     linkInput.addEventListener("focus", () => linkInput.select());
     const copyBtn = el("button", {
@@ -112,13 +116,36 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
         onclick: () => navigator.share({ title: `${title} on Daily Dose of Play`, text: "Play with me!", url: link }).catch(() => {}),
       }, "Share");
     view(
-      el("h1", {}, "Invite a friend"),
-      el("p", {}, "Send this link to a friend. The game starts as soon as they open it."),
-      el("div", { class: "room-code", id: "room-code", "aria-label": `Room code ${code}` }, code),
+      el("h1", {}, duel ? "Invite a friend" : "Invite friends"),
+      el(
+        "p",
+        {},
+        duel
+          ? "Send this link to a friend. The game starts as soon as they open it."
+          : `Send this link to up to ${maxPlayers - 1} friends. Start when everyone is in; a full room starts by itself.`,
+      ),
+      el("div", { class: "room-code", id: "room-code", "aria-label": `Room code ${room.code}` }, room.code),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
-      el("p", { class: "waiting", id: "lobby-status" }, el("span", { class: "spinner" }), "Waiting for your friend to join…"),
+      !duel && el("ul", { class: "roster", id: "roster", "aria-label": "Players" }),
+      el("p", { class: "waiting", id: "lobby-status" }, el("span", { class: "spinner" }), duel ? "Waiting for your friend to join…" : "Waiting for friends to join…"),
+      !duel && el("button", { class: "btn primary", type: "button", id: "start-game", disabled: true, onclick: () => begin(room) }, "Start game"),
       el("button", { class: "btn ghost", type: "button", onclick: () => showHome() }, "Cancel"),
     );
+    if (!duel) showRoster(room.players);
+  }
+
+  function showRoster(players) {
+    const list = $("#roster");
+    if (!list) return;
+    list.replaceChildren(
+      ...players.map((p, i) =>
+        el("li", { class: p.ready ? "ready" : "" }, el("span", {}, p.name), el("small", {}, i === 0 ? "host" : p.ready ? "in" : "connecting…")),
+      ),
+    );
+    const ready = players.filter((p) => p.ready).length;
+    const start = $("#start-game");
+    start.disabled = ready < minPlayers;
+    start.textContent = ready < minPlayers ? `Start game (needs ${minPlayers} players)` : `Start game (${ready} players)`;
   }
 
   function showBusy(text) {
@@ -154,86 +181,55 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // (e.g. a create that resolves after Cancel) must not touch the UI.
   function cleanupConnection() {
     state.attempt += 1;
-    dropPeer();
-    closeLobbySocket();
+    const room = state.room;
+    state.room = null;
+    room?.close();
+    clearRoomParam();
   }
 
-  // Detach first: close() emits "failed" synchronously, and its handler only
-  // acts on the current peer.
-  function dropPeer() {
-    const peer = state.peer;
-    state.peer = null;
-    peer?.close();
-  }
-
-  function closeLobbySocket() {
-    if (state.rooms) {
-      state.rooms.close();
-      state.rooms = null;
-    }
+  function clearRoomParam() {
     if (params.has("room")) {
       params.delete("room");
       history.replaceState(null, "", location.pathname);
     }
   }
 
-  async function connectRooms() {
-    const rooms = new RoomClient({ game: slug });
-    state.rooms = rooms;
-    await rooms.connect();
-    rooms.on("close", () => {
-      // Once the game runs over WebRTC, the lobby socket is no longer needed.
-      if (state.rooms === rooms && !state.session) showFailure(ERRORS.closed);
-    });
-    return rooms;
-  }
-
-  function linkPeer(rooms, peerId, initiator, index, name) {
-    const peer = new PeerChannel({ rooms, peerId, initiator });
-    const room = rooms.room;
-    const retry = initiator ? host : () => join(room);
-    state.peer = peer;
-    peer.on("failed", (reason) => {
-      if (state.peer === peer) showFailure(reason === "closed_before_open" ? "Your friend left before the game started." : NO_TURN_HELP, retry);
-    });
-    peer.on("open", async () => {
-      setStatus("Connected! Starting the game…");
-      try {
-        const session = await openSession({ channel: peer, mode: "friend", index, name, game: slug });
-        if (state.peer !== peer) return;
-        startSession(session);
-      } catch (err) {
-        if (state.peer === peer) showFailure(err.message === "version_mismatch" ? "Your friend has a different version of this page. Both of you, please reload." : NO_TURN_HELP, retry);
-      }
-    });
-  }
-
   async function host() {
     const name = currentName("Host");
     cleanupConnection();
     const attempt = state.attempt;
+    const current = () => attempt === state.attempt;
     showBusy("Creating a room…");
+    const room = new HostRoom({ game: slug, name });
+    state.room = room;
     try {
-      const rooms = await connectRooms();
-      if (attempt !== state.attempt) return rooms.close();
-      const { room } = await rooms.create(name);
-      if (attempt !== state.attempt) return;
-      showWaiting(room);
-      rooms.on("peer", ({ id, name: friend }) => {
-        if (state.peer) return; // two-player games: first friend wins the seat
-        setStatus(`${friend} joined. Connecting directly…`);
-        linkPeer(rooms, id, true, 0, name);
-      });
-      rooms.on("leave", ({ id }) => {
-        if (state.peer && state.peer.peerId === id && !state.peer.open) {
-          dropPeer();
-          showWaiting(room);
-          toast("Your friend left. The invite link still works.");
-        }
-      });
+      await room.open();
     } catch (err) {
-      if (attempt === state.attempt) showFailure(ERRORS[err.code] || ERRORS.connect_failed);
+      if (current()) showFailure(ERRORS[err.code] || ERRORS.connect_failed);
+      return;
     }
+    if (!current()) return;
+    showWaiting(room);
+    room.on("lost", () => current() && showFailure(ERRORS.closed));
+    room.on("players", (players) => {
+      if (!current()) return;
+      const ready = players.filter((p) => p.ready).length;
+      if (ready >= maxPlayers) return begin(room);
+      if (!duel) return showRoster(players);
+      const joining = players.find((p, i) => i > 0 && !p.ready);
+      setStatus(joining ? `${joining.name} joined. Connecting directly…` : "Waiting for your friend to join…");
+    });
+    room.on("guest-gone", ({ name: who, reason }) => {
+      if (!current()) return;
+      const why = reason === "left" || reason === "closed_before_open" ? `${duel ? "Your friend" : who} left.` : `Couldn't connect to ${who}.`;
+      toast(`${why} The invite link still works.`);
+    });
+  }
+
+  function begin(room) {
+    if (room !== state.room) return;
+    state.room = null;
+    startSession(room.start());
   }
 
   async function join(rawCode) {
@@ -241,53 +237,61 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     const name = currentName("Guest");
     // Keep ?room= until the join settles so a reload retries it.
     state.attempt += 1;
-    dropPeer();
-    state.rooms?.close();
-    state.rooms = null;
+    state.room?.close();
     const attempt = state.attempt;
+    const current = () => attempt === state.attempt;
     showBusy(`Joining room ${code}…`);
+    const room = new GuestRoom({ game: slug, code, name });
+    state.room = room;
+    let host = "your friend";
+    room.on("status", ({ step, host: hostName, players }) => {
+      if (!current()) return;
+      if (step === "connecting") {
+        host = hostName || host;
+        setStatus(`Connecting to ${host}…`);
+      } else if (duel) {
+        setStatus("Connected! Starting the game…");
+      } else {
+        setStatus(`Connected! Waiting for ${host} to start${players ? ` (${players.length} players in)` : ""}…`);
+      }
+    });
+    let session;
     try {
-      const rooms = await connectRooms();
-      if (attempt !== state.attempt) return rooms.close();
-      const joined = await rooms.join(code, name);
-      if (attempt !== state.attempt) return;
-      const hostPeer = joined.peers.find((p) => p.id === joined.host);
-      setStatus(`Connecting to ${hostPeer ? hostPeer.name : "your friend"}…`);
-      // The host frees the room once its own channel is up, which can be just before ours.
-      rooms.on("host-left", () => {
-        if (!state.session && !state.peer?.open) showFailure("Your friend closed the room. Ask them for a new invite link.");
-      });
-      linkPeer(rooms, joined.host, false, 1, name);
+      session = await room.join();
     } catch (err) {
-      if (attempt === state.attempt) showHome(ERRORS[err.code] || ERRORS.connect_failed);
+      if (!current()) return;
+      if (!(err instanceof RoomError)) return showHome(ERRORS[err.code] || ERRORS.connect_failed);
+      return showFailure(ERRORS[err.code] || NO_TURN_HELP, () => join(code));
     }
+    if (!current()) return session.leave();
+    state.room = null;
+    startSession(session);
   }
 
-  async function playRobot() {
+  function playRobot() {
     cleanupConnection();
     const name = currentName("You");
-    const [mine, theirs] = localPair();
-    const [session, robotSession] = await Promise.all([
-      openSession({ channel: mine, mode: "robot", index: 0, name, game: slug }),
-      openSession({ channel: theirs, mode: "robot", index: 1, name: "Robot", game: slug }),
-    ]);
-    robotSession.on("rematch", (votes) => votes.them && !votes.me && robotSession.requestRematch());
-    state.robot = createRobot(robotSession);
+    const names = [name, ...Array.from({ length: robots }, (_, i) => (robots === 1 ? "Robot" : `Robot ${i + 1}`))];
+    const [session, ...robotSessions] = localRoom({ game: slug, names, mode: "robot" });
+    state.robots = robotSessions.map((robotSession) => {
+      robotSession.on("rematch", (votes) => votes.them && !votes.me && robotSession.requestRematch());
+      return createRobot(robotSession);
+    });
+    state.robot = state.robots[0];
     startSession(session);
   }
 
   // ---------- game hand-off ----------
   function startSession(session) {
     state.session = session;
-    // Two-player rooms are done once the DataChannel is up: free the room.
-    closeLobbySocket();
+    clearRoomParam();
     lobbyRoot.hidden = true;
     gameRoot.hidden = false;
     gameRoot.replaceChildren();
     state.game = onSession(session, gameRoot, { leave: () => leaveGame() });
-    session.on("end", (reason) => {
+    session.on("end", (reason, seat) => {
       if (reason === "self") return;
-      const who = session.opponent.name;
+      const who = session.players[seat]?.name ?? session.opponent.name;
       showEnded(reason === "left" ? `${who} left the game.` : `The connection to ${who} was lost.`);
     });
   }
@@ -312,17 +316,21 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     session?.leave();
     state.game?.destroy?.();
     state.game = null;
-    state.robot?.destroy?.();
+    for (const robot of state.robots) robot?.destroy?.();
+    state.robots = [];
     state.robot = null;
-    state.peer = null;
     showHome(message);
   }
 
   addEventListener("pagehide", () => state.session?.leave());
 
   // ---------- entry ----------
-  const code = params.get("room");
-  if (code) join(code);
-  else if (params.has("robot")) playRobot();
-  else showHome();
+  // Deferred until the game's module has finished loading: onSession may use
+  // bindings declared after its startGameShell() call.
+  queueMicrotask(() => {
+    const code = params.get("room");
+    if (code) join(code);
+    else if (params.has("robot")) playRobot();
+    else showHome();
+  });
 }
