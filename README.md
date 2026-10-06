@@ -15,6 +15,7 @@ text and code are original.
 - Backgammon: race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels.
 - Chutes and Ladders: the classic 100-square board with a 1–6 spinner, for 2 to 4 players; climb the ladders, slide down the chutes; house rules for the finish and for a 6.
 - Dots and Boxes: join the dots on a 3×3 to 6×6 board; closing a box earns another line; optional clocks; an Easy, Medium or Hard robot that plays the chains properly.
+- Ludo: the classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send rivals back to their yard, and race four tokens home; house rules for three 6s, blocks and capture bonuses, play on for places, a move timer, and 1–3 robots at three levels.
 
 More are coming, one at a time; see [GAMES.md](GAMES.md).
 
@@ -41,6 +42,7 @@ npm start                 # http://localhost:8080  (PORT=3000 npm start to chang
 - Backgammon: http://localhost:8080/backgammon/
 - Chutes and Ladders: http://localhost:8080/chutes-and-ladders/
 - Dots and Boxes: http://localhost:8080/dots-and-boxes/
+- Ludo: http://localhost:8080/ludo/
 - Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?room=CODE` joins a room.
 - Health: http://localhost:8080/healthz
 
