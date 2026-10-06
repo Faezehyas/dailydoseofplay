@@ -5,7 +5,8 @@
 //   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots })
 //
 // onSession(session, root) mounts the game in `root` and returns { destroy }.
-// createRobot(session) drives one robot seat over an in-memory group.
+// createRobot(session) drives one robot seat over an in-memory group; robots
+// is how many seats (a number, or a function read when a robot game starts).
 // maxPlayers must match the game's entry in games.json (the server enforces it).
 import { initShell, el, $, toast, copyText, getNickname, setNickname } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
@@ -271,7 +272,8 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   function playRobot() {
     cleanupConnection();
     const name = currentName("You");
-    const names = [name, ...Array.from({ length: robots }, (_, i) => (robots === 1 ? "Robot" : `Robot ${i + 1}`))];
+    const count = typeof robots === "function" ? robots() : robots;
+    const names = [name, ...Array.from({ length: count }, (_, i) => (count === 1 ? "Robot" : `Robot ${i + 1}`))];
     const [session, ...robotSessions] = localRoom({ game: slug, names, mode: "robot" });
     state.robots = robotSessions.map((robotSession) => {
       robotSession.on("rematch", (votes) => votes.them && !votes.me && robotSession.requestRematch());
