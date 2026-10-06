@@ -1,9 +1,10 @@
 // Chutes and Ladders rules for TurnMatch, on the classic 1943 board: 100
 // squares, nine ladders and ten chutes. Each turn is one spin of a 1–6
-// spinner; there are no choices, so a move is just { type: "spin" }. A room
-// picks a config: how the last stretch to 100 works, whether a 6 spins again,
-// and who goes first. Pure: no DOM, timers or randomness (spins come in
-// through rng).
+// spinner; there are no choices, so a move is just { type: "spin" }. Two to
+// four players take turns in seat order. A room picks a config: how the last
+// stretch to 100 works, whether a 6 spins again, and who goes first ("guest"
+// is seat 1, the first friend in). Pure: no DOM, timers or randomness (spins
+// come in through rng).
 import { RuleError } from "../engine/turn-match.js";
 
 export const SIZE = 10;
@@ -19,9 +20,13 @@ export const CHUTES = { 16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 9
 export const FINISH = ["exact", "bounce", "any"];
 export const FIRST = ["random", "host", "guest"];
 export const SPIN_MODES = ["tap", "auto"];
-export const DEFAULT_CONFIG = { finish: "exact", sixAgain: false, first: "random", spin: "tap" };
+export const ROBOTS = [1, 2, 3];
+export const MAX_PLAYERS = 4;
+// spin and robots are per device: how your spinner works, and how many robots a robot game has.
+export const DEFAULT_CONFIG = { finish: "exact", sixAgain: false, first: "random", spin: "tap", robots: 1 };
 // Shared random draws per match: the coin toss, then one per spin. Two
-// players need about 60 spins on average and rarely more than 250.
+// players need about 60 spins on average and rarely more than 250; four
+// players finish sooner, as the first of four to reach 100 wins.
 export const DRAWS = 1024;
 
 // Any unknown or missing value falls back to the default.
@@ -33,6 +38,7 @@ export function normalizeConfig(raw) {
     sixAgain: pick(c.sixAgain, [true, false], DEFAULT_CONFIG.sixAgain),
     first: pick(c.first, FIRST, DEFAULT_CONFIG.first),
     spin: pick(c.spin, SPIN_MODES, DEFAULT_CONFIG.spin),
+    robots: pick(c.robots, ROBOTS, DEFAULT_CONFIG.robots),
   };
 }
 
@@ -44,18 +50,20 @@ export function cellOf(n) {
   return { row, col: row % 2 ? SIZE - 1 - k : k };
 }
 
-export function newState(first, config = DEFAULT_CONFIG) {
+export function newState(first, config = DEFAULT_CONFIG, players = 2) {
   const { finish, sixAgain } = normalizeConfig(config);
+  const each = (v) => Array(players).fill(v);
   return {
     turn: first,
     winner: -1, // no draws: someone always reaches 100
     first,
+    players,
     finish,
     sixAgain,
-    pos: [START, START],
-    spins: [0, 0],
-    climbs: [0, 0], // ladders taken
-    slides: [0, 0], // chutes taken
+    pos: each(START),
+    spins: each(0),
+    climbs: each(0), // ladders taken
+    slides: each(0), // chutes taken
     last: null, // the previous spin's event
     ply: 0,
   };
@@ -110,7 +118,7 @@ export function applyMove(state, player, move, rng) {
   state.ply++;
   state.last = ev;
   if (ev.win) state.winner = player;
-  else if (!ev.again) state.turn = 1 - player;
+  else if (!ev.again) state.turn = (player + 1) % state.players;
   return [ev];
 }
 
@@ -120,7 +128,7 @@ export function makeRules(config) {
   const c = normalizeConfig(config);
   return {
     config: c,
-    newState: (coin) => newState(c.first === "random" ? coin : c.first === "host" ? 0 : 1, c),
+    newState: (coin, players = 2) => newState(c.first === "random" ? coin : c.first === "host" ? 0 : 1, c, players),
     applyMove,
     needsRandom: (state, move) => move?.type === "spin",
     draws: DRAWS,

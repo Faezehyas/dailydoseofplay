@@ -132,7 +132,8 @@ test("illegal moves throw RuleError: out of turn, unknown move, after the game",
 test("config: unknown values fall back to the defaults; the room picks who starts", () => {
   assert.deepEqual(normalizeConfig(null), DEFAULT_CONFIG);
   assert.deepEqual(normalizeConfig({ finish: "teleport", sixAgain: "yes", first: 7, spin: "x" }), DEFAULT_CONFIG);
-  assert.deepEqual(normalizeConfig({ finish: "bounce", sixAgain: true, first: "guest", spin: "auto" }), { finish: "bounce", sixAgain: true, first: "guest", spin: "auto" });
+  assert.deepEqual(normalizeConfig({ finish: "bounce", sixAgain: true, first: "guest", spin: "auto", robots: 3 }), { finish: "bounce", sixAgain: true, first: "guest", spin: "auto", robots: 3 });
+  assert.equal(normalizeConfig({ robots: 4 }).robots, 1, "at most three robots");
   assert.equal(makeRules({ first: "host" }).newState(1).turn, 0);
   assert.equal(makeRules({ first: "guest" }).newState(0).turn, 1);
   assert.equal(makeRules({ first: "random" }).newState(1).turn, 1);
@@ -157,5 +158,36 @@ test("seeded full games always finish, and the stats add up", () => {
       assert.equal(st.pos[st.winner], LAST);
       assert.ok(st.ply < DRAWS, `${st.ply} spins fit the draw budget`);
     }
+  }
+});
+
+test("three and four players: the turn goes round the seats, and a 6 can spin again", () => {
+  for (const players of [3, 4]) {
+    const st = newState(1, { sixAgain: true }, players);
+    assert.deepEqual(st.pos, Array(players).fill(0));
+    assert.equal(st.players, players);
+    const order = [];
+    for (let k = 0; k < players + 1; k++) {
+      order.push(st.turn);
+      spin(st, st.turn, 2);
+    }
+    assert.deepEqual(order, [...Array(players).keys()].map((i) => (1 + i) % players).concat(1));
+    const p = st.turn;
+    spin(st, p, 6);
+    assert.equal(st.turn, p, "a 6 spins again");
+    assert.throws(() => spin(st, (p + 1) % players, 3), (e) => e.name === "RuleError");
+  }
+  assert.equal(makeRules({ first: "guest" }).newState(0, 4).turn, 1);
+  assert.equal(makeRules({ first: "random" }).newState(3, 4).turn, 3);
+  assert.equal(makeRules({}).newState(0, 4).pos.length, 4);
+});
+
+test("seeded four-player games always finish within the draw budget", () => {
+  for (let g = 0; g < 200; g++) {
+    const rng = rngFromSeed(`four-${g}`);
+    const st = newState(g % 4, { finish: ["exact", "bounce", "any"][g % 3], sixAgain: g % 2 === 0 }, 4);
+    while (st.winner === -1) applyMove(st, st.turn, { type: "spin" }, rng);
+    assert.equal(st.pos[st.winner], LAST);
+    assert.ok(st.ply < DRAWS, `${st.ply} spins fit the draw budget`);
   }
 });
