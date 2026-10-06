@@ -149,7 +149,8 @@ startGameShell({
 ```
 
 **More than two players.** Pass `minPlayers` and `maxPlayers` to
-`startGameShell()` (and `robots`, the robot seats in a robot game). The host
+`startGameShell()` (and `robots`, the robot seats in a robot game: a number,
+or a function such as `() => settings.get().robots`). The host
 gets a player list and a Start button. In `onSession`, use `session.players`
 (`{seat, name}`), `session.index` (your seat) and `session.others`, pass
 `players: session.players.length` to `TurnMatch`, and write rules whose turn

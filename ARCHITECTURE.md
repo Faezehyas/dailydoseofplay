@@ -98,7 +98,8 @@ Guests keep their signaling socket while they wait, so the server's room size
 check (`room_full`) still counts them.
 
 In robot mode the engine builds a `localRoom()`: one in-memory group with a
-seat for the player and one per robot (`robots`, default 1), and hands each
+seat for the player and one per robot (`robots`, default 1, or a function the
+lobby calls when a robot game starts), and hands each
 robot's `Session` to the game's `createRobot()`. **A robot is just another
 peer**, so robot games use exactly the same protocol and rules code as friend
 games. The lobby acts on `?room=` and `?robot` only after the game's module
@@ -525,7 +526,7 @@ before each move instead of taking a fixed one.
 
 ## Chutes and Ladders in depth
 
-Chutes and Ladders runs on `TurnMatch` with no engine change. It copies
+Chutes and Ladders runs on `TurnMatch`, for two to four players. It copies
 Backgammon's room settings (`setup {config}`) and shared luck, but has no
 clocks and no robot levels: the game has no choices, so a move is just
 `{ type: "spin" }` and the robot only spins.
@@ -581,10 +582,18 @@ rushing air, then a bump; overshooting with the exact rule is a two-note
 Levels were set by rendering each sound offline and matching the recorded
 samples other games play (hops and landings about 0.3 peak, ticks lower).
 
-**Why two players.** Chutes and Ladders is often played by up to four. The
-engine now seats more players (see **Groups**), but this game's rules, view
-and robot still assume two pawns (`turn` flips between 0 and 1, `winner` 2 is
-a draw), so it stays two-player until they are generalized.
+**Up to four players.** It is the first game that seats more than two (see
+**Groups**). The rules keep one pawn per seat (`pos`, `spins`, `climbs` and
+`slides` have `players` entries) and pass the turn to the next seat; the game
+has no draws, so `winner` is always a seat. "Next player" as the first-spin
+setting means seat 1, the first friend in. The room creator's `setup` is
+accepted only from seat 0. On each screen your pawn is coral and the others
+take teal, violet and amber in seat order, everywhere a player's colour shows
+(name, score, pawn, last-square ring, spin log). Two pawns on a square stand
+side by side; three or four stand staggered across it. A robot game has 1 to
+3 robots, from a per-device setting the lobby reads when the game starts
+(`robots` may be a function). The room starts when the host presses Start,
+or by itself once four are in.
 
 ## Dots and Boxes in depth
 

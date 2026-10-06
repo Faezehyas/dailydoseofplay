@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { localPair } from "../engine/channel.js";
 import { openSession, matchRouter } from "../engine/session.js";
+import { localRoom } from "../engine/room.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { makeRules, LAST } from "./rules.js";
 import { chooseMove } from "./robot.js";
@@ -81,4 +82,40 @@ test("a robot game plays to the end through startTurnRobot", async () => {
   await until(() => robot.match.phase === "over");
   assert.deepEqual(robot.match.state.pos, match.state.pos);
   robot.destroy();
+});
+
+test("four players agree on every spin through a full game, and only the seat on turn may spin", async () => {
+  const sessions = localRoom({ game: "chutes-and-ladders", names: ["A", "B", "C", "D"], mode: "friend" });
+  const rules = makeRules({ sixAgain: true });
+  const matches = sessions.map((s) => {
+    const match = new TurnMatch({ send: (msg) => s.send(msg), me: s.index, players: 4, rules });
+    matchRouter(s).start(match);
+    return match;
+  });
+  await until(() => matches.every((m) => m.phase === "playing"));
+  assert.ok(matches.every((m) => m.state.first === matches[0].state.first && m.state.pos.length === 4));
+  while (matches[0].phase === "playing") {
+    const mover = matches.find((m) => m.canMove());
+    if (!mover) {
+      await tick();
+      continue;
+    }
+    const ply = mover.state.ply;
+    await mover.play(chooseMove());
+    await until(() => matches.every((m) => m.state.ply > ply && !m.working) || matches.some((m) => m.phase === "aborted"));
+  }
+  await until(() => matches.every((m) => m.phase === "over"));
+  for (const m of matches.slice(1)) assert.deepEqual(m.state, matches[0].state);
+  assert.ok(matches[0].state.spins.every((n) => n > 0), "everyone spun");
+
+  // A fresh match: a seat that is not on turn can't spin.
+  const next = sessions.map((s) => {
+    const match = new TurnMatch({ send: (msg) => s.send(msg), me: s.index, players: 4, rules: makeRules({ first: "host" }), m: 2 });
+    matchRouter(s).start(match);
+    return match;
+  });
+  await until(() => next.every((m) => m.phase === "playing"));
+  next[2].send({ t: "move", move: { type: "spin" } });
+  await until(() => next[0].phase === "aborted");
+  assert.match(next[0].abortReason, /out of turn/);
 });
