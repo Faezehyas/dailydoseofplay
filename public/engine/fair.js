@@ -1,16 +1,16 @@
-// Fair play between two peers that do not trust each other, with no server
+// Fair play between peers that do not trust each other, with no server
 // involved. Two tools:
 //
 // 1. Commitments: publish sha256(salt:value) now, reveal value+salt later.
 //    Used to lock in hidden information (e.g. a fleet) before play starts.
 //
-// 2. SharedRandom: unbiased, unpredictable random draws agreed by both peers.
+// 2. SharedRandom: unbiased, unpredictable random draws agreed by all peers.
 //    Each peer builds a hash chain x0 -> x1=H(x0) -> ... -> xN and publishes
-//    the tip xN. Draw k reveals x(N-k) from both sides; each side checks
+//    the tip xN. Draw k reveals x(N-k) from every seat; each peer checks
 //    H(x(N-k)) equals the previous value. The draw seed is
-//    H(k, hostValue, guestValue). Values are fixed by the published tip, so
-//    the second revealer cannot bias the result, and nobody can predict a
-//    draw before both reveals arrive.
+//    H(k, seat0Value, seat1Value, ...). Values are fixed by the published
+//    tips, so the last revealer cannot bias the result, and nobody can
+//    predict a draw before every reveal arrives.
 import { rngFromBytes } from "./rng.js";
 
 const enc = new TextEncoder();
@@ -141,52 +141,70 @@ export class SharedRandom {
   constructor(chain) {
     this.chain = chain;
     this.k = 0;
-    this.inbox = new Map();
-    this.waiters = new Map();
-    this.verifier = null;
+    this.inbox = new Map(); // "k:seat" -> value
+    this.waiters = new Map(); // "k:seat" -> { resolve, reject }
+    this.verifiers = null; // seat -> ChainVerifier, mine excluded
     this.failed = null;
   }
   get tip() {
     return this.chain.tip;
   }
-  // index: 0 for the host, 1 for the guest; fixes the hashing order.
-  setPeer(peerTip, index) {
-    this.verifier = new ChainVerifier(peerTip);
+  // tips: chain tips by seat (mine is ignored); index: my seat. The seats fix
+  // the hashing order.
+  setPeers(tips, index) {
     this.index = index;
+    this.verifiers = new Map();
+    tips.forEach((tip, seat) => seat !== index && this.verifiers.set(seat, new ChainVerifier(tip)));
   }
-  receive(k, value) {
-    const waiter = this.waiters.get(k);
+  // Two players: index 0 for the host, 1 for the guest.
+  setPeer(peerTip, index) {
+    const tips = [];
+    tips[1 - index] = peerTip;
+    this.setPeers(tips, index);
+  }
+  // from: the revealing seat; optional with a single peer once it is set.
+  receive(k, value, from = this.#onlyPeer()) {
+    const key = `${k}:${from}`;
+    const waiter = this.waiters.get(key);
     if (waiter) {
-      this.waiters.delete(k);
+      this.waiters.delete(key);
       waiter.resolve(value);
     } else {
-      this.inbox.set(k, value);
+      this.inbox.set(key, value);
     }
+  }
+  #onlyPeer() {
+    return this.verifiers?.size === 1 ? [...this.verifiers.keys()][0] : 1 - this.index;
   }
   abort(err) {
     this.failed = err;
     for (const w of this.waiters.values()) w.reject(err);
     this.waiters.clear();
   }
-  #wait(k) {
+  #wait(k, seat) {
     if (this.failed) return Promise.reject(this.failed);
-    if (this.inbox.has(k)) {
-      const v = this.inbox.get(k);
-      this.inbox.delete(k);
+    const key = `${k}:${seat}`;
+    if (this.inbox.has(key)) {
+      const v = this.inbox.get(key);
+      this.inbox.delete(key);
       return Promise.resolve(v);
     }
-    return new Promise((resolve, reject) => this.waiters.set(k, { resolve, reject }));
+    return new Promise((resolve, reject) => this.waiters.set(key, { resolve, reject }));
   }
-  // send(k, value) must deliver { k, value } to the peer's receive().
-  // Resolves to a PRNG function both peers share for this draw.
+  // send(k, value) must deliver { k, value } to every peer's receive().
+  // Resolves to a PRNG function all peers share for this draw.
   async draw(send) {
-    if (!this.verifier) throw new FairPlayError("peer chain not set");
+    if (!this.verifiers) throw new FairPlayError("peer chain not set");
     const k = ++this.k;
-    const mine = this.chain.reveal(k);
-    send(k, mine);
-    const theirs = await this.#wait(k);
-    await this.verifier.accept(k, theirs);
-    const [a, b] = this.index === 0 ? [mine, theirs] : [theirs, mine];
-    return rngFromBytes(await sha256(`ddp-draw:${k}:${a}:${b}`));
+    const values = [];
+    values[this.index] = this.chain.reveal(k);
+    send(k, values[this.index]);
+    const seats = [...this.verifiers.keys()];
+    const theirs = await Promise.all(seats.map((seat) => this.#wait(k, seat)));
+    for (const [i, seat] of seats.entries()) {
+      await this.verifiers.get(seat).accept(k, theirs[i]);
+      values[seat] = theirs[i];
+    }
+    return rngFromBytes(await sha256(`ddp-draw:${k}:${values.join(":")}`));
   }
 }
