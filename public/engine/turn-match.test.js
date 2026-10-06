@@ -147,3 +147,55 @@ test("rules.draws lengthens the shared random chain for games with many rolls", 
     else assert.equal(a.state.rolls, 300);
   }
 });
+
+test("three players: one coin toss among all seats, moves only from the seat on turn, same state everywhere", async () => {
+  const { localRoom } = await import("./room.js");
+  const race3 = {
+    ...race,
+    newState: (first, players) => ({ turn: first, players, winner: -1, total: 0, log: [] }),
+    applyMove(state, player, move, rng) {
+      if (state.turn !== player) throw new RuleError("not your turn");
+      const add = move.type === "roll" ? 1 + Math.floor(rng() * 3) : 1;
+      state.total += add;
+      state.log.push([player, add]);
+      if (state.total >= 12) state.winner = player;
+      else state.turn = (player + 1) % state.players;
+      return [];
+    },
+  };
+  const sessions = localRoom({ game: "race", names: ["A", "B", "C"], mode: "friend" });
+  const matches = sessions.map((s) => {
+    const match = new TurnMatch({ send: (m) => s.send(m), me: s.index, players: 3, rules: race3 });
+    matchRouter(s).start(match);
+    return match;
+  });
+  await until(() => matches.every((m) => m.phase === "playing"));
+  assert.ok(matches.every((m) => m.state.turn === matches[0].state.turn && m.state.players === 3));
+  // A seat that is not on turn can't sneak a move in.
+  const idle = matches.find((m) => !m.canMove());
+  const aborted = Promise.all(matches.filter((m) => m !== idle).map((m) => new Promise((r) => m.on("abort", r))));
+  idle.send({ t: "move", move: { type: "add" } });
+  assert.ok((await aborted).every(({ reason }) => /move out of turn/.test(reason)));
+
+  // A fresh match plays to the end, with shared dice, and every seat moves.
+  const next = sessions.map((s) => {
+    const match = new TurnMatch({ send: (m) => s.send(m), me: s.index, players: 3, rules: race3, m: 2 });
+    matchRouter(s).start(match);
+    return match;
+  });
+  await until(() => next.every((m) => m.phase === "playing"));
+  let k = 0;
+  while (next[0].phase === "playing") {
+    const mover = next.find((m) => m.canMove());
+    if (!mover) {
+      await tick();
+      continue;
+    }
+    await mover.play(k++ % 2 ? { type: "roll" } : { type: "add" });
+    await until(() => next.every((m) => !m.working && m.state.log.length === next[0].state.log.length));
+  }
+  await until(() => next.every((m) => m.phase === "over"));
+  assert.deepEqual(next[1].state, next[0].state);
+  assert.deepEqual(next[2].state, next[0].state);
+  assert.deepEqual(new Set(next[0].state.log.map(([p]) => p)), new Set([0, 1, 2]));
+});
