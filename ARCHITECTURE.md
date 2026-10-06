@@ -1,8 +1,8 @@
 # Architecture
 
 Daily Dose of Play is a free, no-login site of browser games for two or more
-players (every game so far is two-player). One small Node server on Wasmer
-Edge serves the pages and introduces players to each other. The games
+players (Chutes and Ladders and Ludo seat up to four). One small Node server
+on Wasmer Edge serves the pages and introduces players to each other. The games
 themselves run browser to browser over WebRTC DataChannels: with more than
 two players, every guest connects to the room creator's browser, which
 forwards messages between them (see **Groups** below).
@@ -80,7 +80,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two), `?room=CODE` auto-join, connection-failure and player-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
-| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle, Chess and Backgammon play CC0 recordings, see each game's `sounds/LICENSE.txt`) |
+| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle, Chess, Backgammon and Ludo play CC0 recordings, see each game's `sounds/LICENSE.txt`) |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
 
 **Session flow.**
@@ -701,6 +701,124 @@ can't be drawn, the turn chime, and tunes for a win, a loss and a draw. Levels
 were set by rendering each sound offline: the scratch and box pops peak around
 0.25–0.3, like Chutes and Ladders' hops, and the chime and tunes match its
 own.
+
+## Ludo in depth
+
+Ludo runs on `TurnMatch` for two to four players, with no engine or server
+change. It combines Chutes and Ladders' seating (four seats, a robot count,
+`setup` accepted only from seat 0) with Backgammon's turn shape: a shared
+roll, then a choice.
+
+**Board and paths.** The classic cross on a 15×15 grid: four 6×6 yards, a
+shared loop of 52 squares, a five-square home column per colour and the
+centre. `rules.js` doesn't know the grid. A token's place is its progress
+along its own path: −1 in the yard, 0 on its start square, 1–50 round the
+loop, 51–55 up its home column and 56 home. `square(color, r)` maps progress
+to a loop square (start squares 1, 14, 27 and 40; stars eight squares after
+each), and only the view (`art.js`) turns squares into grid cells. Colours go
+clockwise in turn order (red, green, yellow, blue); two players sit opposite,
+as red and yellow, so the empty yards are the other diagonal.
+
+**A turn is two moves.**
+
+- `{ type: "roll" }`: `needsRandom` is true, so every peer draws the die through `SharedRandom`. The rules list the legal moves right away: with none, or with a third 6 in a row under that house rule, the turn passes inside the rules, so nobody sends another message (as in Backgammon).
+- `{ type: "move", token }`: the token moves the rolled number. A 6 earns another roll; so does a capture when the room turns that on (only one extra roll either way).
+- The event carries everything the view animates: the path, captures (with where each victim stood), entering, home, safe square, a finish and its place, and why another roll follows.
+
+**Rules worth noting.** A token needs a 6 to come out onto its start square,
+and never captures there. Start and star squares are safe, so tokens of
+different colours share them; anywhere else, landing on a square sends every
+rival token on it back to the yard. The centre needs an exact roll. With the
+**block** house rule, two tokens of one colour on a loop square can't be
+passed or landed on by anyone else; a block on someone's start square doesn't
+keep them in their yard (start squares are safe for everyone), so a robot or
+a player can't jail a colour for good, and seeded games with blocks always
+finish. **Playing for places** (the default) keeps the game going after the
+first finish until one player is left; with **Game ends**, the rest are
+ranked by how far their tokens got. `state.order` is the standings either
+way, and `winner` is `order[0]`, so `TurnMatch` sees the match end once.
+
+**Draws.** Each roll is one shared draw. Over 3000 seeded four-player games,
+playing for places with every house-rule mix, the longest used about 1100
+rolls (random players use fewer than Easy robots), so `DRAWS` is 2048: the
+chain takes about 20 ms to build. `rules.test.js` checks seeded games of two,
+three and four players stay well inside it.
+
+**Room settings.** Three 6s in a row lose the turn (on), blocks (off), a
+capture rolls again (off), play for places (on), who rolls first (the coin
+toss, the room's creator, or seat 1), and a time to move (off, 10, 20 or
+30 s). The robot level and the number of robots stay on the device and only
+matter in a robot game.
+
+**Move timer.** There is no clock in the rules: running out never loses,
+because a stalled player would hold up three others. Each browser times only
+its own player, from when the replay of the previous move finished on its
+screen; when time is up it rolls, or plays Medium's choice, as a normal move.
+Other screens show the same bar for whoever is on turn and, 6 s past it, say
+they are waiting for that browser. A frozen tab still stalls the game; any
+player can leave, which ends it for everyone.
+
+**Robot** (`robot.js`). It scores the position each legal move leaves. A
+token is worth its progress, much more once it is in its home column or home
+(nothing can touch it there); each exposed token loses what it stands to lose
+times the chance a rival behind it lands on it next turn; and the rivals'
+progress counts against it, so a capture is worth what the victim loses.
+
+| Level | Sees | Random move |
+|---|---|---|
+| Easy | nothing: takes a capture, brings a token out, else runs its leader | 45% |
+| Medium | rivals one roll (1–6) behind each token | 10% |
+| Hard | also 6-then-the-rest shots, tokens about to come out of a yard, its own chances to capture next turn, and blocks in front of rivals when that rule is on | never |
+
+Over 400 seeded two-player games Hard beats Easy 78% of the time, Hard beats
+Medium 61% and Medium beats Easy 66%; a choice takes under 1 ms.
+`startRobot()` is the engine's robot loop with a pause asked for each move:
+robots wait while your screen is still replaying (so a robot game never
+builds a backlog), pause 0.5–0.6 s like a person (0.35 s for a forced move),
+hurry once you are home, and skip ahead if you press **Skip to the
+standings**. With `prefers-reduced-motion` nothing replays, so robots pause
+for a fraction of that.
+
+**Board and tokens.** `art.js` draws the board as inline SVG in the classic
+layout, red top left, and the view turns it so your yard is bottom left on
+every screen; stars, names and tokens are drawn in an upright layer so they
+don't turn. Your colour is the same everywhere it shows: pill, score, tokens,
+log, die, timer and standings. Every colour also has a mark (circle,
+triangle, square, diamond) on its tokens, yard, pill and standings, so
+nobody has to tell colours apart. Tokens are turned pawns (base, bell body,
+collar, ball head) shaded by gradients that read the theme's colour tokens.
+Two tokens on a square stand side by side, three or four in a cluster; a
+block gets a dashed plate. After your roll, every token that can move bobs
+with a white-and-dark ring (visible on any colour), and a dashed marker shows
+where each would land: a cross for a capture, gold for home. Hover or focus
+a token to see its path. You tap the token or its landing spot; on a
+keyboard, Tab or the arrow keys pick a token, Enter or Space moves it, keys
+1–4 pick your tokens and R rolls. When only one move is possible (tokens on
+one spot count once) it plays itself after 650 ms.
+
+**Motion.** The match state never waits for the screen. Every roll and move
+is queued: the die tumbles (its pips flicker) and lands with a bounce in the
+roller's colour; a token pops out of its yard onto its start square, hops
+square by square with a squash on each landing, and a captured token flies
+back to its socket on a high tumbling arc; a safe square sparkles, the home
+column hums, and home and the finish throw confetti. When moves pile up the
+queue plays faster; a hidden tab or `prefers-reduced-motion` (read live, so
+tests can switch it) applies them at once. Animations belong to a match
+generation, so a rematch drops the old queue. The result waits for the last
+token and sits over the board, so it is in view without scrolling on a
+laptop and on a phone. If a player leaves, the engine's notice gets a line
+saying the game is over for everyone, with where each player stood.
+
+**Sound** (`sounds.js`, behind the header's mute toggle). The die plays
+Backgammon's CC0 dice recordings (`ludo/sounds/LICENSE.txt`); the rest is
+synthesized like Chutes and Ladders': a wooden tap and a marimba note per hop
+that climbs as the token goes, a cork pop for coming out, a shimmer into the
+home column, a small bell on a safe square, a bonk for a capture (a slide
+whistle down if it was yours), a fanfare home, a chirp for another roll, a
+soft "no" for a passed turn, ticks for the timer's last seconds, the turn
+chime, and tunes for a win and a loss. Levels were set by rendering each
+sound offline: hops about 0.27 peak and landings about 0.35, next to the
+dice recording's 0.49.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
