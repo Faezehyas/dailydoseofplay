@@ -1,0 +1,1102 @@
+/* Ludo view. Shared tokens come from /engine/theme.css; the board's own
+   palette (the four player colours, felt, track and yards) is defined here
+   for light and dark. Each player colour has a fill (--ld-red) and a darker
+   ink for text on light surfaces (--ld-red-ink). */
+:root {
+  --ld-red: #e5484d;
+  --ld-red-ink: #c22a30;
+  --ld-green: #2fa15d;
+  --ld-green-ink: #1c7a41;
+  --ld-yellow: #f3b609;
+  --ld-yellow-ink: #8f6400;
+  --ld-blue: #3b7be8;
+  --ld-blue-ink: #2559c4;
+  --ld-felt: #fbf5e9;
+  --ld-frame: #fffaf2;
+  --ld-frame-edge: #e7d7bf;
+  --ld-track: #ffffff;
+  --ld-grid: #d9cdb8;
+  --ld-pad: #fffdf8;
+  --ld-star: #b8a98f;
+  --ld-gold: #ffc23a;
+  --ld-gold-dark: #c98d12;
+  --ld-pip: #2b2b36;
+  --ld-die: #fffdf7;
+  --ld-edge: rgb(30 20 10 / 38%);
+}
+
+.ludo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ld-red: #f0585d;
+    --ld-red-ink: #ff8a8d;
+    --ld-green: #38b56b;
+    --ld-green-ink: #6fdc9b;
+    --ld-yellow: #f5c02a;
+    --ld-yellow-ink: #ffd25c;
+    --ld-blue: #4f8cf2;
+    --ld-blue-ink: #8db4ff;
+    --ld-felt: #1f2430;
+    --ld-frame: #1b1f29;
+    --ld-frame-edge: #2f3646;
+    --ld-track: #2a303d;
+    --ld-grid: #3c4558;
+    --ld-pad: #1d222c;
+    --ld-star: #8b93a6;
+    --ld-pip: #1b1f29;
+    --ld-die: #f4f1ea;
+    --ld-edge: rgb(0 0 0 / 55%);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ld-red: #f0585d;
+  --ld-red-ink: #ff8a8d;
+  --ld-green: #38b56b;
+  --ld-green-ink: #6fdc9b;
+  --ld-yellow: #f5c02a;
+  --ld-yellow-ink: #ffd25c;
+  --ld-blue: #4f8cf2;
+  --ld-blue-ink: #8db4ff;
+  --ld-felt: #1f2430;
+  --ld-frame: #1b1f29;
+  --ld-frame-edge: #2f3646;
+  --ld-track: #2a303d;
+  --ld-grid: #3c4558;
+  --ld-pad: #1d222c;
+  --ld-star: #8b93a6;
+  --ld-pip: #1b1f29;
+  --ld-die: #f4f1ea;
+  --ld-edge: rgb(0 0 0 / 55%);
+}
+
+/* Every element tagged with a player colour reads it from --c (fill) and --c-ink (text). */
+.c-red { --c: var(--ld-red); --c-ink: var(--ld-red-ink); }
+.c-green { --c: var(--ld-green); --c-ink: var(--ld-green-ink); }
+.c-yellow { --c: var(--ld-yellow); --c-ink: var(--ld-yellow-ink); }
+.c-blue { --c: var(--ld-blue); --c-ink: var(--ld-blue-ink); }
+
+.ld-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ld-top > .btn {
+  flex: none;
+}
+
+/* ---------- players ---------- */
+.ld-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.ld-players.many {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.ld-players .who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px 4px 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.ld-players .who.active {
+  border-color: var(--c);
+  box-shadow: 0 0 0 2px var(--c) inset;
+}
+
+.ludo .swatch {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 18%);
+}
+
+.ludo .swatch .mark {
+  width: 10px;
+  height: 10px;
+  fill: #fff;
+}
+
+.ld-players .label {
+  display: grid;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.ld-players .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ld-players .where {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ld-players .who.done .where {
+  color: var(--c-ink);
+}
+
+.ld-players .vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- score and status ---------- */
+.ld-score {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.ld-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--c);
+  min-width: 0;
+}
+
+.ld-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ld-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--c-ink);
+}
+
+.ld-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.ld-status.mine {
+  color: var(--c-ink, var(--accent));
+}
+
+.ld-status[data-color="red"] { --c-ink: var(--ld-red-ink); }
+.ld-status[data-color="green"] { --c-ink: var(--ld-green-ink); }
+.ld-status[data-color="yellow"] { --c-ink: var(--ld-yellow-ink); }
+.ld-status[data-color="blue"] { --c-ink: var(--ld-blue-ink); }
+
+.ld-config,
+.ld-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- layout: board, with the die beside it on wide screens ---------- */
+.ld-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.ld-board-wrap {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+}
+
+@media (min-width: 860px) {
+  .ld-main {
+    grid-template-columns: minmax(0, 1fr) 250px;
+  }
+
+  .ld-side {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+/* ---------- board ---------- */
+/* As big as fits: the full width on a phone, the screen's height on a laptop. */
+.ld-board {
+  display: block;
+  width: min(100%, 660px, max(300px, calc(100svh - 250px)));
+  height: auto;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+  overflow: visible;
+}
+
+.ld-board .frame {
+  fill: var(--ld-frame);
+  stroke: var(--ld-frame-edge);
+  stroke-width: 3;
+}
+
+.ld-board .felt {
+  fill: var(--ld-felt);
+}
+
+.ld-board .cell.track {
+  fill: var(--ld-track);
+}
+
+.ld-board .cell.start,
+.ld-board .cell.lane {
+  fill: var(--c);
+}
+
+.ld-board .grid {
+  fill: none;
+  stroke: var(--ld-grid);
+  stroke-width: 1.5;
+}
+
+.ld-board .arrow {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ld-board .entry {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+
+/* yards */
+.ld-board .yard-bg {
+  fill: var(--c);
+}
+
+.ld-board .yard-pad {
+  fill: var(--ld-pad);
+  stroke: color-mix(in srgb, var(--c) 60%, #000);
+  stroke-opacity: 0.25;
+  stroke-width: 3;
+}
+
+.ld-board .socket {
+  fill: color-mix(in srgb, var(--c) 22%, var(--ld-pad));
+  stroke: color-mix(in srgb, var(--c) 55%, var(--ld-pad));
+  stroke-width: 2.5;
+}
+
+.ld-board .socket-in {
+  fill: color-mix(in srgb, var(--c) 14%, var(--ld-pad));
+}
+
+.ld-board .yard.empty {
+  opacity: 0.32;
+  filter: saturate(0.4);
+}
+
+.ld-board .yard-mark {
+  fill: var(--c);
+  opacity: 0.16;
+}
+
+.ld-board .yard-label.empty {
+  display: none;
+}
+
+.ld-board .yard-name {
+  fill: #fff;
+  font-size: 19px;
+  font-weight: 900;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  letter-spacing: 0.2px;
+}
+
+/* centre */
+.ld-board .tri {
+  fill: var(--c);
+}
+
+.ld-board .tri-edge,
+.ld-board .centre-edge {
+  fill: none;
+  stroke: rgb(255 255 255 / 55%);
+  stroke-width: 2;
+}
+
+.ld-board .home-badge circle {
+  fill: var(--ld-pad);
+  stroke: var(--ld-gold-dark);
+  stroke-width: 2.5;
+}
+
+.ld-board .home-badge path {
+  fill: var(--ld-gold);
+  stroke: var(--ld-gold-dark);
+  stroke-width: 1.2;
+}
+
+.ld-board .star {
+  fill: color-mix(in srgb, var(--ld-star) 22%, var(--ld-track));
+  stroke: var(--ld-star);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* pawns */
+.ld-board .pawn-shadow {
+  fill: rgb(0 0 0 / 24%);
+}
+
+.ld-board .pawn-fig > * {
+  stroke: var(--ld-edge);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.ld-board .pawn-shine {
+  fill: rgb(255 255 255 / 75%);
+  stroke: none !important;
+}
+
+.ld-board .pawn-mark {
+  fill: #fff;
+  stroke: rgb(0 0 0 / 30%) !important;
+  stroke-width: 0.8 !important;
+}
+
+.ld-board .pawn-ring {
+  fill: none;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ld-board .pawn-ring .ring-out {
+  stroke: rgb(0 0 0 / 45%);
+  stroke-width: 6;
+}
+
+.ld-board .pawn-ring .ring-in {
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.ld-board .pawn.movable .pawn-ring {
+  opacity: 1;
+  animation: ld-ring 1.1s ease-out infinite;
+}
+
+.ld-board .pawn.movable .pawn-lift {
+  animation: ld-bob 0.9s ease-in-out infinite;
+}
+
+.ld-board .pawn.focus .pawn-lift {
+  animation-duration: 0.5s;
+}
+
+.ld-board .pawn.focus .pawn-ring .ring-in {
+  stroke: var(--ld-gold);
+}
+
+@keyframes ld-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes ld-bob {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* a block: two tokens of one colour that nobody can pass */
+.ld-board .block {
+  fill: color-mix(in srgb, var(--c) 30%, transparent);
+  stroke: var(--c);
+  stroke-width: 3;
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+
+/* where a token would land */
+.ld-board .dest {
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.ld-board .dest-disc {
+  fill: color-mix(in srgb, var(--c) 28%, transparent);
+  stroke: var(--c-ink);
+  stroke-width: 2.5;
+  stroke-dasharray: 5 4;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ld-dest 1.4s linear infinite;
+}
+
+.ld-board .dest-mark {
+  fill: var(--c-ink);
+  opacity: 0.75;
+}
+
+.ld-board .dest.capture .dest-disc {
+  stroke: var(--danger);
+  fill: color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.ld-board .dest-x {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.ld-board .dest.home .dest-disc {
+  stroke: var(--ld-gold-dark);
+  fill: color-mix(in srgb, var(--ld-gold) 45%, transparent);
+}
+
+.ld-board .dest.focus .dest-disc {
+  stroke-width: 3.5;
+  fill: color-mix(in srgb, var(--c) 45%, transparent);
+}
+
+.ld-board .dest.dim {
+  opacity: 0.4;
+}
+
+@keyframes ld-dest {
+  to {
+    transform: rotate(90deg);
+  }
+}
+
+.ld-board .trail {
+  fill: var(--c-ink);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* tap targets over the tokens and their landing spots */
+.ld-board .hits circle {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.ld-board .hits circle:focus {
+  outline: none;
+}
+
+.ld-board .hits .hit-token:focus-visible {
+  stroke: var(--focus);
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+}
+
+/* effects */
+.ld-board .fx {
+  pointer-events: none;
+}
+
+.ld-board .fx-star {
+  fill: var(--ld-gold);
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.ld-board .fx-puff {
+  fill: rgb(170 160 145 / 65%);
+}
+
+.ld-board .fx-confetti {
+  fill: var(--c);
+}
+
+.ld-board .fx-ripple {
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 4;
+}
+
+/* ---------- die ---------- */
+.ld-side {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.ld-die-panel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.ld-die-actions {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  justify-items: stretch;
+}
+
+.ld-die {
+  --c: var(--muted);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border-radius: 20px;
+  border: 4px solid var(--c);
+  background: linear-gradient(145deg, #fff, var(--ld-die) 55%, color-mix(in srgb, var(--ld-die) 82%, #000));
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--c) 70%, #000), 0 8px 18px rgb(0 0 0 / 18%);
+  cursor: default;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ld-die[data-color="red"] { --c: var(--ld-red); }
+.ld-die[data-color="green"] { --c: var(--ld-green); }
+.ld-die[data-color="yellow"] { --c: var(--ld-yellow); }
+.ld-die[data-color="blue"] { --c: var(--ld-blue); }
+
+.ld-die:disabled {
+  opacity: 1;
+  color: inherit;
+}
+
+.ld-die.armed {
+  cursor: pointer;
+  animation: ld-ready 1.5s ease-in-out infinite;
+}
+
+@keyframes ld-ready {
+  50% {
+    box-shadow: 0 2px 0 color-mix(in srgb, var(--c) 70%, #000), 0 0 0 9px color-mix(in srgb, var(--c) 28%, transparent);
+  }
+}
+
+.ld-die .face {
+  display: grid;
+  width: 70%;
+  height: 70%;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-areas: "s1 s2 s3" "s4 s5 s6" "s7 s8 s9";
+  place-items: center;
+}
+
+.ld-die .face i {
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ld-pip) 55%, #fff), var(--ld-pip) 60%);
+}
+
+.ld-die.six .face i {
+  background: radial-gradient(circle at 35% 30%, #ff9a9a, #c41f26 60%);
+}
+
+.ld-die .face[data-value=""]::after {
+  content: "?";
+  grid-area: s5;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.ld-die.tumbling {
+  animation: ld-tumble 0.42s linear infinite;
+}
+
+@keyframes ld-tumble {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translate(-6px, -8px) rotate(95deg) scale(0.92);
+  }
+  50% {
+    transform: translate(4px, -2px) rotate(185deg) scale(1.04);
+  }
+  75% {
+    transform: translate(-2px, -9px) rotate(275deg) scale(0.94);
+  }
+  100% {
+    transform: translate(0, 0) rotate(360deg) scale(1);
+  }
+}
+
+.ld-die.landed {
+  animation: ld-land 0.42s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+@keyframes ld-land {
+  0% {
+    transform: translateY(-10px) rotate(-14deg) scale(1.08, 0.9);
+  }
+  45% {
+    transform: translateY(0) rotate(4deg) scale(0.94, 1.06);
+  }
+}
+
+.ld-roll.attention {
+  animation: ld-nudge 1.6s ease-in-out infinite;
+}
+
+@keyframes ld-nudge {
+  0%,
+  70%,
+  100% {
+    transform: none;
+  }
+  80% {
+    transform: scale(1.05);
+  }
+  90% {
+    transform: scale(0.98);
+  }
+}
+
+.ld-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+  min-height: 1.2em;
+}
+
+.ld-hint:empty {
+  display: none;
+}
+
+.ld-timer {
+  --c: var(--muted);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.ld-timer[hidden] {
+  display: none;
+}
+
+.ld-timer[data-color="red"] { --c: var(--ld-red); }
+.ld-timer[data-color="green"] { --c: var(--ld-green); }
+.ld-timer[data-color="yellow"] { --c: var(--ld-yellow); }
+.ld-timer[data-color="blue"] { --c: var(--ld-blue); }
+
+.ld-timer .bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ld-timer .bar span {
+  display: block;
+  height: 100%;
+  background: var(--c);
+  transition: width 0.2s linear;
+}
+
+.ld-timer.low .bar span {
+  background: var(--danger);
+}
+
+.ld-timer.low {
+  color: var(--danger);
+}
+
+/* ---------- log ---------- */
+.ld-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ld-log li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--c);
+  font-size: 0.85rem;
+  line-height: 1.25;
+  opacity: 0.75;
+}
+
+.ld-log li.fresh {
+  opacity: 1;
+  animation: ld-in 0.3s ease-out;
+}
+
+@keyframes ld-in {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+
+.ld-log .dot {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--ld-die);
+  color: #1b1f29;
+  border: 2px solid var(--c);
+  font-weight: 900;
+  font-size: 0.8rem;
+}
+
+.ld-log .capture {
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+.ld-log .home {
+  background: color-mix(in srgb, var(--ld-gold) 14%, var(--surface));
+}
+
+/* Phones: the pills in a 2×2 grid beside Leave, a slimmer score. */
+@media (max-width: 600px) {
+  .ld-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .ld-players.many {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .ld-players.many .who {
+    padding: 3px 8px 3px 4px;
+    font-size: 0.9rem;
+  }
+
+  .ld-score > div {
+    grid-auto-flow: column;
+    justify-content: center;
+    align-items: baseline;
+    gap: 6px;
+    padding: 3px 6px;
+  }
+
+  .ld-score dt {
+    font-size: 0.72rem;
+  }
+
+  .ld-score dd {
+    font-size: 1.05rem;
+  }
+
+  .ld-status {
+    font-size: 1rem;
+  }
+}
+
+/* Phones: die and button side by side, a shorter log. */
+@media (max-width: 859px) {
+  .ld-die-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    padding: 10px 12px;
+  }
+
+  .ld-die {
+    width: 70px;
+    height: 70px;
+    border-radius: 17px;
+  }
+
+  .ld-log li:nth-child(n + 3) {
+    display: none;
+  }
+}
+
+/* ---------- game over: over the board, so it's in view ---------- */
+.ld-over {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg) 40%, transparent);
+  backdrop-filter: blur(1.5px);
+  animation: ld-fade 0.3s ease-out;
+}
+
+.ld-over[hidden] {
+  display: none;
+}
+
+@keyframes ld-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.ld-over-card {
+  width: min(100%, 360px);
+  max-height: 100%;
+  overflow: auto;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  animation: ld-pop 0.4s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+@keyframes ld-pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+.ld-over h2 {
+  margin: 0 0 8px;
+  font-size: 1.45rem;
+}
+
+.ld-over h2.win {
+  color: var(--accent);
+}
+
+.ld-standings {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.ld-standings li {
+  display: grid;
+  grid-template-columns: 2.4em auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 0.92rem;
+}
+
+.ld-standings li.mine {
+  box-shadow: 0 0 0 2px var(--c) inset;
+  font-weight: 800;
+}
+
+.ld-standings .place {
+  font-weight: 900;
+  color: var(--c-ink);
+}
+
+.ld-standings .who {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ld-standings small {
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ld-over .detail {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ld-over .detail.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.ld-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ld-over .rematch-status {
+  margin-top: 8px;
+}
+
+@media (max-width: 420px) {
+  .ld-over-card {
+    padding: 10px 12px;
+  }
+
+  .ld-over h2 {
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+  }
+
+  .ld-standings li {
+    font-size: 0.85rem;
+    padding: 3px 6px;
+  }
+
+  .ld-standings small {
+    font-size: 0.72rem;
+  }
+
+  .ld-over .detail {
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+  }
+}
+
+/* A player left: the engine's notice, plus where everyone stood. */
+.ld-ended {
+  margin-top: 12px;
+  text-align: left;
+}
+
+.ld-ended p {
+  margin: 0 0 8px;
+}
+
+.ld-ended ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.ld-ended li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.ld-ended li.gone {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ld-ended .swatch {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.ld-ended .swatch .mark {
+  width: 10px;
+  height: 10px;
+  fill: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-board .pawn.movable .pawn-lift,
+  .ld-board .pawn.movable .pawn-ring,
+  .ld-board .dest-disc,
+  .ld-die.armed,
+  .ld-roll.attention {
+    animation: none;
+  }
+
+  .ld-board .pawn.movable .pawn-ring {
+    opacity: 1;
+  }
+}
