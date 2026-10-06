@@ -1,8 +1,8 @@
 // Start the real HTTP + signaling server in-process on a random port.
 import { createApp } from "../server/app.js";
 
-export async function startServer() {
-  const { server, wss } = await createApp({ log: () => {} });
+export async function startServer({ publicDir } = {}) {
+  const { server, wss } = await createApp({ publicDir, log: () => {} });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   return {
