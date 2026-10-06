@@ -134,11 +134,11 @@ export class SeaBattleMatch extends Emitter {
     });
   }
 
-  receive(msg) {
+  receive(msg, from = 1 - this.me) {
     if (msg.m !== this.m) return;
     // draw and abort are handled out of band: a queued step may be waiting on a draw.
     if (msg.t === "draw") {
-      this.srReady.then((sr) => sr.receive(msg.k, msg.v));
+      this.srReady.then((sr) => sr.receive(msg.k, msg.v, from));
       return;
     }
     if (msg.t === "abort") return this.abort(`Opponent stopped the match: ${String(msg.reason).slice(0, 80)}`);

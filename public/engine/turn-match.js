@@ -1,17 +1,19 @@
-// Generic two-player turn-based match for games WITHOUT hidden information
-// (Tic Tac Toe, Connect 4, Gomoku, Chess, Checkers, Backgammon...).
-// Both peers run the same rules on the same moves, so each one validates the
-// other's moves. Who starts, and any luck in a move (dice), comes from
-// SharedRandom, so neither side can choose it.
+// Generic turn-based match for games WITHOUT hidden information (Tic Tac
+// Toe, Connect 4, Gomoku, Chess, Checkers, Backgammon...), for two or more
+// players. Every peer runs the same rules on the same moves, so each one
+// validates everyone else's moves. Who starts, and any luck in a move (dice),
+// comes from SharedRandom, so no player can choose it.
 //
 // A rules module provides:
-//   newState(first)                 -> state with state.turn (0|1) and state.winner (-1 | 0 | 1 | 2 for a draw)
+//   newState(first, players)        -> state with state.turn (a seat) and state.winner (-1 while playing);
+//                                      two-player games use 0 | 1 for a winner and 2 for a draw
 //   applyMove(state, player, move, rng) -> events[]; mutates state; throws RuleError if illegal
 //   needsRandom(state, move)        -> optional; true if this move's outcome uses rng (e.g. rolling dice)
 //   draws                           -> optional; the most shared random draws one match may need (default 256)
 // rules.js must be pure: no DOM, timers, network or Math.random (use rng).
 //
-// Messages (all carry m = match number): chain {tip}, draw {k, v}, move {move}, abort {reason}
+// Messages (all carry m = match number): chain {tip}, draw {k, v}, move {move}, abort {reason}.
+// receive(msg, from) takes the sender's seat; only the seat on turn may move.
 import { Emitter } from "./channel.js";
 import { SharedRandom, FairPlayError } from "./fair.js";
 import { matchRouter } from "./session.js";
@@ -25,15 +27,16 @@ const noRandom = () => {
 };
 
 export class TurnMatch extends Emitter {
-  constructor({ send, me, rules, m = 1 }) {
+  constructor({ send, me, rules, m = 1, players = 2 }) {
     super();
     this.send = (msg) => send({ ...msg, m });
-    this.me = me; // 0 = host, 1 = guest
+    this.me = me; // my seat; 0 = host
+    this.players = players;
     this.m = m;
     this.rules = rules;
     this.phase = "starting"; // starting -> playing -> over | aborted
     this.state = null;
-    this.peerTip = null;
+    this.tips = []; // chain tips by seat
     this.working = false;
     this.srReady = SharedRandom.create(rules.draws);
     this.queue = this.srReady.then((sr) => {
@@ -61,15 +64,17 @@ export class TurnMatch extends Emitter {
     });
   }
 
-  receive(msg) {
+  // from: the sender's seat; optional with two players.
+  receive(msg, from = 1 - this.me) {
     if (msg.m !== this.m) return;
+    if (!Number.isInteger(from) || from < 0 || from >= this.players || from === this.me) return;
     // draw and abort are handled out of band: a queued step may be waiting on a draw.
     if (msg.t === "draw") {
-      this.srReady.then((sr) => sr.receive(msg.k, msg.v));
+      this.srReady.then((sr) => sr.receive(msg.k, msg.v, from));
       return;
     }
     if (msg.t === "abort") return this.abort(`Opponent stopped the match: ${String(msg.reason).slice(0, 80)}`);
-    this.#enqueue(() => this.#handle(msg));
+    this.#enqueue(() => this.#handle(msg, from));
   }
 
   abort(reason) {
@@ -109,23 +114,24 @@ export class TurnMatch extends Emitter {
     return this.sr.draw((k, v) => this.send({ t: "draw", k, v }));
   }
 
-  async #handle(msg) {
+  async #handle(msg, from) {
     switch (msg.t) {
       case "chain": {
-        if (this.peerTip) throw new RuleError("chain sent twice");
-        this.peerTip = msg.tip;
-        this.sr.setPeer(msg.tip, this.me);
+        if (this.tips[from] !== undefined) throw new RuleError("chain sent twice");
+        this.tips[from] = msg.tip;
+        if (this.tips.filter((tip) => tip !== undefined).length < this.players - 1) return;
+        this.sr.setPeers(this.tips, this.me);
         const rng = await this.#draw();
-        const first = rng() < 0.5 ? 0 : 1;
-        this.state = this.rules.newState(first);
+        const first = Math.floor(rng() * this.players);
+        this.state = this.rules.newState(first, this.players);
         this.phase = "playing";
         this.emit("start", { first });
         return;
       }
       case "move": {
         if (this.phase !== "playing") throw new RuleError("move outside play");
-        if (this.state.turn !== 1 - this.me) throw new RuleError("move out of turn");
-        await this.#apply(1 - this.me, msg.move);
+        if (this.state.turn !== from) throw new RuleError("move out of turn");
+        await this.#apply(from, msg.move);
         return;
       }
       default:
@@ -159,7 +165,7 @@ export function startTurnRobot(session, { rules, choose, delay = 600, rng = Math
     }, delay);
   }
   function newMatch(m) {
-    match = new TurnMatch({ send: (msg) => session.send(msg), me: session.index, rules, m });
+    match = new TurnMatch({ send: (msg) => session.send(msg), me: session.index, players: session.players.length, rules, m });
     match.on("update", schedule);
     router.start(match);
   }

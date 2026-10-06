@@ -118,3 +118,17 @@ test("hashing and shared draws work without WebCrypto (plain-http pages)", async
   const [ra, rb] = await Promise.all([a.draw((k, v) => b.receive(k, v)), b.draw((k, v) => a.receive(k, v))]);
   assert.equal(ra(), rb(), "both peers draw the same number");
 });
+
+test("shared random with four peers: everyone draws the same numbers, and a tampered reveal is caught", async () => {
+  const peers = await Promise.all([0, 1, 2, 3].map(() => SharedRandom.create(8)));
+  const tips = peers.map((p) => p.tip);
+  peers.forEach((p, seat) => p.setPeers(tips, seat));
+  const sendFrom = (seat) => (k, v) => peers.forEach((p, s) => s !== seat && setTimeout(() => p.receive(k, v, seat)));
+  for (let k = 0; k < 3; k++) {
+    const rngs = await Promise.all(peers.map((p, seat) => p.draw(sendFrom(seat))));
+    const xs = rngs.map((rng) => rng());
+    assert.ok(xs.every((x) => x === xs[0]), `draw ${k}: ${xs}`);
+  }
+  const forged = (k) => peers.forEach((p, s) => s !== 3 && setTimeout(async () => p.receive(k, toHex(await sha256(`bias-${k}`)), 3)));
+  await assert.rejects(Promise.all(peers.map((p, seat) => p.draw(seat === 3 ? forged : sendFrom(seat)))), FairPlayError);
+});

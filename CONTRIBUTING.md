@@ -1,6 +1,6 @@
 # Contributing: how to work in this repo and add a game
 
-Daily Dose of Play is a free, no-login site of two-player browser games,
+Daily Dose of Play is a free, no-login site of browser games for two or more players,
 inspired by papergames.io's gameplay. It is one Node server on Wasmer Edge
 (pages, `/ws` signaling, `/healthz`). Gameplay runs browser to browser over
 WebRTC. Read `ARCHITECTURE.md` once before your first change.
@@ -43,7 +43,7 @@ board, turn order, win and draw conditions, and any special rules. Decide two
 things, because they choose your protocol:
 
 - **Hidden information?** (cards, hidden ships) → follow `public/sea-battle/match.js` (commitments and reveal-and-audit).
-- **No hidden information?** (all board games in the backlog) → use `public/engine/turn-match.js`. Randomness such as dice goes through `rules.needsRandom()`, so it is drawn jointly by both peers.
+- **No hidden information?** (all board games in the backlog) → use `public/engine/turn-match.js`. Randomness such as dice goes through `rules.needsRandom()`, so it is drawn jointly by all peers.
 
 ### 2. Create the folder
 
@@ -148,6 +148,14 @@ startGameShell({
 });
 ```
 
+**More than two players.** Pass `minPlayers` and `maxPlayers` to
+`startGameShell()` (and `robots`, the robot seats in a robot game). The host
+gets a player list and a Start button. In `onSession`, use `session.players`
+(`{seat, name}`), `session.index` (your seat) and `session.others`, pass
+`players: session.players.length` to `TurnMatch`, and write rules whose turn
+moves to the next seat. `newState(first, players)` receives the player count.
+Don't use `winner: 2` for a draw there, since 2 is a seat.
+
 The view must provide:
 
 - Both names (`session.me.name`, `session.opponent.name`) and whose turn it is.
@@ -164,7 +172,7 @@ from theme tokens, so light and dark both work.
 
 In `public/games.json`, set the game's entry to `"status": "ready"` (add an
 entry if the game isn't listed). Fields: `slug`, `name`, `status`, `players`,
-`maxPlayers` (2), and a one-sentence original `description`. The home page
+`maxPlayers` (2, or the same `maxPlayers` you pass to `startGameShell()` for a game with more players), and a one-sentence original `description`. The home page
 picks it up automatically. The server reads `games.json` once at startup, so
 restart `npm start` after editing it, or creating a room will fail with `bad_game`.
 The browser test reads the "Coming soon" count from the registry, so it needs
@@ -181,7 +189,7 @@ no change.
   - it takes an immediate win;
   - it blocks an immediate loss;
   - robot vs robot over 20 seeded games always finishes with legal moves.
-- **Protocol** (in `match.test.js` or `robot.test.js`): pair two `TurnMatch`es over `localPair()` + `openSession()` + `matchRouter()` (see `public/engine/turn-match.test.js`), play a full game, and assert both states are equal.
+- **Protocol** (in `match.test.js` or `robot.test.js`): pair two `TurnMatch`es over `localPair()` + `openSession()` + `matchRouter()` (see `public/engine/turn-match.test.js`), play a full game, and assert both states are equal. For more than two players, seat them with `localRoom()` from `engine/room.js` and pass `players` to each `TurnMatch` (see the three-player test in `turn-match.test.js`).
 - **Browser (recommended):** add `test/browser/<slug>.test.js` modelled on `test/browser/friend-match.test.js`. Host clicks `#play-friend`, the guest opens `#invite-link`, both play through `window.ddp.match`, then a rematch.
 
 Run `npm test` and `npm run test:browser`. All tests must pass. Never skip or
@@ -233,8 +241,10 @@ windows (one private).
 |---|---|
 | `server/app.js` | HTTP routes, static files, security headers, `/healthz`, `/ws` upgrade |
 | `server/signaling.js` | Rooms scoped by game slug, plus the SDP/ICE relay |
-| `public/engine/lobby.js` | `startGameShell()`: lobby, invite link, WebRTC hand-off, robot mode |
-| `public/engine/session.js` | `Session` (names, rematch, leave) and `matchRouter()` |
+| `public/engine/lobby.js` | `startGameShell()`: lobby UI, invite link, waiting room, robot mode |
+| `public/engine/room.js` | Seating players: `HostRoom`, `GuestRoom` (signaling + WebRTC) and `localRoom()` (robots) |
+| `public/engine/group.js` | The group transport: send to everyone, receive `(msg, fromSeat)`; today a star through the host |
+| `public/engine/session.js` | `Session` (players, rematch, leave), the start handshake, and `matchRouter()` |
 | `public/engine/turn-match.js` | `TurnMatch` and `startTurnRobot()` for open-information turn games |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
 | `public/engine/shell.js` | Header, theme toggle, nickname, `el()`, `toast()` |
