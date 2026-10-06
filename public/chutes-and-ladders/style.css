@@ -1,7 +1,10 @@
 /* Chutes and Ladders view. Shared tokens come from /engine/theme.css; the
    board's own palette (pastel squares, chutes, wood, lawn) is defined here
-   for light and dark. Yours is coral (--accent), theirs teal (--accent-2). */
+   for light and dark. Yours is coral (--accent), the next player's teal
+   (--accent-2), then violet (--cl-p2) and amber (--cl-p3). */
 .chutes-ladders {
+  --cl-p2: #7c55e6;
+  --cl-p3: #b06d00;
   --cl-t0: #ffe9a8;
   --cl-t1: #ffd0c2;
   --cl-t2: #c9eedc;
@@ -45,6 +48,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .chutes-ladders {
+    --cl-p2: #b496ff;
+    --cl-p3: #ffc04d;
     --cl-t0: #4b4228;
     --cl-t1: #4d3530;
     --cl-t2: #25463a;
@@ -67,6 +72,8 @@
 }
 
 :root[data-theme="dark"] .chutes-ladders {
+  --cl-p2: #b496ff;
+  --cl-p3: #ffc04d;
   --cl-t0: #4b4228;
   --cl-t1: #4d3530;
   --cl-t2: #25463a;
@@ -132,6 +139,22 @@
   box-shadow: 0 0 0 2px var(--accent-2) inset;
 }
 
+.cl-players .who.p2.active {
+  border-color: var(--cl-p2);
+  box-shadow: 0 0 0 2px var(--cl-p2) inset;
+}
+
+.cl-players .who.p3.active {
+  border-color: var(--cl-p3);
+  box-shadow: 0 0 0 2px var(--cl-p3) inset;
+}
+
+/* Three or four players: the pills wrap instead of facing off. */
+.cl-players.many {
+  display: flex;
+  flex-wrap: wrap;
+}
+
 .cl-players .swatch {
   flex: none;
   width: 14px;
@@ -142,6 +165,14 @@
 
 .cl-players .p1 .swatch {
   background: var(--accent-2);
+}
+
+.cl-players .p2 .swatch {
+  background: var(--cl-p2);
+}
+
+.cl-players .p3 .swatch {
+  background: var(--cl-p3);
 }
 
 .cl-players .label {
@@ -172,7 +203,8 @@
 /* ---------- score and status ---------- */
 .cl-score {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 8px;
   margin: 0;
 }
@@ -210,6 +242,14 @@
 
 .cl-score .theirs dd {
   color: var(--accent-2);
+}
+
+.cl-score .p2 dd {
+  color: var(--cl-p2);
+}
+
+.cl-score .p3 dd {
+  color: var(--cl-p3);
 }
 
 .cl-status {
@@ -321,6 +361,16 @@
 .cl-board .mark.last-p1 {
   stroke: var(--accent-2);
   stroke-dasharray: 10 7;
+}
+
+.cl-board .mark.last-p2 {
+  stroke: var(--cl-p2);
+  stroke-dasharray: 3 6;
+}
+
+.cl-board .mark.last-p3 {
+  stroke: var(--cl-p3);
+  stroke-dasharray: 16 5 3 5;
 }
 
 /* pictures at the ends of ladders and chutes */
@@ -576,6 +626,14 @@
   --pawn: var(--accent-2);
 }
 
+.cl-board .pawn.p2 {
+  --pawn: var(--cl-p2);
+}
+
+.cl-board .pawn.p3 {
+  --pawn: var(--cl-p3);
+}
+
 /* effects */
 .cl-board .fx-star {
   fill: var(--cl-gold);
@@ -631,6 +689,14 @@
 
 .cl-dial[data-who="p1"] {
   --who: var(--accent-2);
+}
+
+.cl-dial[data-who="p2"] {
+  --who: var(--cl-p2);
+}
+
+.cl-dial[data-who="p3"] {
+  --who: var(--cl-p3);
 }
 
 .cl-dial.armed {
@@ -747,6 +813,14 @@
   border-color: var(--accent-2);
 }
 
+.cl-spin-value[data-who="p2"] {
+  border-color: var(--cl-p2);
+}
+
+.cl-spin-value[data-who="p3"] {
+  border-color: var(--cl-p3);
+}
+
 .cl-spin-value.pop {
   animation: cl-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
@@ -829,6 +903,14 @@
 
 .cl-log .p1 .dot {
   background: var(--accent-2);
+}
+
+.cl-log .p2 .dot {
+  background: var(--cl-p2);
+}
+
+.cl-log .p3 .dot {
+  background: var(--cl-p3);
 }
 
 .cl-log .ladder {

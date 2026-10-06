@@ -6,7 +6,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
-import { makeRules, normalizeConfig, cellOf, LADDERS, CHUTES, LAST, SIZE, SPINNER } from "./rules.js";
+import { makeRules, normalizeConfig, cellOf, LADDERS, CHUTES, LAST, SIZE, SPINNER, MAX_PLAYERS } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
 import { play } from "./sounds.js";
@@ -19,8 +19,9 @@ const BOARD = SIZE * U;
 const GROUND = 96; // the start lawn under the board
 const FOOT = 26; // a pawn stands this far below its square's centre
 const SHARE = 22; // two pawns on one square stand apart by twice this
+const CROWD = 72; // three or four pawns on one square spread across this
 const PAWN_SCALE = 1.15;
-const START_SPOTS = [{ x: 150, y: BOARD + 66 }, { x: 225, y: BOARD + 66 }];
+const START_SPOTS = [150, 225, 300, 375].map((x) => ({ x, y: BOARD + 66 }));
 const SPIN_SPEED = 1100; // degrees per second at full spin
 const PACE = { hop: 230, rung: 120, between: 380 };
 const FINISH_TEXT = { exact: "exact spin to finish", bounce: "bounce back off 100", any: "any spin past 100 wins" };
@@ -33,6 +34,9 @@ startGameShell({
   slug: "chutes-and-ladders",
   title: "Chutes and Ladders",
   tagline: "Spin, hop, climb the ladders and dodge the chutes. First to square 100 wins.",
+  minPlayers: 2,
+  maxPlayers: MAX_PLAYERS,
+  robots: () => settings.get().robots,
   createRobot: (session) => startTurnRobot(session, { rules: makeRules(settings.get()), choose: chooseMove, delay: ROBOT_DELAY }),
   onSession: (session, root, shell) => mountGame(session, root, shell),
 });
@@ -43,11 +47,16 @@ function center(n) {
   return { x: col * U + U / 2, y: (SIZE - 1 - row) * U + U / 2 };
 }
 
-// Where `player`'s pawn stands on square n; `shared` when both are there.
-function spot(n, player, shared) {
+// Where `player`'s pawn stands on square n, given the seats of every pawn
+// there (`crowd`, in seat order). Three or four stand staggered.
+function spot(n, player, crowd = [player]) {
   if (n === 0) return { ...START_SPOTS[player] };
   const c = center(n);
-  return { x: c.x + (shared ? (player ? SHARE : -SHARE) : 0), y: c.y + FOOT };
+  const k = crowd.length;
+  if (k < 2) return { x: c.x, y: c.y + FOOT };
+  const i = crowd.indexOf(player);
+  const step = k === 2 ? 2 * SHARE : CROWD / (k - 1);
+  return { x: c.x + (i - (k - 1) / 2) * step, y: c.y + FOOT + (k > 2 ? (i % 2 ? -8 : 4) : 0) };
 }
 
 // Each chute bends one way or the other so neighbours don't overlap.
@@ -255,7 +264,7 @@ function vignettes() {
   return s("g", { class: "vignettes" }, out);
 }
 
-function buildBoard() {
+function buildBoard(players) {
   const squares = [];
   const numbers = [];
   for (let n = 1; n <= LAST; n++) {
@@ -270,7 +279,7 @@ function buildBoard() {
   const ladders = Object.entries(LADDERS).map(([a, b]) => ladderArt(Number(a), b));
   const chutes = Object.entries(CHUTES).map(([a, b]) => chuteArt(Number(a), b));
   const marks = s("g", { class: "marks" });
-  const pawns = [pawnArt("p0"), pawnArt("p1")];
+  const pawns = Array.from({ length: players }, (_, k) => pawnArt(`p${k}`));
   const fx = s("g", { class: "fx" });
   const svgEl = s(
     "svg",
@@ -285,7 +294,7 @@ function buildBoard() {
     s("g", { class: "chutes" }, chutes),
     s("g", { class: "ladders" }, ladders),
     s("g", { class: "numbers" }, numbers),
-    s("g", { class: "pawns" }, pawns[1].g, pawns[0].g),
+    s("g", { class: "pawns" }, pawns.map((p) => p.g).reverse()),
     fx,
   );
   return { svg: svgEl, pawns, marks, fx, layer: svgEl.querySelector(".pawns") };
@@ -403,20 +412,26 @@ function makeSpinner(arrow, isLive) {
 // ---------- the game ----------
 function mountGame(session, root, shell) {
   const me = session.index;
-  const opp = 1 - me;
+  const count = session.players.length;
+  const duel = count === 2;
+  const seats = session.players.map((p) => p.seat);
+  // Colours go by whose pawn it is on this screen: yours is p0, the others p1, p2, p3 in seat order.
+  const order = [me, ...session.others.map((p) => p.seat)];
+  const colorOf = (p) => order.indexOf(p);
   const oppName = session.opponent.name;
   const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const nameOf = (p) => (p === me ? "You" : oppName);
-  const score = { me: 0, them: 0 };
+  const nameOf = (p) => (p === me ? "You" : session.players[p].name);
+  const listOf = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+  const score = Array(count).fill(0);
   const spinMode = settings.get().spin; // each player's own choice
   let config = null;
   let rules = null;
   let match = null;
   let m = 0;
   let gen = 0; // bumps on every new match, so old animations stop
-  let rematch = { me: false, them: false };
+  let rematch = { me: false, them: false, seats: [] };
   let destroyed = false;
-  let shown = [0, 0]; // where each pawn is drawn
+  let shown = Array(count).fill(0); // where each pawn is drawn, by seat
   let queue = Promise.resolve();
   let pending = 0;
   let current = null; // the spin being animated: { player, phase }
@@ -427,24 +442,26 @@ function mountGame(session, root, shell) {
   // One session handler: "setup" is for this view, everything else goes to the matches.
   let route = () => {};
   const router = matchRouter({ onMessage: (fn) => (route = fn) });
-  const offMsg = session.onMessage((msg) => (msg.t === "setup" ? onSetup(msg) : route(msg)));
+  const offMsg = session.onMessage((msg, from) => (msg.t === "setup" ? from === 0 && onSetup(msg) : route(msg, from)));
 
   // ---------- layout ----------
-  const pills = [me, opp].map((player) => {
+  const pills = order.map((player) => {
     const where = el("small", { class: "where" });
     const node = el(
       "span",
-      { class: `who p${player === me ? 0 : 1}` },
+      { class: `who p${colorOf(player)}` },
       el("span", { class: "swatch", "aria-hidden": "true" }),
-      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : oppName), where),
+      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : session.players[player].name), where),
     );
     return { node, where };
   });
-  const players = el("div", { class: "cl-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
+  const players = duel
+    ? el("div", { class: "cl-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node)
+    : el("div", { class: "cl-players many" }, pills.map((p) => p.node));
   const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
   const scoreBox = el("dl", { class: "cl-score", id: "cl-score", "aria-label": "Score" });
   const status = el("p", { class: "cl-status", id: "cl-status", role: "status", "aria-live": "polite" });
-  const board = buildBoard();
+  const board = buildBoard(count);
   const spinnerParts = spinnerArt();
   const spinner = makeSpinner(spinnerParts.arrow, () => !destroyed);
   const spinValue = el("div", { class: "cl-spin-value", id: "cl-spin-value", "aria-live": "polite" });
@@ -472,13 +489,15 @@ function mountGame(session, root, shell) {
       note,
     ),
   );
-  // Pawns are coloured by whose they are: yours is p0 (coral), theirs p1 (teal).
-  const pawnOf = (player) => board.pawns[player === me ? 0 : 1];
+  // Pawns are coloured by whose they are: yours is p0 (coral), the first other p1 (teal), then p2, p3.
+  const pawnOf = (player) => board.pawns[colorOf(player)];
+  // The seats whose pawns stand on square n once `player` is there too.
+  const crowd = (n, player) => seats.filter((p) => p === player || shown[p] === n);
 
   // ---------- input ----------
   function spinNow() {
     if (!match || match.phase !== "playing") return;
-    if (match.state.turn !== me) return toast(`Wait for ${oppName}`);
+    if (match.state.turn !== me) return toast(`Wait for ${nameOf(match.state.turn)}`);
     if (pending || spinner.spinning || !match.canMove()) return;
     clearTimeout(autoTimer);
     spinner.start();
@@ -520,20 +539,18 @@ function mountGame(session, root, shell) {
   }
   const pawnAt = (player) => ({ x: Number(pawnOf(player).g.dataset.x), y: Number(pawnOf(player).g.dataset.y) });
 
-  // Puts both pawns where `shown` says; the one that moves last is drawn on top.
+  // Puts every pawn where `shown` says; the one that moves last is drawn on top.
   function placePawns() {
-    const shared = shown[0] === shown[1] && shown[0] !== 0;
-    for (const p of [0, 1]) setPawn(p, spot(shown[p], p, shared));
+    for (const p of seats) setPawn(p, spot(shown[p], p, crowd(shown[p], p)));
   }
 
   function raise(player) {
     board.layer.append(pawnOf(player).g);
   }
 
-  // Slides both pawns into their spots when a square becomes shared, or stops being.
+  // Slides the pawns into their spots when a square becomes shared, or stops being.
   function settle(g) {
-    const shared = shown[0] === shown[1] && shown[0] !== 0;
-    const moves = [0, 1].map((p) => ({ p, from: pawnAt(p), to: spot(shown[p], p, shared) }));
+    const moves = seats.map((p) => ({ p, from: pawnAt(p), to: spot(shown[p], p, crowd(shown[p], p)) }));
     return tween(170, (t) => {
       const k = t * (2 - t);
       for (const { p, from, to } of moves) setPawn(p, { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k });
@@ -543,8 +560,7 @@ function mountGame(session, root, shell) {
   // One hop to square n: an arc, a squash on landing and a note.
   async function hop(player, n, k, g, pace) {
     const from = pawnAt(player);
-    const other = 1 - player;
-    const to = spot(n, player, shown[other] === n);
+    const to = spot(n, player, crowd(n, player));
     const dist = Math.hypot(to.x - from.x, to.y - from.y);
     const height = 22 + Math.min(18, dist * 0.08);
     await tween(PACE.hop * pace, (t) => {
@@ -568,7 +584,7 @@ function mountGame(session, root, shell) {
     const b = center(to);
     const rungs = Math.max(3, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 36));
     const start = pawnAt(player);
-    const end = spot(to, player, shown[1 - player] === to);
+    const end = spot(to, player, crowd(to, player));
     // Long ladders climb faster, so no climb takes much over a second and a half.
     const rungMs = Math.max(70, Math.min(PACE.rung, 1500 / rungs)) * pace;
     for (let k = 1; k <= rungs; k++) {
@@ -589,7 +605,7 @@ function mountGame(session, root, shell) {
   // Down a chute: speeding up along the curve, tilting with it, then a bump.
   async function slide(player, from, to, g, pace) {
     const curve = sampleCurve(chuteCurve(from, to));
-    const end = spot(to, player, shown[1 - player] === to);
+    const end = spot(to, player, crowd(to, player));
     const ms = Math.min(2000, 700 + curve.total * 0.85) * pace;
     play("slide", { dur: ms / 1000 });
     await tween(ms, (t) => {
@@ -668,7 +684,7 @@ function mountGame(session, root, shell) {
     if (!live(g)) return;
     current.phase = "move";
     spinValue.textContent = String(ev.spin);
-    spinValue.dataset.who = p === me ? "p0" : "p1";
+    spinValue.dataset.who = `p${colorOf(p)}`;
     spinValue.classList.remove("pop");
     void spinValue.offsetWidth;
     spinValue.classList.add("pop");
@@ -691,12 +707,12 @@ function mountGame(session, root, shell) {
     if (!live(g)) return;
     shown[p] = ev.to;
     await settle(g);
-    mark(ev.to, p === me ? "last-p0" : "last-p1");
+    mark(ev.to, `last-p${colorOf(p)}`);
     addLog(ev);
     if (ev.win) {
       burst({ ...center(LAST), y: center(LAST).y + FOOT }, "confetti", g);
       play(p === me ? "win" : "lose");
-    } else if (ev.again) toast(p === me ? "A 6! Spin again." : `${oppName} spun a 6 and goes again`);
+    } else if (ev.again) toast(p === me ? "A 6! Spin again." : `${nameOf(p)} spun a 6 and goes again`);
     current = null;
     await wait(PACE.between * pace, g);
   }
@@ -736,7 +752,7 @@ function mountGame(session, root, shell) {
     log = [{ ev, text: describe(ev) }, ...log].slice(0, 5);
     logList.replaceChildren(
       ...log.map(({ ev: e, text }, i) =>
-        el("li", { class: `${e.player === me ? "p0" : "p1"} ${e.jump?.kind || ""} ${i ? "" : "fresh"}` }, el("span", { class: "dot", "aria-hidden": "true" }, String(e.spin)), el("span", {}, text)),
+        el("li", { class: `p${colorOf(e.player)} ${e.jump?.kind || ""} ${i ? "" : "fresh"}` }, el("span", { class: "dot", "aria-hidden": "true" }, String(e.spin)), el("span", {}, text)),
       ),
     );
   }
@@ -744,7 +760,7 @@ function mountGame(session, root, shell) {
   // ---------- render ----------
   function renderScore() {
     const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item(oppName, score.them, "theirs"));
+    scoreBox.replaceChildren(...order.map((p) => item(p === me ? "You" : nameOf(p), score[p], `${p === me ? "mine" : "theirs"} p${colorOf(p)}`)));
   }
 
   function statusText() {
@@ -757,14 +773,15 @@ function mountGame(session, root, shell) {
       case "over":
         if (current) {
           const mine = current.player === me;
-          if (current.phase === "spin") return mine ? "Spinning…" : `${oppName} is spinning…`;
-          if (current.phase === "ladder") return mine ? "A ladder! Up you go." : `${oppName} found a ladder!`;
-          if (current.phase === "chute") return mine ? "Whee! Down the chute." : `${oppName} slides down a chute!`;
-          return mine ? "Hop, hop…" : `${oppName} is moving…`;
+          const who = nameOf(current.player);
+          if (current.phase === "spin") return mine ? "Spinning…" : `${who} is spinning…`;
+          if (current.phase === "ladder") return mine ? "A ladder! Up you go." : `${who} found a ladder!`;
+          if (current.phase === "chute") return mine ? "Whee! Down the chute." : `${who} slides down a chute!`;
+          return mine ? "Hop, hop…" : `${who} is moving…`;
         }
-        if (match.phase === "over") return st.winner === me ? "You reached 100. You win!" : `${oppName} reached 100 first.`;
+        if (match.phase === "over") return st.winner === me ? "You reached 100. You win!" : `${nameOf(st.winner)} reached 100 first.`;
         if (st.turn === me) return spinMode === "auto" ? "Your turn. The spinner goes by itself…" : "Your turn. Spin!";
-        return `${oppName}'s turn…`;
+        return `${nameOf(st.turn)}'s turn…`;
       default:
         return "Match stopped.";
     }
@@ -772,7 +789,8 @@ function mountGame(session, root, shell) {
 
   function boardLabel() {
     const where = (n) => (n === 0 ? "at the start" : `on square ${n}`);
-    return `Chutes and Ladders board. You are ${where(shown[me])}; ${oppName} is ${where(shown[opp])}.`;
+    const others = order.slice(1).map((p) => `${nameOf(p)} is ${where(shown[p])}`);
+    return `Chutes and Ladders board. You are ${where(shown[me])}; ${listOf(others)}.`;
   }
 
   function render() {
@@ -780,7 +798,7 @@ function mountGame(session, root, shell) {
     const st = match?.state;
     const phase = match?.phase || "setup";
     root.querySelector(".chutes-ladders").dataset.phase = phase;
-    for (const [k, player] of [me, opp].entries()) {
+    for (const [k, player] of order.entries()) {
       const { node, where } = pills[k];
       node.classList.toggle("active", phase === "playing" && (current ? current.player === player : st.turn === player));
       where.textContent = shown[player] === 0 ? "start" : `square ${shown[player]}`;
@@ -794,10 +812,10 @@ function mountGame(session, root, shell) {
     spinBtn.textContent = spinner.spinning ? "Spinning…" : "Spin";
     spinBtn.classList.toggle("attention", canSpin);
     dial.classList.toggle("armed", canSpin);
-    dial.dataset.who = current ? (current.player === me ? "p0" : "p1") : st && phase === "playing" ? (st.turn === me ? "p0" : "p1") : "";
+    dial.dataset.who = current ? `p${colorOf(current.player)}` : st && phase === "playing" ? `p${colorOf(st.turn)}` : "";
     board.svg.setAttribute("aria-label", boardLabel());
     // Whoever is up next bobs on the spot until they spin.
-    for (const p of [0, 1]) pawnOf(p).g.classList.toggle("waiting", phase === "playing" && !pending && st.turn === p);
+    for (const p of seats) pawnOf(p).g.classList.toggle("waiting", phase === "playing" && !pending && st.turn === p);
     renderOver();
     setTabAlert(myTurn ? "Your turn" : null);
     if (myTurn && cuedPly !== st.ply) {
@@ -824,17 +842,20 @@ function mountGame(session, root, shell) {
     }
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === me ? "You win!" : `${oppName} wins`;
+    const title = phase === "aborted" ? "Match stopped" : winner === me ? "You win!" : `${nameOf(winner)} wins`;
     let detail;
     if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
     else {
       const w = winner;
       const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-      detail = `${w === me ? "You" : oppName} reached 100 in ${plural(st.spins[w], "spin")}, with ${plural(st.climbs[w], "ladder")} and ${plural(st.slides[w], "chute")} on the way. ${w === me ? oppName : "You"} ${w === me ? "was" : "were"} on square ${st.pos[1 - w] || "0"}.`;
+      detail = `${nameOf(w)} reached 100 in ${plural(st.spins[w], "spin")}, with ${plural(st.climbs[w], "ladder")} and ${plural(st.slides[w], "chute")} on the way.`;
+      const rest = seats.filter((p) => p !== w);
+      if (duel) detail += ` ${nameOf(rest[0])} ${rest[0] === me ? "were" : "was"} on square ${st.pos[rest[0]] || "0"}.`;
+      else detail += ` Behind: ${listOf(rest.map((p) => `${p === me ? "you" : nameOf(p)} on square ${st.pos[p] || "0"}`))}.`;
     }
     let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
+    if (rematch.me) rematchText = `Waiting for ${listOf(seats.filter((p) => !rematch.seats?.includes(p)).map(nameOf))}…`;
+    else if (rematch.them) rematchText = wantsRematch();
     overBox.replaceChildren(
       el("h2", { class: winner === me ? "win" : "", id: "cl-result" }, title),
       el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "cl-detail" }, detail),
@@ -852,14 +873,19 @@ function mountGame(session, root, shell) {
     );
   }
 
+  function wantsRematch() {
+    const voters = (rematch.seats || []).filter((p) => p !== me);
+    return `${listOf(voters.map(nameOf))} ${voters.length === 1 ? "wants" : "want"} a rematch!`;
+  }
+
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
     gen += 1;
-    rematch = { me: false, them: false };
+    rematch = { me: false, them: false, seats: [] };
     clearTimeout(autoTimer);
     spinner.stop();
-    shown = [0, 0];
+    shown = Array(count).fill(0);
     pending = 0;
     queue = Promise.resolve();
     current = null;
@@ -868,11 +894,11 @@ function mountGame(session, root, shell) {
     logList.replaceChildren();
     spinValue.textContent = "";
     board.fx.replaceChildren();
-    mark(0, "last-p0");
-    mark(0, "last-p1");
+    for (const k of order.keys()) mark(0, `last-p${k}`);
     placePawns();
-    note.textContent = m === 1 ? `Playing against ${oppName}. Good luck!` : `Rematch #${m - 1}. Back to the start.`;
-    match = new TurnMatch({ send: (msg) => session.send(msg), me, rules, m });
+    const rivals = duel ? oppName : listOf(order.slice(1).map(nameOf));
+    note.textContent = m === 1 ? `Playing against ${rivals}. Good luck!` : `Rematch #${m - 1}. Back to the start.`;
+    match = new TurnMatch({ send: (msg) => session.send(msg), me, players: count, rules, m });
     window.ddp.match = match; // browser tests read this
     match.on("update", render);
     match.on("invalid", (reason) => {
@@ -880,18 +906,16 @@ function mountGame(session, root, shell) {
       toast(reason);
     });
     match.on("start", () => {
-      const who = match.state.first === me ? "you spin first" : `${oppName} spins first`;
+      const first = match.state.first;
+      const who = first === me ? "you spin first" : `${nameOf(first)} spins first`;
       const again = m > 1 ? `Rematch #${m - 1}. ` : "";
-      note.textContent = again + (config.first === "random" ? `Coin toss (drawn by both browsers): ${who}.` : `Room setting: ${who}.`);
-      toast(match.state.first === me ? "You spin first" : `${oppName} spins first`);
+      note.textContent = again + (config.first === "random" ? `Coin toss (drawn by ${duel ? "both" : "all"} browsers): ${who}.` : `Room setting: ${who}.`);
+      toast(first === me ? "You spin first" : `${nameOf(first)} spins first`);
     });
     match.on("events", ({ events }) => {
       for (const ev of events) if (ev.type === "spin") enqueue(ev);
     });
-    match.on("over", ({ winner }) => {
-      if (winner === me) score.me++;
-      else score.them++;
-    });
+    match.on("over", ({ winner }) => score[winner]++);
     router.start(match);
     render();
   }
@@ -905,7 +929,7 @@ function mountGame(session, root, shell) {
     newMatch();
   }
   function onSetup(msg) {
-    if (me === 1) begin(msg.config);
+    if (me !== 0) begin(msg.config);
   }
 
   const onVisible = () => render();
@@ -914,7 +938,7 @@ function mountGame(session, root, shell) {
     offMsg,
     session.on("rematch", (votes) => {
       rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
+      if (votes.them && !votes.me) toast(wantsRematch().replace("!", ""));
       render();
     }),
     session.on("rematch-start", () => config && newMatch()),
