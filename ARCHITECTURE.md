@@ -1,9 +1,11 @@
 # Architecture
 
-Daily Dose of Play is a free, no-login site of two-player browser games. One
-small Node server on Wasmer Edge serves the pages and introduces players to
-each other. The games themselves run browser to browser over WebRTC
-DataChannels.
+Daily Dose of Play is a free, no-login site of browser games for two or more
+players (every game so far is two-player). One small Node server on Wasmer
+Edge serves the pages and introduces players to each other. The games
+themselves run browser to browser over WebRTC DataChannels: with more than
+two players, every guest connects to the room creator's browser, which
+forwards messages between them (see **Groups** below).
 
 ```
             ┌──────────────── Wasmer Edge: one app, one URL ────────────────┐
@@ -68,31 +70,66 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 | `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
 | `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
 | `signaling.js` | `RoomClient`: create, join, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
-| `peer.js` | `PeerChannel`: one ordered, reliable DataChannel, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
-| `channel.js` | `Emitter` and `localPair()`, an in-memory channel with the same interface as `PeerChannel` (used for the robot and the tests) |
-| `session.js` | `Session`: names exchange (`$hello` with a protocol version), buffering of game messages, rematch votes (`$rematch`), goodbye (`$bye`). No DOM. |
-| `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, and holds messages for a rematch that hasn't started yet |
-| `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games. Agreed coin toss for who starts, both peers validate every move with the same rules, and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
-| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, `?room=CODE` auto-join, connection-failure and peer-left screens |
-| `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws both peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
+| `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
+| `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests) |
+| `group.js` | The group transport every layer above talks to: `send(msg)` to all other seats, `message (msg, from)`, `leave (seat)`, `close`. `HubGroup` and `SpokeGroup` are today's star over links; `localGroup(n)` connects n seats in memory. |
+| `room.js` | How players get seated in a group: `HostRoom` (create, admit guests over WebRTC, `start()`), `GuestRoom` (join, wait for the start) and `localRoom()` (robots). The only engine file that knows about signaling and WebRTC. |
+| `session.js` | `Session`: the seated players (`players`, `index`, `me`, `others`, `opponent`), buffering of game messages, rematch votes (`$rematch`, every seat must vote), goodbye (`$bye`). The handshake (`$hello` with a protocol version, `$welcome`, `$roster`, `$start`) that turns links into a group. No DOM. |
+| `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
+| `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
+| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two), `?room=CODE` auto-join, connection-failure and player-left screens |
+| `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
 | `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle, Chess and Backgammon play CC0 recordings, see each game's `sounds/LICENSE.txt`) |
-| `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on both peers |
+| `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
 
 **Session flow.**
 
-1. Host: `create` → `showWaiting` (code and invite link).
-2. Friend opens `/<slug>/?room=CODE` → `join`.
-3. The host starts the WebRTC offer, the guest answers, and ICE goes through `signal`.
-4. The DataChannel opens and both sides send `$hello` → `Session`.
-5. The lobby closes the signaling socket. This frees the room and keeps instance load near zero.
+1. Host: `create` → waiting room (code and invite link).
+2. Each friend opens `/<slug>/?room=CODE` → `join`.
+3. The host starts a WebRTC offer to each guest, the guest answers, and ICE goes through `signal`.
+4. Each DataChannel opens. The guest sends `$hello`; the host checks the game and protocol version and answers `$welcome` (or `$reject`), then sends every connected guest the `$roster`.
+5. The game starts when the room is full (`maxPlayers`), or when the host presses Start with at least `minPlayers`. The host sends each guest `$start {seat, players}`: seats follow join order, and guests still connecting are dropped. A two-player room is full as soon as its guest is in, so it starts at once, as before.
+6. The lobby closes the signaling sockets. This frees the room (a late joiner gets "doesn't exist any more") and keeps instance load near zero.
    The host can get there first, so a guest whose channel is already open ignores `host-left`.
-6. The engine calls `onSession(session, root)` and the game takes over.
+7. The engine calls `onSession(session, root)` and the game takes over.
 
-In robot mode the engine builds a `localPair()`. It runs the same `$hello`
-on both ends and hands the second `Session` to the game's `createRobot()`.
-**The robot is just another peer**, so robot games use exactly the same
-protocol and rules code as friend games.
+Guests keep their signaling socket while they wait, so the server's room size
+check (`room_full`) still counts them.
+
+In robot mode the engine builds a `localRoom()`: one in-memory group with a
+seat for the player and one per robot (`robots`, default 1), and hands each
+robot's `Session` to the game's `createRobot()`. **A robot is just another
+peer**, so robot games use exactly the same protocol and rules code as friend
+games. The lobby acts on `?room=` and `?robot` only after the game's module
+has finished loading, because a robot game's `onSession` runs at once and may
+use bindings the module declares after its `startGameShell()` call.
+
+**Groups.** Everything above `room.js` sees a group: send to everyone, receive
+`(msg, from)`, hear that a seat left. Today it is a star. The room creator's
+browser (seat 0, the hub) holds one link to each guest (a spoke) and forwards
+each message to every other seat, tagged with the sender, so every player sees
+other players' messages in the hub's order. A player's own message is applied
+when sent and is not echoed back. With two players the hub forwards nothing,
+so this is the same single DataChannel as before, plus a small frame
+(`{msg}` up, `{from, msg}` or `{left}` down).
+
+Why a star: there is no TURN server, so every extra connection is another
+chance that two networks can't reach each other. A star needs only each
+guest's link to the host (n−1 links; a full mesh needs n(n−1)/2), and it gives
+one order for free. Turn-based messages are a few hundred bytes, so the hub's
+bandwidth doesn't matter, and its extra hop isn't felt in a turn game. What it
+costs: the game ends if the host leaves, and a modified host could forge or
+hold back another player's moves (dice can't be forged, since every reveal is
+checked against its chain). For games between friends that is acceptable. To
+change the transport later (a server relay as a fallback for blocked
+networks, or a mesh), write another group and seat players with it in
+`room.js`; sessions, matches and games don't change.
+
+**Leaving.** Any player leaving, or losing their connection, ends the session
+for everyone (`end` with the reason and the seat), because the match can't go
+on without their moves and shared draws. Continuing without a player is a
+future, per-game choice.
 
 **Why a pre-negotiated channel.** With the default in-band handshake, the
 guest's channel opens when the host's open request arrives, and Chrome
@@ -102,15 +139,16 @@ Both peers now create the same channel (`id: 0`) before the offer, so neither
 side's first message can arrive before the other side has the channel.
 
 Engine messages start with `$`. Everything else belongs to the game. The
-game receives messages through `session.onMessage()`, which buffers until a
-handler is attached.
+game receives messages through `session.onMessage((msg, fromSeat) => …)`,
+which buffers until a handler is attached. The handshake's protocol version is
+2; a page from before groups gets "a different version of this page".
 
 ### Game (`public/<slug>/`)
 
 | File | Job |
 |---|---|
 | `index.html` | Page with `#lobby` and `#game` sections and the rules |
-| `main.js` | `startGameShell({ slug, title, tagline, createRobot, onSession })` and the view |
+| `main.js` | `startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`. |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
 | `match.js` | Only for games with hidden information: one player's protocol state machine. Other games use `engine/turn-match.js`. |
 | `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`; custom-protocol games (Sea Battle) also export `startRobot(session)`. |
@@ -543,12 +581,10 @@ rushing air, then a bump; overshooting with the exact rule is a two-note
 Levels were set by rendering each sound offline and matching the recorded
 samples other games play (hops and landings about 0.3 peak, ticks lower).
 
-**Why two players.** Chutes and Ladders is often played by up to four.
-`Session`, `TurnMatch` and `SharedRandom` are two-party throughout (one
-opponent, `turn` 0 or 1, two hash chains per draw), and the lobby closes the
-signaling socket as soon as one DataChannel opens. Four players would need a
-hub or mesh of channels, a total order for messages, N-party draws and a way
-to drop a player mid-game; that belongs in the engine as its own change.
+**Why two players.** Chutes and Ladders is often played by up to four. The
+engine now seats more players (see **Groups**), but this game's rules, view
+and robot still assume two pawns (`turn` flips between 0 and 1, `winner` 2 is
+a draw), so it stays two-player until they are generalized.
 
 ## Dots and Boxes in depth
 
@@ -669,7 +705,7 @@ own.
 | `automation/` folder, cron, `deploy.sh`, Pi and OpenAI | None | Daily games will come from scheduled routines that open PRs |
 | `deploy.sh` with a token on a dev machine | Wasmer GitHub integration deploys every push to `main` | No tokens or secrets in the repo |
 | Agent guide in `AGENTS.md`, plus a symlink to it | One plain-file guide, `CONTRIBUTING.md` | Wasmer's packager refuses symlinks; one guide serves people and tools |
-| Lobby socket kept open for late joiners | Socket closed once the DataChannel is up | Two-player rooms are complete at that point; it frees the room and the instance |
+| Lobby socket kept open for late joiners | Socket closed once the game starts | The room is complete at that point; it frees the room and the instance |
 | Ad-hoc test scripts | `node --test` unit and integration tests, plus a Playwright test that skips when Playwright is missing | One command, runs in CI or locally |
 
 Kept from the reference: Node with `ws` on EdgeJS, detected from
