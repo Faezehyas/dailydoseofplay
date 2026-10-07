@@ -701,7 +701,7 @@ function mountSeaBattle(session, root, shell) {
   function showAim(i) {
     clearAim();
     aimAt = i;
-    if (!match.canFire() || weapon === "rain") return;
+    if (!match?.canFire() || weapon === "rain") return;
     const board = match.state.boards[opp];
     const cells = weapon === "shot" ? (board.cells[i] === R.UNKNOWN ? [i] : []) : R.aimedCells(board, weapon, i, carpetDir);
     for (const c of cells) enemyBoard.cells[c].classList.add("aim");
@@ -720,7 +720,7 @@ function mountSeaBattle(session, root, shell) {
   });
   enemyBoard.cellsLayer.addEventListener("click", (e) => {
     const cell = e.target.closest(".cell");
-    if (!cell || !match.canFire()) return;
+    if (!cell || !match?.canFire()) return;
     const i = Number(cell.dataset.i);
     const board = match.state.boards[opp];
     // Rain isn't aimed, so a tap on a square (say, a gift) must not launch it.
