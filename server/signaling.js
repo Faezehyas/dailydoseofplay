@@ -1,13 +1,24 @@
 // Game-agnostic signaling: rooms scoped by game slug, plus an opaque relay
 // for WebRTC SDP/ICE blobs. Gameplay never passes through here.
 import { randomBytes } from "node:crypto";
+import { clientIp, createQuota, createTokenBucket } from "./limits.js";
 
 const ROOM_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 4;
 const MAX_ROOMS = 10000;
 const IDLE_MS = 75_000;
 const MAX_KNOCKS = 4;
-export const DEFAULT_LIMITS = { failedJoins: 5, windowMs: 60_000, approvalMs: 60_000 };
+export const DEFAULT_LIMITS = {
+  failedJoins: 5,
+  windowMs: 60_000,
+  approvalMs: 60_000,
+  connectionsPerIp: 20,
+  roomsPerIp: 5,
+  messagesPerSecond: 20,
+  messageBurst: 60,
+  signalBytes: 16 * 1024,
+  roomMs: 30 * 60_000,
+};
 
 // 128 random bits, base64url. ws itself loads node:crypto, so it is proven on EdgeJS.
 function newInviteKey() {
@@ -21,47 +32,45 @@ function sameKey(a, b) {
   return diff === 0;
 }
 
-// The first address in the client-IP header (X-Forwarded-For unless
-// overridden), else the socket's. Used only as a rate-limit bucket, never logged.
-export function clientIp(req, header = "x-forwarded-for") {
-  const first = String(req?.headers?.[header.toLowerCase()] || "").split(",")[0].trim();
-  return first || req?.socket?.remoteAddress || null;
-}
-
-export function createSignaling({ games, log = () => {}, limits = {}, clientIpHeader }) {
+export function createSignaling({ games, log = () => {}, limits = {}, clientIpHeader, now = Date.now }) {
   // games: Map slug -> { maxPlayers }
-  const { failedJoins, windowMs, approvalMs } = { ...DEFAULT_LIMITS, ...limits };
-  // "slug/CODE" -> { game, code, secret, host, peers: Map id -> { ws, name }, knocks: Map id -> { ws, name, timer } }
+  const { failedJoins, windowMs, approvalMs, connectionsPerIp, roomsPerIp, messagesPerSecond, messageBurst, signalBytes, roomMs } = {
+    ...DEFAULT_LIMITS,
+    ...limits,
+  };
+  // "slug/CODE" -> { game, code, secret, host, ip, createdAt, peers: Map id -> { ws, name }, knocks: Map id -> { ws, name, timer } }
   const rooms = new Map();
   const ipFailures = new Map(); // client IP -> timestamps of failed joins in the window
+  const ipConnections = createQuota(connectionsPerIp);
+  const ipRooms = createQuota(roomsPerIp); // every room is waiting: the host frees it when the game starts
   let nextPeerId = 1;
 
   const key = (game, code) => `${game}/${code}`;
 
-  function recent(list, now) {
-    while (list.length && now - list[0] >= windowMs) list.shift();
+  function recent(list, t) {
+    while (list.length && t - list[0] >= windowMs) list.shift();
     return list;
   }
 
-  function ipList(ws, now) {
+  function ipList(ws, t) {
     const ip = ws.meta.ip;
     if (!ip) return null; // unknown address: one shared bucket would lock everyone out
     if (!ipFailures.has(ip)) ipFailures.set(ip, []);
-    return recent(ipFailures.get(ip), now);
+    return recent(ipFailures.get(ip), t);
   }
 
-  function overBudget(ws, now = Date.now()) {
-    return recent(ws.meta.failures, now).length >= failedJoins || (ipList(ws, now)?.length ?? 0) >= failedJoins;
+  function overBudget(ws, t = now()) {
+    return recent(ws.meta.failures, t).length >= failedJoins || (ipList(ws, t)?.length ?? 0) >= failedJoins;
   }
 
-  function failedJoin(ws, now = Date.now()) {
-    ws.meta.failures.push(now);
-    ipList(ws, now)?.push(now);
+  function failedJoin(ws, t = now()) {
+    ws.meta.failures.push(t);
+    ipList(ws, t)?.push(t);
   }
 
-  function refuse(ws) {
-    send(ws, { t: "error", code: "rate_limited" });
-    ws.close(1008, "rate_limited");
+  function refuse(ws, code = "rate_limited") {
+    send(ws, { t: "error", code });
+    ws.close(1008, code);
   }
 
   function newRoomCode(game) {
@@ -92,9 +101,18 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
     return knock;
   }
 
-  function closeKnock(knock, code) {
-    send(knock.ws, { t: "error", code });
-    knock.ws.close(1000, code);
+  function dismiss(ws, code) {
+    send(ws, { t: "error", code });
+    ws.close(1000, code);
+  }
+
+  function closeRoom(room, code) {
+    const k = key(room.game, room.code);
+    rooms.delete(k);
+    ipRooms.give(room.ip);
+    for (const peer of room.peers.values()) peer.ws.meta.room = null;
+    for (const id of [...room.knocks.keys()]) dismiss(endKnock(room, id).ws, code);
+    log(`room ${k} closed`);
   }
 
   function leave(ws) {
@@ -111,10 +129,7 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
     room.peers.delete(ws.meta.id);
     if (room.host === ws.meta.id || room.peers.size === 0) {
       broadcast(room, { t: "host-left" });
-      for (const peer of room.peers.values()) peer.ws.meta.room = null;
-      for (const id of [...room.knocks.keys()]) closeKnock(endKnock(room, id), "host_left");
-      rooms.delete(k);
-      log(`room ${k} closed`);
+      closeRoom(room, "host_left");
     } else {
       broadcast(room, { t: "leave", id: ws.meta.id });
     }
@@ -135,7 +150,9 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
   }
 
   function onMessage(ws, raw) {
-    ws.meta.lastSeen = Date.now();
+    if (ws.readyState !== 1) return; // refused or closing: ignore what was already in flight
+    if (!ws.meta.bucket.take()) return refuse(ws, "too_fast");
+    ws.meta.lastSeen = now();
     let msg;
     try {
       msg = JSON.parse(raw);
@@ -151,6 +168,7 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
         if (!games.has(game)) return send(ws, { t: "error", code: "bad_game" });
         if (rooms.size >= MAX_ROOMS) return send(ws, { t: "error", code: "server_full" });
         leave(ws);
+        if (!ipRooms.take(ws.meta.ip)) return send(ws, { t: "error", code: "too_many_rooms" });
         const code = newRoomCode(game);
         const name = cleanName(msg.name);
         const secret = newInviteKey();
@@ -159,6 +177,8 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
           code,
           secret,
           host: ws.meta.id,
+          ip: ws.meta.ip,
+          createdAt: now(),
           peers: new Map([[ws.meta.id, { ws, name }]]),
           knocks: new Map(),
         });
@@ -189,7 +209,7 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
           const knock = endKnock(room, ws.meta.id);
           if (!knock) return;
           send(room.peers.get(room.host)?.ws, { t: "knock-gone", id: ws.meta.id });
-          closeKnock(knock, "no_answer");
+          dismiss(knock.ws, "no_answer");
         }, approvalMs);
         timer.unref?.();
         room.knocks.set(ws.meta.id, { ws, name, timer });
@@ -205,9 +225,9 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
         if (!knock) return send(ws, { t: "error", code: "no_such_peer" });
         if (msg.t === "decline") {
           failedJoin(knock.ws);
-          return closeKnock(knock, "declined");
+          return dismiss(knock.ws, "declined");
         }
-        if (room.peers.size >= games.get(room.game).maxPlayers) return closeKnock(knock, "room_full");
+        if (room.peers.size >= games.get(room.game).maxPlayers) return dismiss(knock.ws, "room_full");
         return admit(knock.ws, room, knock.name);
       }
       case "leave":
@@ -216,6 +236,7 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
       case "signal": {
         const room = ws.meta.room && rooms.get(ws.meta.room);
         if (!room) return send(ws, { t: "error", code: "not_in_room" });
+        if (Buffer.byteLength(JSON.stringify(msg.data ?? null)) > signalBytes) return send(ws, { t: "error", code: "too_big" });
         const target = room.peers.get(String(msg.to));
         if (!target || target.ws === ws) return send(ws, { t: "error", code: "no_such_peer" });
         return send(target.ws, { t: "signal", from: ws.meta.id, data: msg.data });
@@ -227,19 +248,31 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
 
   function handleConnection(ws, req) {
     const ip = clientIp(req, clientIpHeader || undefined);
-    ws.meta = { id: String(nextPeerId++), room: null, knock: null, ip, failures: [], lastSeen: Date.now() };
+    const bucket = createTokenBucket({ rate: messagesPerSecond, burst: messageBurst, now });
+    ws.meta = { id: String(nextPeerId++), room: null, knock: null, ip, failures: [], bucket, lastSeen: now() };
+    const counted = ipConnections.take(ip);
     ws.on("message", (raw) => onMessage(ws, raw.toString()));
-    ws.on("close", () => leave(ws));
+    ws.on("close", () => {
+      leave(ws);
+      if (counted) ipConnections.give(ip);
+    });
     ws.on("error", () => leave(ws));
+    if (!counted) return refuse(ws, "too_many_connections");
     send(ws, { t: "hello", id: ws.meta.id });
   }
 
-  // Drop sockets that stopped pinging (clients ping every 25 s).
-  function sweep(clients, now = Date.now()) {
+  // Drop sockets that stopped pinging (clients ping every 25 s) and rooms that never started.
+  function sweep(clients, t = now()) {
     for (const ws of clients) {
-      if (ws.meta && now - ws.meta.lastSeen > IDLE_MS) ws.terminate();
+      if (ws.meta && t - ws.meta.lastSeen > IDLE_MS) ws.terminate();
     }
-    for (const [ip, list] of ipFailures) if (!recent(list, now).length) ipFailures.delete(ip);
+    for (const [ip, list] of ipFailures) if (!recent(list, t).length) ipFailures.delete(ip);
+    for (const room of rooms.values()) {
+      if (t - room.createdAt < roomMs) continue;
+      const peers = [...room.peers.values()];
+      closeRoom(room, "room_expired");
+      for (const peer of peers) dismiss(peer.ws, "room_expired");
+    }
   }
 
   function stats() {

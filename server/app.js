@@ -106,10 +106,11 @@ export async function createApp({
   allowedOrigins = process.env.ALLOWED_ORIGINS,
   clientIpHeader = process.env.CLIENT_IP_HEADER,
   limits,
+  now,
 } = {}) {
   const extraOrigins = parseOrigins(allowedOrigins);
   const games = parseRegistry(await readText(path.join(publicDir, "games.json")));
-  const signaling = createSignaling({ games, log, limits, clientIpHeader });
+  const signaling = createSignaling({ games, log, limits, clientIpHeader, now });
   const notFoundPage = path.join(publicDir, "404.html");
 
   // Plain fs.readFile: EdgeJS is not upstream Node, so stay on proven APIs.
