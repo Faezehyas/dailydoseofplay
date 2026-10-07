@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import net from "node:net";
+import WebSocket from "ws";
+import { createApp, wsOriginAllowed } from "../server/app.js";
 import { startServer } from "./helpers.js";
 
 const registry = JSON.parse(fs.readFileSync(new URL("../public/games.json", import.meta.url)));
@@ -98,4 +100,69 @@ test("unparseable request targets get 400 and never crash the server", async (t)
     "GET //[ HTTP/1.1\r\nHost: x\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
   );
   assert.equal((await fetch(`${srv.base}/healthz`)).status, 200, "still alive");
+});
+
+// Resolves with the HTTP status of the handshake: 101 when the socket opens, else the refusal.
+function handshake(wsUrl, { origin, host } = {}) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(wsUrl, { origin, headers: host ? { host } : {} });
+    ws.on("open", () => {
+      ws.close();
+      resolve(101);
+    });
+    ws.on("unexpected-response", (req, res) => {
+      req.destroy();
+      resolve(res.statusCode);
+    });
+    ws.on("error", reject);
+  });
+}
+
+test("lobby socket: our own pages connect, other sites get 403", async (t) => {
+  const srv = await startServer({ allowedOrigins: "https://preview.example, http://10.0.0.7:3000" });
+  t.after(() => srv.close());
+  const { port } = new URL(srv.base);
+
+  assert.equal(await handshake(srv.wsUrl), 101, "no Origin (non-browser client)");
+  assert.equal(await handshake(srv.wsUrl, { origin: srv.base }), 101, "the server's own base URL");
+  assert.equal(await handshake(srv.wsUrl, { origin: "http://192.168.1.20:8080", host: "192.168.1.20:8080" }), 101, "LAN address");
+  assert.equal(await handshake(srv.wsUrl, { origin: "https://www.dailydoseofplay.com" }), 101);
+  assert.equal(await handshake(srv.wsUrl, { origin: "https://dailydoseofplay.wasmer.app" }), 101);
+  assert.equal(await handshake(srv.wsUrl, { origin: "https://preview.example" }), 101, "ALLOWED_ORIGINS");
+
+  assert.equal(await handshake(srv.wsUrl, { origin: "https://evil.example" }), 403);
+  assert.equal(await handshake(srv.wsUrl, { origin: "https://dailydoseofplay.com.evil.example" }), 403);
+  assert.equal(await handshake(srv.wsUrl, { origin: "null" }), 403);
+  assert.equal(await handshake(srv.wsUrl, { origin: `http://localhost:${Number(port) + 1}`, host: `localhost:${port}` }), 403);
+
+  assert.equal((await fetch(`${srv.base}/healthz`)).status, 200, "still alive");
+});
+
+test("lobby socket: ALLOWED_ORIGINS is read from the environment", async (t) => {
+  const before = process.env.ALLOWED_ORIGINS;
+  process.env.ALLOWED_ORIGINS = "https://staging.example";
+  t.after(() => (before === undefined ? delete process.env.ALLOWED_ORIGINS : (process.env.ALLOWED_ORIGINS = before)));
+  const { server, wss } = await createApp({ log: () => {} });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => {
+    for (const ws of wss.clients) ws.terminate();
+    return new Promise((resolve) => server.close(resolve));
+  });
+  const wsUrl = `ws://127.0.0.1:${server.address().port}/ws`;
+  assert.equal(await handshake(wsUrl, { origin: "https://staging.example" }), 101);
+  assert.equal(await handshake(wsUrl, { origin: "https://other.example" }), 403);
+});
+
+test("wsOriginAllowed: whole-host match, rewritten Host plus X-Forwarded-Host", () => {
+  const proxied = { host: "10.1.2.3:8080", "x-forwarded-host": "games.example, 10.1.2.3:8080" };
+  assert.equal(wsOriginAllowed({ ...proxied, origin: "https://games.example" }), true);
+  assert.equal(wsOriginAllowed({ host: "10.1.2.3:8080", origin: "https://games.example" }), false, "Host alone doesn't match");
+  assert.equal(wsOriginAllowed({ ...proxied, origin: "https://evil.example" }), false);
+  assert.equal(wsOriginAllowed({ ...proxied, origin: "https://other.example" }, ["https://other.example"]), true);
+  assert.equal(wsOriginAllowed({ host: "games.example.evil.example", origin: "https://games.example" }), false);
+  assert.equal(wsOriginAllowed({ host: "www.dailydoseofplay.com", origin: "https://www.dailydoseofplay.com.evil.example" }), false);
+  assert.equal(wsOriginAllowed({ host: "games.example:443", origin: "https://games.example" }), true, "default port");
+  assert.equal(wsOriginAllowed({ host: "games.example", origin: "http://games.example:8080" }), false, "port differs");
+  assert.equal(wsOriginAllowed({ host: "games.example", origin: "null" }), false);
+  assert.equal(wsOriginAllowed({ host: "games.example" }), true, "no Origin");
 });
