@@ -1,17 +1,68 @@
 // Game-agnostic signaling: rooms scoped by game slug, plus an opaque relay
 // for WebRTC SDP/ICE blobs. Gameplay never passes through here.
+import { randomBytes } from "node:crypto";
 
 const ROOM_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 4;
 const MAX_ROOMS = 10000;
 const IDLE_MS = 75_000;
+const MAX_KNOCKS = 4;
+export const DEFAULT_LIMITS = { failedJoins: 5, windowMs: 60_000, approvalMs: 60_000 };
 
-export function createSignaling({ games, log = () => {} }) {
+// 128 random bits, base64url. ws itself loads node:crypto, so it is proven on EdgeJS.
+function newInviteKey() {
+  return randomBytes(16).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function sameKey(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// The first address in the client-IP header (X-Forwarded-For unless
+// overridden), else the socket's. Used only as a rate-limit bucket, never logged.
+export function clientIp(req, header = "x-forwarded-for") {
+  const first = String(req?.headers?.[header.toLowerCase()] || "").split(",")[0].trim();
+  return first || req?.socket?.remoteAddress || null;
+}
+
+export function createSignaling({ games, log = () => {}, limits = {}, clientIpHeader }) {
   // games: Map slug -> { maxPlayers }
-  const rooms = new Map(); // "slug/CODE" -> { game, code, host, peers: Map id -> { ws, name } }
+  const { failedJoins, windowMs, approvalMs } = { ...DEFAULT_LIMITS, ...limits };
+  // "slug/CODE" -> { game, code, secret, host, peers: Map id -> { ws, name }, knocks: Map id -> { ws, name, timer } }
+  const rooms = new Map();
+  const ipFailures = new Map(); // client IP -> timestamps of failed joins in the window
   let nextPeerId = 1;
 
   const key = (game, code) => `${game}/${code}`;
+
+  function recent(list, now) {
+    while (list.length && now - list[0] >= windowMs) list.shift();
+    return list;
+  }
+
+  function ipList(ws, now) {
+    const ip = ws.meta.ip;
+    if (!ip) return null; // unknown address: one shared bucket would lock everyone out
+    if (!ipFailures.has(ip)) ipFailures.set(ip, []);
+    return recent(ipFailures.get(ip), now);
+  }
+
+  function overBudget(ws, now = Date.now()) {
+    return recent(ws.meta.failures, now).length >= failedJoins || (ipList(ws, now)?.length ?? 0) >= failedJoins;
+  }
+
+  function failedJoin(ws, now = Date.now()) {
+    ws.meta.failures.push(now);
+    ipList(ws, now)?.push(now);
+  }
+
+  function refuse(ws) {
+    send(ws, { t: "error", code: "rate_limited" });
+    ws.close(1008, "rate_limited");
+  }
 
   function newRoomCode(game) {
     for (;;) {
@@ -24,14 +75,34 @@ export function createSignaling({ games, log = () => {} }) {
   }
 
   function send(ws, msg) {
-    if (ws.readyState === 1) ws.send(JSON.stringify(msg));
+    if (ws?.readyState === 1) ws.send(JSON.stringify(msg));
   }
 
   function broadcast(room, msg, except) {
     for (const [id, peer] of room.peers) if (id !== except) send(peer.ws, msg);
   }
 
+  // A knock ends: admitted, declined, timed out, withdrawn or the room closed.
+  function endKnock(room, id) {
+    const knock = room.knocks.get(id);
+    if (!knock) return null;
+    room.knocks.delete(id);
+    clearTimeout(knock.timer);
+    knock.ws.meta.knock = null;
+    return knock;
+  }
+
+  function closeKnock(knock, code) {
+    send(knock.ws, { t: "error", code });
+    knock.ws.close(1000, code);
+  }
+
   function leave(ws) {
+    if (ws.meta.knock) {
+      const room = rooms.get(ws.meta.knock);
+      if (room && endKnock(room, ws.meta.id)) send(room.peers.get(room.host)?.ws, { t: "knock-gone", id: ws.meta.id });
+      ws.meta.knock = null;
+    }
     const k = ws.meta.room;
     if (!k) return;
     ws.meta.room = null;
@@ -41,11 +112,21 @@ export function createSignaling({ games, log = () => {} }) {
     if (room.host === ws.meta.id || room.peers.size === 0) {
       broadcast(room, { t: "host-left" });
       for (const peer of room.peers.values()) peer.ws.meta.room = null;
+      for (const id of [...room.knocks.keys()]) closeKnock(endKnock(room, id), "host_left");
       rooms.delete(k);
       log(`room ${k} closed`);
     } else {
       broadcast(room, { t: "leave", id: ws.meta.id });
     }
+  }
+
+  function admit(ws, room, name) {
+    leave(ws);
+    room.peers.set(ws.meta.id, { ws, name });
+    ws.meta.room = key(room.game, room.code);
+    const peers = [...room.peers].map(([id, p]) => ({ id, name: p.name }));
+    send(ws, { t: "joined", game: room.game, room: room.code, id: ws.meta.id, host: room.host, peers });
+    broadcast(room, { t: "peer", id: ws.meta.id, name }, ws.meta.id);
   }
 
   function cleanName(raw) {
@@ -72,32 +153,62 @@ export function createSignaling({ games, log = () => {} }) {
         leave(ws);
         const code = newRoomCode(game);
         const name = cleanName(msg.name);
+        const secret = newInviteKey();
         rooms.set(key(game, code), {
           game,
           code,
+          secret,
           host: ws.meta.id,
           peers: new Map([[ws.meta.id, { ws, name }]]),
+          knocks: new Map(),
         });
         ws.meta.room = key(game, code);
         log(`room ${game}/${code} created by ${ws.meta.id}`);
-        return send(ws, { t: "created", game, room: code, id: ws.meta.id });
+        return send(ws, { t: "created", game, room: code, key: secret, id: ws.meta.id });
       }
       case "join": {
         const game = String(msg.game || "");
         if (!games.has(game)) return send(ws, { t: "error", code: "bad_game" });
         const code = String(msg.room || "").trim().toUpperCase();
+        const given = typeof msg.key === "string" ? msg.key : "";
         const room = rooms.get(key(game, code));
-        if (!room) return send(ws, { t: "error", code: "no_such_room" });
-        if (room.peers.has(ws.meta.id)) return send(ws, { t: "error", code: "already_in_room" });
+        const keyOk = Boolean(room && given && sameKey(given, room.secret));
+        // The right key can't be a guess. Anything else spends the budget, found or not.
+        if (!keyOk && overBudget(ws)) return refuse(ws);
+        if (!room || (given && !keyOk)) {
+          failedJoin(ws);
+          return send(ws, { t: "error", code: "no_such_room" });
+        }
+        if (room.peers.has(ws.meta.id) || room.knocks.has(ws.meta.id)) return send(ws, { t: "error", code: "already_in_room" });
         if (room.peers.size >= games.get(game).maxPlayers) return send(ws, { t: "error", code: "room_full" });
-        leave(ws);
         const name = cleanName(msg.name);
-        room.peers.set(ws.meta.id, { ws, name });
-        ws.meta.room = key(game, code);
-        const peers = [...room.peers].map(([id, p]) => ({ id, name: p.name }));
-        send(ws, { t: "joined", game, room: code, id: ws.meta.id, host: room.host, peers });
-        broadcast(room, { t: "peer", id: ws.meta.id, name }, ws.meta.id);
-        return;
+        if (keyOk) return admit(ws, room, name);
+        if (room.knocks.size >= MAX_KNOCKS) return send(ws, { t: "error", code: "room_busy" });
+        leave(ws);
+        const timer = setTimeout(() => {
+          const knock = endKnock(room, ws.meta.id);
+          if (!knock) return;
+          send(room.peers.get(room.host)?.ws, { t: "knock-gone", id: ws.meta.id });
+          closeKnock(knock, "no_answer");
+        }, approvalMs);
+        timer.unref?.();
+        room.knocks.set(ws.meta.id, { ws, name, timer });
+        ws.meta.knock = key(game, code);
+        send(ws, { t: "knocking", game, room: code });
+        return send(room.peers.get(room.host).ws, { t: "knock", id: ws.meta.id, name });
+      }
+      case "admit":
+      case "decline": {
+        const room = ws.meta.room && rooms.get(ws.meta.room);
+        if (!room || room.host !== ws.meta.id) return send(ws, { t: "error", code: "not_host" });
+        const knock = endKnock(room, String(msg.id));
+        if (!knock) return send(ws, { t: "error", code: "no_such_peer" });
+        if (msg.t === "decline") {
+          failedJoin(knock.ws);
+          return closeKnock(knock, "declined");
+        }
+        if (room.peers.size >= games.get(room.game).maxPlayers) return closeKnock(knock, "room_full");
+        return admit(knock.ws, room, knock.name);
       }
       case "leave":
         leave(ws);
@@ -114,8 +225,9 @@ export function createSignaling({ games, log = () => {} }) {
     }
   }
 
-  function handleConnection(ws) {
-    ws.meta = { id: String(nextPeerId++), room: null, lastSeen: Date.now() };
+  function handleConnection(ws, req) {
+    const ip = clientIp(req, clientIpHeader || undefined);
+    ws.meta = { id: String(nextPeerId++), room: null, knock: null, ip, failures: [], lastSeen: Date.now() };
     ws.on("message", (raw) => onMessage(ws, raw.toString()));
     ws.on("close", () => leave(ws));
     ws.on("error", () => leave(ws));
@@ -127,6 +239,7 @@ export function createSignaling({ games, log = () => {} }) {
     for (const ws of clients) {
       if (ws.meta && now - ws.meta.lastSeen > IDLE_MS) ws.terminate();
     }
+    for (const [ip, list] of ipFailures) if (!recent(list, now).length) ipFailures.delete(ip);
   }
 
   function stats() {

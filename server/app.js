@@ -100,10 +100,16 @@ export function wsOriginAllowed(headers, extraOrigins = []) {
   return [headers.host, forwarded].some((h) => hostFor(origin.protocol, h) === origin.host);
 }
 
-export async function createApp({ publicDir = PUBLIC_DIR, log = console.log, allowedOrigins = process.env.ALLOWED_ORIGINS } = {}) {
+export async function createApp({
+  publicDir = PUBLIC_DIR,
+  log = console.log,
+  allowedOrigins = process.env.ALLOWED_ORIGINS,
+  clientIpHeader = process.env.CLIENT_IP_HEADER,
+  limits,
+} = {}) {
   const extraOrigins = parseOrigins(allowedOrigins);
   const games = parseRegistry(await readText(path.join(publicDir, "games.json")));
-  const signaling = createSignaling({ games, log });
+  const signaling = createSignaling({ games, log, limits, clientIpHeader });
   const notFoundPage = path.join(publicDir, "404.html");
 
   // Plain fs.readFile: EdgeJS is not upstream Node, so stay on proven APIs.
@@ -176,7 +182,7 @@ export async function createApp({ publicDir = PUBLIC_DIR, log = console.log, all
   });
 
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
-  wss.on("connection", (ws) => signaling.handleConnection(ws));
+  wss.on("connection", (ws, req) => signaling.handleConnection(ws, req));
   server.on("upgrade", (req, socket, head) => {
     if (pathOf(req.url) !== "/ws") return socket.destroy();
     if (!wsOriginAllowed(req.headers, extraOrigins)) {

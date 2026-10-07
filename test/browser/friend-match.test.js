@@ -1,6 +1,7 @@
 // Headless-browser test: two separate browser contexts play a full Sea Battle
 // match as friends, over the real signaling server and a real WebRTC
-// DataChannel (loopback ICE needs no STUN). Skips if Playwright is missing.
+// DataChannel (loopback ICE needs no STUN). A typed room code has to be let in
+// by the host; the invite link joins straight away. Skips if Playwright is missing.
 //
 //   npm run test:browser
 //   PLAYWRIGHT_MODULE=/path/to/playwright/index.js npm run test:browser
@@ -55,13 +56,19 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   await host.locator("#room-code").waitFor();
   const invite = await host.locator("#invite-link").inputValue();
   const code = (await host.locator("#room-code").innerText()).trim();
-  assert.match(invite, new RegExp(`/sea-battle/\\?room=${code}$`));
+  assert.match(invite, new RegExp(`/sea-battle/\\?room=${code}&key=[\\w-]{22}$`));
   await host.screenshot({ path: `${ARTIFACTS}/1-invite.png` });
 
-  // Friend opens the link on a phone-sized screen and lands in the game.
+  // Friend opens the link on a phone-sized screen and lands in the game, with no prompt for the host.
+  await host.evaluate(() => {
+    window.__sawKnock = false;
+    new MutationObserver(() => (window.__sawKnock ||= !!document.querySelector("li.knock"))).observe(document.body, { subtree: true, childList: true });
+  });
   const guest = await open("guest", "Bo", { viewport: { width: 390, height: 844 }, hasTouch: true });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
   await host.locator("#ready").waitFor();
+  assert.equal(await host.evaluate(() => window.__sawKnock), false, "an invite link needs no Accept");
+  assert.equal(await guest.evaluate(() => location.search), "", "the key leaves the address bar");
   await guest.locator("#ready").waitFor();
   assert.match(await host.locator(".sb-players").innerText(), /Bo/);
   assert.match(await guest.locator(".sb-players").innerText(), /Ada/);
@@ -206,6 +213,7 @@ test("a blocked peer connection shows the no-TURN explanation", { skip: !pw && "
   await guest.goto(`${srv.base}/sea-battle/`);
   await guest.fill("#join-code", code.toLowerCase());
   await guest.click(".join-row button");
+  await host.locator("#roster li.knock", { hasText: "Guest wants to join" }).getByRole("button", { name: "Accept" }).click();
   await guest.locator("#connect-error").waitFor({ timeout: 10_000 }).catch(async (err) => {
     throw new Error(`${err.message}\nguest lobby: ${await guest.locator("#lobby").innerText()}`);
   });
@@ -215,10 +223,64 @@ test("a blocked peer connection shows the no-TURN explanation", { skip: !pw && "
   // The failed guest left the room; the host's invite must still work for someone else.
   await host.locator("#lobby-status").filter({ hasText: "Waiting for your friend" }).waitFor({ timeout: 10_000 });
   assert.equal((await host.locator("#room-code").innerText()).trim(), code);
+  const invite = await host.locator("#invite-link").inputValue();
   const friend = await (await browser.newContext()).newPage();
-  await friend.goto(`${srv.base}/sea-battle/?room=${code}`);
+  await friend.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
   await friend.locator("#ready").waitFor({ timeout: 20_000 });
   await host.locator("#ready").waitFor();
+});
+
+test("a typed room code waits for the host: Decline turns a stranger away, Accept lets a friend in to play", { skip: !pw && "Playwright not installed", timeout: 90_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-background-timer-throttling"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  async function open(nickname) {
+    const ctx = await browser.newContext();
+    await ctx.addInitScript((n) => localStorage.setItem("ddp-name", n), nickname);
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errors.push(`${nickname}: ${e.message}`));
+    return page;
+  }
+  const typeCode = async (page, code) => {
+    await page.goto(`${srv.base}/sea-battle/`);
+    await page.fill("#join-code", code);
+    await page.click(".join-row button");
+    await page.locator("#lobby-status", { hasText: "Asking the room's host to let you in" }).waitFor();
+  };
+  const host = await open("Ada");
+  await host.goto(`${srv.base}/sea-battle/`);
+  await host.click("#play-friend");
+  await host.locator("#room-code").waitFor();
+  const code = (await host.locator("#room-code").innerText()).trim();
+  assert.match(await host.locator("#lobby").innerText(), /types the code instead has to be let in by you/);
+
+  const stranger = await open("Mal");
+  await typeCode(stranger, code);
+  const knock = host.locator("#roster li.knock", { hasText: "Mal wants to join" });
+  await knock.waitFor();
+  assert.match(await host.title(), /Mal wants to join/, "the tab title tells a host who is busy elsewhere");
+  await knock.getByRole("button", { name: "Decline" }).click();
+  await stranger.locator(".notice", { hasText: "didn't let you in" }).waitFor();
+  await host.locator("#roster").waitFor({ state: "hidden" });
+  assert.equal(await stranger.locator("#ready").count(), 0);
+
+  const friend = await open("Bo");
+  await typeCode(friend, code.toLowerCase());
+  await host.locator("#roster li.knock", { hasText: "Bo wants to join" }).getByRole("button", { name: "Accept" }).click();
+  await host.locator("#ready").waitFor({ timeout: 20_000 });
+  await friend.locator("#ready").waitFor({ timeout: 20_000 });
+  assert.match(await host.locator(".sb-players").innerText(), /Bo/);
+  // The guest's match exists once the host's settings arrive.
+  for (const p of [host, friend]) await p.waitForFunction(() => window.ddp.match?.phase === "placing", null, { timeout: 20_000 });
+  await host.click("#ready");
+  await friend.click("#ready");
+  const playing = (p) => p.waitForFunction(() => window.ddp.match?.phase === "playing", null, { timeout: 20_000 });
+  await Promise.all([playing(host), playing(friend)]);
+  assert.deepEqual(errors, []);
 });
 
 test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {

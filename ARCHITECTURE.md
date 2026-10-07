@@ -28,7 +28,7 @@ forwards messages between them (see **Groups** below).
 
 | Layer | Files | Knows about games? |
 |---|---|---|
-| Server | `server/app.js` (HTTP routes, static files, security headers), `server/signaling.js` (rooms + relay), `server/server.js` (entry) | Only slugs and `maxPlayers` from `public/games.json` |
+| Server | `server/app.js` (HTTP routes, static files, security headers), `server/signaling.js` (rooms, invite keys, knocks, join rate limits, relay), `server/server.js` (entry) | Only slugs and `maxPlayers` from `public/games.json` |
 | Engine (browser) | `public/engine/` | No |
 | Game | `public/<slug>/` | Yes, only its own |
 
@@ -68,25 +68,60 @@ A fixed list alone would break LAN play, hence rule 3. Nothing about refused
 connections is logged.
 
 The server sticks to the APIs the reference proved on EdgeJS, which is not
-upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
+upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws` (and so `node:crypto`, which `ws` loads itself).
 
 **Signaling protocol** (JSON over `/ws`, game-agnostic):
 
 | Client → server | Server → client |
 |---|---|
 | (on connect) | `hello {id}` |
-| `create {game, name}` | `created {game, room, id}` |
-| `join {game, room, name}` | `joined {game, room, id, host, peers}`, and `peer {id, name}` to the others |
+| `create {game, name}` | `created {game, room, key, id}`. `key` is the room's invite key. |
+| `join {game, room, name, key}` with the right key | `joined {game, room, id, host, peers}`, and `peer {id, name}` to the others |
+| `join {game, room, name}` without a key | `knocking {game, room}`, and `knock {id, name}` to the host. Then `joined` once admitted, or `error` `declined`, `no_answer` (60 s) or `host_left`, and the socket closes. |
+| `admit {id}` / `decline {id}` (host only) | Admit: as a keyed `join` for that knock. Decline: see above. |
+| | `knock-gone {id}` to the host: the knock was withdrawn or timed out |
 | `signal {to, data}` | `signal {from, data}` to `to`. `data` is opaque SDP or ICE. |
 | `leave` | `left`. Then `leave {id}` to the others, or `host-left` and the room closes. |
 | `ping` (every 25 s) | `pong` |
-| | `error {code}`: `bad_json`, `bad_game`, `no_such_room`, `room_full`, `not_in_room`, `no_such_peer`, `unknown_type`, `server_full` |
+| | `error {code}`: `bad_json`, `bad_game`, `no_such_room`, `room_full`, `room_busy`, `rate_limited`, `declined`, `no_answer`, `host_left`, `not_host`, `not_in_room`, `already_in_room`, `no_such_peer`, `unknown_type`, `server_full` |
 
 - Rooms are keyed `slug/CODE`. A Sea Battle code can't join a Tic Tac Toe room.
 - Codes are 4 characters from an alphabet without look-alikes (no 0/O, 1/I/L).
+  A code is only a room's name, not a password (see **Who may join a room**).
 - Room size comes from the registry (`maxPlayers`, 2 to 8).
 - Names are cleaned and capped at 20 characters. Messages are capped at 64 KB.
 - A socket that has not pinged for 75 s is dropped.
+
+**Who may join a room.** There are only 31^4 = 923,521 codes, and without a
+limit one socket could ask about every code in seconds. A stranger who hit a
+waiting room would get a seat, the players' nicknames and, through WebRTC, the
+host's IP address, and children use the site. So:
+
+1. **Invite key.** `create` returns a random 128-bit key (base64url, from
+   `node:crypto`, which `ws` already loads on EdgeJS). The invite link is
+   `/<slug>/?room=CODE&key=KEY`, and a `join` with that key is seated at once.
+   A wrong key is answered `no_such_room`, the same as a missing room (which is
+   also true when an old link meets a new room that reuses its code).
+2. **Host approval without the key.** A typed code (or a link without `key`)
+   knocks: the server tells the host (`knock`) and the joiner waits. The
+   host's waiting room shows "<name> wants to join · Accept · Decline" (in the
+   player list), and the tab title says so too. Only `admit` sends `peer`, so
+   only then does the host start a WebRTC connection; a knocker can't `signal`
+   anyone. A decline, or no answer within 60 s, closes the joiner's socket with
+   `declined` or `no_answer`. At most 4 knocks wait per room (`room_busy`).
+3. **Rate limit.** A `no_such_room` answer, a wrong key and a declined knock
+   each count as a failed join, per connection and per client address. With
+   5 in the last minute, the next `join` without the right key gets
+   `rate_limited` and the socket closes, whether or not the code exists, so the
+   answer gives nothing away. The right key is never a guess, so it is never
+   refused. The client address is the first value of `X-Forwarded-For`, else
+   the socket's address; `CLIENT_IP_HEADER` names another header. If neither
+   gives an address, only the per-connection limit applies, because one shared
+   bucket would lock everyone out. Addresses are kept in memory for the
+   minute and never logged.
+
+Together a guess now costs a minute per 5 tries per address, and a hit only
+lets a stranger knock on a door the host can keep shut.
 
 ### Engine (`public/engine/`)
 
@@ -94,15 +129,15 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 |---|---|
 | `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
 | `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
-| `signaling.js` | `RoomClient`: create, join, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
+| `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests) |
 | `group.js` | The group transport every layer above talks to: `send(msg)` to all other seats, `message (msg, from)`, `leave (seat)`, `close`. `HubGroup` and `SpokeGroup` are today's star over links; `localGroup(n)` connects n seats in memory. |
-| `room.js` | How players get seated in a group: `HostRoom` (create, admit guests over WebRTC, `start()`), `GuestRoom` (join, wait for the start) and `localRoom()` (robots). The only engine file that knows about signaling and WebRTC. |
+| `room.js` | How players get seated in a group: `HostRoom` (create, `accept()` / `decline()` knocks, admit guests over WebRTC, `start()`), `GuestRoom` (join, wait for the start) and `localRoom()` (robots). The only engine file that knows about signaling and WebRTC. |
 | `session.js` | `Session`: the seated players (`players`, `index`, `me`, `others`, `opponent`), buffering of game messages, rematch votes (`$rematch`, every seat must vote), goodbye (`$bye`). The handshake (`$hello` with a protocol version, `$welcome`, `$roster`, `$start`) that turns links into a group. No DOM. |
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
-| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two), `?room=CODE` auto-join, connection-failure and player-left screens |
+| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, connection-failure and player-left screens |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
 | `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle, Chess, Backgammon and Ludo play CC0 recordings, see each game's `sounds/LICENSE.txt`) |
@@ -110,8 +145,8 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 
 **Session flow.**
 
-1. Host: `create` → waiting room (code and invite link).
-2. Each friend opens `/<slug>/?room=CODE` → `join`.
+1. Host: `create` → waiting room (code and invite link with the key).
+2. Each friend opens `/<slug>/?room=CODE&key=KEY` → `join`, and is seated at once. A friend who types the code knocks instead and waits until the host presses Accept (see **Who may join a room**). The lobby drops `room` and `key` from the address bar.
 3. The host starts a WebRTC offer to each guest, the guest answers, and ICE goes through `signal`.
 4. Each DataChannel opens. The guest sends `$hello`; the host checks the game and protocol version and answers `$welcome` (or `$reject`), then sends every connected guest the `$roster`.
 5. The game starts when the room is full (`maxPlayers`), or when the host presses Start with at least `minPlayers`. The host sends each guest `$start {seat, players}`: seats follow join order, and guests still connecting are dropped. A two-player room is full as soon as its guest is in, so it starts at once, as before.

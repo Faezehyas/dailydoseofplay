@@ -418,6 +418,19 @@ input[type="text"] {
   color: var(--muted);
 }
 
+.roster li.knock {
+  flex-wrap: wrap;
+  align-items: center;
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.knock-actions {
+  display: flex;
+  gap: 6px;
+}
+
 #start-game {
   width: 100%;
   margin: 8px 0;

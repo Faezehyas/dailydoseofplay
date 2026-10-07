@@ -202,7 +202,7 @@ Run `npm start` and open `http://localhost:8080/<slug>/` in two browser
 windows (one private).
 
 1. Play with a friend: create a room and check that the code and invite link show, and that copy works.
-2. Open the link in the other window: it auto-joins and play starts.
+2. Open the link in the other window: it auto-joins and play starts. Typing the code instead shows the host an Accept / Decline prompt first.
 3. Play a full game, then a rematch.
 4. Close one tab: the other shows "left the game".
 5. Play vs robot: a full game.

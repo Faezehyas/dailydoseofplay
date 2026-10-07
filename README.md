@@ -43,7 +43,7 @@ npm start                 # http://localhost:8080  (PORT=3000 npm start to chang
 - Chutes and Ladders: http://localhost:8080/chutes-and-ladders/
 - Dots and Boxes: http://localhost:8080/dots-and-boxes/
 - Ludo: http://localhost:8080/ludo/
-- Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?room=CODE` joins a room.
+- Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?room=CODE&key=KEY` (the invite link) joins a room. Without `key`, the room's host has to let you in.
 - Health: http://localhost:8080/healthz
 
 To play a friend match on one machine, open the game in two windows (one
@@ -56,6 +56,10 @@ address you opened it at) or by the live site. To let pages from another
 origin connect, for example a preview deployment, list them in
 `ALLOWED_ORIGINS`: `ALLOWED_ORIGINS=https://preview.example npm start`.
 Details in [ARCHITECTURE.md](ARCHITECTURE.md#server).
+
+Wrong room codes are rate limited per client address (5 a minute). The
+address is the first one in `X-Forwarded-For`, else the socket's; set
+`CLIENT_IP_HEADER` to read another header, e.g. `CLIENT_IP_HEADER=X-Real-IP npm start`.
 
 ## Tests
 

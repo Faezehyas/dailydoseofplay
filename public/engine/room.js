@@ -3,8 +3,9 @@
 // star over WebRTC today; a server relay or a mesh later) can change without
 // touching the lobby or any game.
 //
-//   new HostRoom({ game, name })        open() -> code; emits "players", "guest-gone", "lost"; start() -> Session
-//   new GuestRoom({ game, code, name }) join() -> Session once the host starts; emits "status"
+//   new HostRoom({ game, name })        open() -> code (and .key); emits "players", "knocks", "guest-gone", "lost";
+//                                       accept(id) / decline(id) a knock; start() -> Session
+//   new GuestRoom({ game, code, key, name }) join() -> Session once the host starts; emits "status"
 //   localRoom({ game, names, mode })    one Session per seat, connected in memory (robots, tests)
 import { Emitter } from "./channel.js";
 import { RoomClient } from "./signaling.js";
@@ -29,7 +30,9 @@ export class HostRoom extends Emitter {
     this.signalingUrl = signalingUrl;
     this.rooms = null;
     this.code = null;
+    this.key = null; // invite key: a link with it joins without asking
     this.guests = new Map(); // signaling id -> { name, link, ready }, in join order
+    this.knocks = new Map(); // signaling id -> name, people with only the code asking to join
     this.started = false;
     this.closed = false;
   }
@@ -39,11 +42,38 @@ export class HostRoom extends Emitter {
     this.rooms = rooms;
     await rooms.connect();
     rooms.on("close", () => !this.started && !this.closed && this.emit("lost"));
-    const { room } = await rooms.create(this.name);
+    const { room, key } = await rooms.create(this.name);
     this.code = room;
+    this.key = key;
     rooms.on("peer", ({ id, name }) => this.#link(id, name));
     rooms.on("leave", ({ id }) => this.#drop(id, "left"));
+    rooms.on("knock", ({ id, name }) => this.#knock(id, name));
+    rooms.on("knock-gone", ({ id }) => this.#knock(id, null));
     return room;
+  }
+
+  // Asking to join, in the order they knocked: [{ id, name }].
+  get knocking() {
+    return [...this.knocks].map(([id, name]) => ({ id, name }));
+  }
+
+  #knock(id, name) {
+    if (name === null) this.knocks.delete(id);
+    else this.knocks.set(id, name);
+    this.emit("knocks", this.knocking);
+  }
+
+  // Only an accepted knock gets a "peer" from the server, and so a WebRTC link.
+  accept(id) {
+    if (!this.knocks.has(id) || !this.rooms) return;
+    this.rooms.admit(id);
+    this.#knock(id, null);
+  }
+
+  decline(id) {
+    if (!this.knocks.has(id) || !this.rooms) return;
+    this.rooms.decline(id);
+    this.#knock(id, null);
   }
 
   // Everyone in the room so far, host first. ready: connected and checked.
@@ -107,29 +137,33 @@ export class HostRoom extends Emitter {
     this.closed = true;
     if (!this.started) for (const g of this.guests.values()) g.link.close();
     this.guests.clear();
+    this.knocks.clear();
     this.rooms?.close();
     this.rooms = null;
   }
 }
 
 export class GuestRoom extends Emitter {
-  constructor({ game, code, name, signalingUrl }) {
+  constructor({ game, code, key, name, signalingUrl }) {
     super();
     this.game = game;
     this.code = String(code).trim().toUpperCase();
+    this.key = key || null;
     this.name = name;
     this.signalingUrl = signalingUrl;
     this.rooms = null;
     this.link = null;
   }
 
-  // Emits "status" with { step: "connecting", host }, { step: "connected" },
+  // Emits "status" with { step: "knocking" } while the host decides (no key),
+  // { step: "connecting", host }, { step: "connected" },
   // then { step: "waiting", players } while the host waits for more players.
   async join() {
     const rooms = new RoomClient({ game: this.game, url: this.signalingUrl });
     this.rooms = rooms;
     await rooms.connect();
-    const joined = await rooms.join(this.code, this.name);
+    rooms.on("knocking", () => this.emit("status", { step: "knocking" }));
+    const joined = await rooms.join(this.code, this.name, this.key);
     const host = joined.peers.find((p) => p.id === joined.host);
     this.emit("status", { step: "connecting", host: host?.name });
     const link = new PeerChannel({ rooms, peerId: joined.host, initiator: false });
