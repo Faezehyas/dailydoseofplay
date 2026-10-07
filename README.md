@@ -51,6 +51,12 @@ private), click **Play with a friend** in one, and open the invite link in
 the other. Two devices on the same Wi-Fi work too: open
 `http://<your-computer's-LAN-IP>:8080`.
 
+The lobby socket (`/ws`) only accepts pages served by this server (whatever
+address you opened it at) or by the live site. To let pages from another
+origin connect, for example a preview deployment, list them in
+`ALLOWED_ORIGINS`: `ALLOWED_ORIGINS=https://preview.example npm start`.
+Details in [ARCHITECTURE.md](ARCHITECTURE.md#server).
+
 ## Tests
 
 ```bash

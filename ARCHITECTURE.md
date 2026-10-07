@@ -42,6 +42,31 @@ relative imports resolve.
 Every page response carries `Content-Security-Policy`, `X-Content-Type-Options`
 and `Referrer-Policy` headers. Scripts can only load from the site itself.
 
+**Who may open `/ws`.** Browsers always send an `Origin` header on a
+WebSocket handshake, and a page can't change it, so the upgrade handler
+(`wsOriginAllowed` in `server/app.js`) checks it. Without the check any
+website could use its visitors' browsers to open rooms here, and once
+accounts exist their cookies would ride along. The handshake is accepted when
+any one of these holds:
+
+1. There is no `Origin` header. That is a non-browser client (the Node tests
+   connect this way), which could send any `Origin` it liked anyway.
+2. The origin is one of our sites: `https://www.dailydoseofplay.com`,
+   `https://dailydoseofplay.com` or `https://dailydoseofplay.wasmer.app`.
+3. The origin's host and port equal the request's `Host` header, or the first
+   value of `X-Forwarded-Host`. This covers `localhost`, `127.0.0.1`, a LAN
+   address such as `http://192.168.1.20:8080` (the README promises two devices
+   on one Wi-Fi can play), and the live site if a proxy rewrites `Host`.
+4. The origin is listed in the `ALLOWED_ORIGINS` environment variable
+   (comma-separated full origins, e.g. `https://preview.example,http://10.0.0.7:3000`),
+   read once when the server starts.
+
+Anything else, including `Origin: null`, gets `403 Forbidden` before the
+handshake and the socket is closed. Origins are parsed with `new URL()` and
+compared as whole hosts, so `dailydoseofplay.com.evil.example` is refused.
+A fixed list alone would break LAN play, hence rule 3. Nothing about refused
+connections is logged.
+
 The server sticks to the APIs the reference proved on EdgeJS, which is not
 upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws`.
 

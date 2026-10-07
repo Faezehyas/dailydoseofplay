@@ -1,7 +1,7 @@
 // One HTTP server for the whole site:
 //   /            home page (public/index.html)
 //   /<slug>/     a game (public/<slug>/index.html)
-//   /ws          shared signaling WebSocket, rooms scoped by game slug
+//   /ws          shared signaling WebSocket, rooms scoped by game slug, own pages only
 //   /healthz     JSON status, CORS open
 import http from "node:http";
 import fs from "node:fs";
@@ -57,7 +57,51 @@ function pathOf(rawUrl) {
   }
 }
 
-export async function createApp({ publicDir = PUBLIC_DIR, log = console.log } = {}) {
+// Pages that may open /ws besides the one the request is addressed to.
+export const SITE_ORIGINS = ["https://www.dailydoseofplay.com", "https://dailydoseofplay.com", "https://dailydoseofplay.wasmer.app"];
+
+// "https://a.example, http://b.example:3000" (or an array) -> normalised origins; bad entries are dropped.
+export function parseOrigins(list) {
+  const items = Array.isArray(list) ? list : String(list || "").split(",");
+  const origins = [];
+  for (const item of items) {
+    try {
+      const url = new URL(String(item).trim());
+      if (url.protocol === "http:" || url.protocol === "https:") origins.push(url.origin);
+    } catch {}
+  }
+  return origins;
+}
+
+// A Host-style value ("192.168.1.5:8080") as URL.host would print it for this scheme, or null.
+function hostFor(protocol, value) {
+  if (typeof value !== "string" || !/^[\w.\-:[\]]+$/.test(value.trim())) return null;
+  try {
+    return new URL(`${protocol}//${value.trim()}`).host;
+  } catch {
+    return null;
+  }
+}
+
+// Browsers always send Origin on a WebSocket handshake, so a cross-site page can't hide it.
+// No Origin means a non-browser client, which could send any Origin anyway.
+export function wsOriginAllowed(headers, extraOrigins = []) {
+  const raw = headers.origin;
+  if (raw === undefined) return true;
+  let origin;
+  try {
+    origin = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (origin.protocol !== "http:" && origin.protocol !== "https:") return false;
+  if (SITE_ORIGINS.includes(origin.origin) || extraOrigins.includes(origin.origin)) return true;
+  const forwarded = String(headers["x-forwarded-host"] || "").split(",")[0];
+  return [headers.host, forwarded].some((h) => hostFor(origin.protocol, h) === origin.host);
+}
+
+export async function createApp({ publicDir = PUBLIC_DIR, log = console.log, allowedOrigins = process.env.ALLOWED_ORIGINS } = {}) {
+  const extraOrigins = parseOrigins(allowedOrigins);
   const games = parseRegistry(await readText(path.join(publicDir, "games.json")));
   const signaling = createSignaling({ games, log });
   const notFoundPage = path.join(publicDir, "404.html");
@@ -135,6 +179,10 @@ export async function createApp({ publicDir = PUBLIC_DIR, log = console.log } = 
   wss.on("connection", (ws) => signaling.handleConnection(ws));
   server.on("upgrade", (req, socket, head) => {
     if (pathOf(req.url) !== "/ws") return socket.destroy();
+    if (!wsOriginAllowed(req.headers, extraOrigins)) {
+      socket.once("finish", () => socket.destroy());
+      return socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+    }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });
 
