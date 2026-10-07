@@ -8,12 +8,16 @@
 // createRobot(session) drives one robot seat over an in-memory group; robots
 // is how many seats (a number, or a function read when a robot game starts).
 // maxPlayers must match the game's entry in games.json (the server enforces it).
-import { initShell, el, $, toast, copyText, getNickname, setNickname } from "./shell.js";
+import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 
 const ERRORS = {
   no_such_room: "That room doesn't exist any more. Ask your friend for a fresh invite link.",
   room_full: "That room is already full.",
+  room_busy: "Too many people are asking to join that room right now. Ask your friend for the invite link.",
+  declined: "The room's host didn't let you in. If they're your friend, ask them for the invite link.",
+  no_answer: "Nobody let you in within a minute. Ask your friend for the invite link, or try the code again.",
+  rate_limited: "Too many wrong room codes. Wait a minute, or ask your friend for the invite link.",
   bad_game: "This game isn't available right now.",
   server_full: "The lobby is full right now. Please try again in a minute.",
   connect_failed: "Couldn't reach the lobby server. Check your connection and try again.",
@@ -100,7 +104,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   }
 
   function showWaiting(room) {
-    const link = `${location.origin}/${slug}/?room=${room.code}`;
+    const link = `${location.origin}/${slug}/?room=${room.code}&key=${encodeURIComponent(room.key)}`;
     const linkInput = el("input", { id: "invite-link", type: "text", readonly: true, value: link, "aria-label": "Invite link" });
     linkInput.addEventListener("focus", () => linkInput.select());
     const copyBtn = el("button", {
@@ -124,25 +128,45 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
         duel
           ? "Send this link to a friend. The game starts as soon as they open it."
           : `Send this link to up to ${maxPlayers - 1} friends. Start when everyone is in; a full room starts by itself.`,
+        " Someone who types the code instead has to be let in by you.",
       ),
       el("div", { class: "room-code", id: "room-code", "aria-label": `Room code ${room.code}` }, room.code),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
-      !duel && el("ul", { class: "roster", id: "roster", "aria-label": "Players" }),
+      el("ul", { class: "roster", id: "roster", "aria-label": "Players", hidden: duel }),
       el("p", { class: "waiting", id: "lobby-status" }, el("span", { class: "spinner" }), duel ? "Waiting for your friend to join…" : "Waiting for friends to join…"),
       !duel && el("button", { class: "btn primary", type: "button", id: "start-game", disabled: true, onclick: () => begin(room) }, "Start game"),
       el("button", { class: "btn ghost", type: "button", onclick: () => showHome() }, "Cancel"),
     );
-    if (!duel) showRoster(room.players);
+    showRoster(room);
   }
 
-  function showRoster(players) {
+  // Players so far (4-seat games), then anyone with only the code asking to join.
+  function showRoster(room) {
     const list = $("#roster");
     if (!list) return;
+    const players = room.players;
+    const knocks = room.knocking;
+    list.hidden = duel && knocks.length === 0;
+    setTabAlert(knocks.length ? `${knocks[0].name} wants to join` : null);
     list.replaceChildren(
-      ...players.map((p, i) =>
+      ...(duel ? [] : players).map((p, i) =>
         el("li", { class: p.ready ? "ready" : "" }, el("span", {}, p.name), el("small", {}, i === 0 ? "host" : p.ready ? "in" : "connecting…")),
       ),
+      ...knocks.map(({ id, name }) =>
+        el(
+          "li",
+          { class: "knock" },
+          el("span", {}, `${name} wants to join`),
+          el(
+            "span",
+            { class: "knock-actions" },
+            el("button", { class: "btn small primary", type: "button", onclick: () => room.accept(id) }, "Accept"),
+            el("button", { class: "btn small", type: "button", onclick: () => room.decline(id) }, "Decline"),
+          ),
+        ),
+      ),
     );
+    if (duel) return;
     const ready = players.filter((p) => p.ready).length;
     const start = $("#start-game");
     start.disabled = ready < minPlayers;
@@ -185,12 +209,14 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     const room = state.room;
     state.room = null;
     room?.close();
+    setTabAlert(null);
     clearRoomParam();
   }
 
   function clearRoomParam() {
-    if (params.has("room")) {
+    if (params.has("room") || params.has("key")) {
       params.delete("room");
+      params.delete("key");
       history.replaceState(null, "", location.pathname);
     }
   }
@@ -212,11 +238,12 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     if (!current()) return;
     showWaiting(room);
     room.on("lost", () => current() && showFailure(ERRORS.closed));
+    room.on("knocks", () => current() && showRoster(room));
     room.on("players", (players) => {
       if (!current()) return;
       const ready = players.filter((p) => p.ready).length;
       if (ready >= maxPlayers) return begin(room);
-      if (!duel) return showRoster(players);
+      if (!duel) return showRoster(room);
       const joining = players.find((p, i) => i > 0 && !p.ready);
       setStatus(joining ? `${joining.name} joined. Connecting directly…` : "Waiting for your friend to join…");
     });
@@ -230,10 +257,12 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   function begin(room) {
     if (room !== state.room) return;
     state.room = null;
+    setTabAlert(null);
     startSession(room.start());
   }
 
-  async function join(rawCode) {
+  // key comes only from an invite link; a typed code asks the host to let us in.
+  async function join(rawCode, key) {
     const code = String(rawCode).trim().toUpperCase();
     const name = currentName("Guest");
     // Keep ?room= until the join settles so a reload retries it.
@@ -242,12 +271,14 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     const attempt = state.attempt;
     const current = () => attempt === state.attempt;
     showBusy(`Joining room ${code}…`);
-    const room = new GuestRoom({ game: slug, code, name });
+    const room = new GuestRoom({ game: slug, code, key, name });
     state.room = room;
     let host = "your friend";
     room.on("status", ({ step, host: hostName, players }) => {
       if (!current()) return;
-      if (step === "connecting") {
+      if (step === "knocking") {
+        setStatus("Asking the room's host to let you in…");
+      } else if (step === "connecting") {
         host = hostName || host;
         setStatus(`Connecting to ${host}…`);
       } else if (duel) {
@@ -262,7 +293,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     } catch (err) {
       if (!current()) return;
       if (!(err instanceof RoomError)) return showHome(ERRORS[err.code] || ERRORS.connect_failed);
-      return showFailure(ERRORS[err.code] || NO_TURN_HELP, () => join(code));
+      return showFailure(ERRORS[err.code] || NO_TURN_HELP, () => join(code, key));
     }
     if (!current()) return session.leave();
     state.room = null;
@@ -331,7 +362,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // bindings declared after its startGameShell() call.
   queueMicrotask(() => {
     const code = params.get("room");
-    if (code) join(code);
+    if (code) join(code, params.get("key") || undefined);
     else if (params.has("robot")) playRobot();
     else showHome();
   });

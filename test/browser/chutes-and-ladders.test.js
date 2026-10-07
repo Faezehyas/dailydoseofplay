@@ -81,7 +81,7 @@ test("two friends play Chutes and Ladders on the host's settings through the inv
   await host.locator("#room-code").waitFor();
   const invite = await host.locator("#invite-link").inputValue();
   const code = (await host.locator("#room-code").innerText()).trim();
-  assert.match(invite, new RegExp(`/chutes-and-ladders/\\?room=${code}$`));
+  assert.match(invite, new RegExp(`/chutes-and-ladders/\\?room=${code}&key=[\\w-]{22}$`));
 
   // The friend (360 px phone, dark) opens the link and spins by tapping.
   // The room takes up to four, so the host starts it once Bo is in.

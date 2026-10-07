@@ -24,6 +24,7 @@ export class RoomClient extends Emitter {
     this.ws = null;
     this.id = null;
     this.room = null;
+    this.key = null;
     this.hostId = null;
     this.pending = null; // { types, resolve, reject }
     this.pinger = null;
@@ -97,6 +98,12 @@ export class RoomClient extends Emitter {
     switch (msg.t) {
       case "peer":
         return this.emit("peer", { id: msg.id, name: msg.name });
+      case "knocking":
+        return this.emit("knocking");
+      case "knock":
+        return this.emit("knock", { id: msg.id, name: msg.name });
+      case "knock-gone":
+        return this.emit("knock-gone", { id: msg.id });
       case "leave":
         return this.emit("leave", { id: msg.id });
       case "host-left":
@@ -112,15 +119,26 @@ export class RoomClient extends Emitter {
   async create(name) {
     const msg = await this.#request({ t: "create", game: this.game, name }, ["created"]);
     this.room = msg.room;
+    this.key = msg.key;
     this.hostId = this.id;
     return msg;
   }
 
-  async join(room, name) {
-    const msg = await this.#request({ t: "join", game: this.game, room, name }, ["joined"]);
+  // With the invite key the server seats us at once. Without it we emit
+  // "knocking" and wait until the host admits us (or an error: declined, no_answer).
+  async join(room, name, key) {
+    const msg = await this.#request({ t: "join", game: this.game, room, name, ...(key ? { key } : {}) }, ["joined"]);
     this.room = msg.room;
     this.hostId = msg.host;
     return msg;
+  }
+
+  admit(id) {
+    this.#send({ t: "admit", id });
+  }
+
+  decline(id) {
+    this.#send({ t: "decline", id });
   }
 
   signal(to, data) {

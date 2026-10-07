@@ -87,7 +87,7 @@ test("two friends play Chess on the host's settings through the invite link, the
   await host.locator("#room-code").waitFor();
   const invite = await host.locator("#invite-link").inputValue();
   const code = (await host.locator("#room-code").innerText()).trim();
-  assert.match(invite, new RegExp(`/chess/\\?room=${code}$`));
+  assert.match(invite, new RegExp(`/chess/\\?room=${code}&key=[\\w-]{22}$`));
 
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));

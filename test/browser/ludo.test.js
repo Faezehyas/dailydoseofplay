@@ -3,7 +3,8 @@
 // WebRTC DataChannel, then a rematch; four friends in four browsers fill a
 // room and play for places, then one leaves; and a game against three robots
 // on a 360 px phone with the die, hops, sounds, the mute button, the
-// keyboard and the move timer. Skips if Playwright is missing.
+// keyboard and the move timer; and a room where two friends use the invite
+// key and a third is let in by the host. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -93,7 +94,7 @@ test("two friends play Ludo on the host's house rules through the invite link, t
   await host.click("#play-friend");
   await host.locator("#room-code").waitFor();
   const invite = await host.locator("#invite-link").inputValue();
-  assert.match(invite, /\/ludo\/\?room=[A-Z0-9]{4}$/);
+  assert.match(invite, /\/ludo\/\?room=[A-Z0-9]{4}&key=[\w-]{22}$/);
 
   // The friend (360 px phone, dark) opens the link; the host presses Start with two in.
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
@@ -272,6 +273,54 @@ test("four friends fill a Ludo room in four browsers and play for places, then o
     assert.match(await p.locator("#ld-ended").innerText(), /game is over for all 4 of you[\s\S]*Cy: \d\/4 home \(left\)/);
   }
   await friends[0].screenshot({ path: `${ARTIFACTS}/ld-8-four-left-mobile.png` });
+  assert.deepEqual(errors, []);
+});
+
+test("a four-seat Ludo room: two friends join by the invite key, a third types the code and is let in from the player list", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox", "--disable-background-timer-throttling"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  async function open(nickname) {
+    const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, reducedMotion: "reduce" });
+    await ctx.addInitScript((n) => localStorage.setItem("ddp-name", n), nickname);
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errors.push(`${nickname}: ${e.message}`));
+    return page;
+  }
+  const host = await open("Ada");
+  await host.goto(`${srv.base}/ludo/`);
+  await host.click("#play-friend");
+  await host.locator("#room-code").waitFor();
+  const code = (await host.locator("#room-code").innerText()).trim();
+  const invite = (await host.locator("#invite-link").inputValue()).replace(/^https?:\/\/[^/]+/, srv.base);
+  const friends = [];
+  for (const name of ["Bo", "Cy"]) {
+    const page = await open(name);
+    await page.goto(invite);
+    await host.locator("#roster li.ready", { hasText: name }).waitFor();
+    friends.push(page);
+  }
+  assert.equal(await host.locator("#roster li.knock").count(), 0, "keyed guests are never asked about");
+  assert.match(await host.locator("#start-game").innerText(), /3 players/);
+
+  const di = await open("Di");
+  await di.goto(`${srv.base}/ludo/`);
+  await di.fill("#join-code", code);
+  await di.click(".join-row button");
+  const knock = host.locator("#roster li.knock", { hasText: "Di wants to join" });
+  await knock.waitFor();
+  assert.match(await host.locator("#roster").innerText(), /Ada\s+host[\s\S]*Bo\s+in[\s\S]*Cy\s+in[\s\S]*Di wants to join/, "the knock sits in the player list");
+  assert.match(await host.locator("#start-game").innerText(), /3 players/, "a knock is not a player");
+  await knock.getByRole("button", { name: "Accept" }).click();
+
+  // Di fills the room, so the game starts by itself.
+  const pages = [host, ...friends, di];
+  for (const p of pages) await wait(p, () => window.ddp.match?.phase === "playing");
+  assert.deepEqual(await Promise.all(pages.map((p) => p.evaluate(() => window.ddp.session.index))), [0, 1, 2, 3]);
   assert.deepEqual(errors, []);
 });
 

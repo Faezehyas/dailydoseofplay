@@ -98,7 +98,7 @@ test("two friends play Checkers on the host's settings through the invite link, 
   await host.locator("#room-code").waitFor();
   const invite = await host.locator("#invite-link").inputValue();
   const code = (await host.locator("#room-code").innerText()).trim();
-  assert.match(invite, new RegExp(`/checkers/\\?room=${code}$`));
+  assert.match(invite, new RegExp(`/checkers/\\?room=${code}&key=[\\w-]{22}$`));
 
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.addInitScript(() => localStorage.setItem("ddp-checkers-settings", JSON.stringify({ moveSeconds: 30, gameSeconds: 0, first: "guest", level: "hard" })));
