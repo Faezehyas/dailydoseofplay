@@ -418,9 +418,10 @@ test("Ludo against three robots on a 360 px phone: die, hops, sounds, mute, keyb
   // The move timer: leave the die alone and the game rolls for you.
   await wait(page, () => !document.querySelector("#ld-roll").disabled, undefined, 90_000);
   const waited = (await state(page)).ply;
-  await wait(page, (n) => window.ddp.match.state.ply > n, waited, 15_000);
-  assert.equal((await state(page)).last.player, 0, "your roll was made for you");
-  assert.equal((await state(page)).last.type, "roll");
+  // Read the roll in the same check that sees it: a forced move follows 650 ms later.
+  const auto = await (await wait(page, (n) => window.ddp.match.state.ply > n && window.ddp.match.state.last, waited, 15_000)).jsonValue();
+  assert.equal(auto.player, 0, "your roll was made for you");
+  assert.equal(auto.type, "roll");
 
   // The rest at speed.
   await autoplay(page);
