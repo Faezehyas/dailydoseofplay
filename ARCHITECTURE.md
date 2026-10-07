@@ -28,7 +28,7 @@ forwards messages between them (see **Groups** below).
 
 | Layer | Files | Knows about games? |
 |---|---|---|
-| Server | `server/app.js` (HTTP routes, static files, security headers), `server/signaling.js` (rooms, invite keys, knocks, join rate limits, relay), `server/server.js` (entry) | Only slugs and `maxPlayers` from `public/games.json` |
+| Server | `server/app.js` (HTTP routes, static files, security headers), `server/signaling.js` (rooms, invite keys, knocks, join rate limits, relay), `server/limits.js` (per-client limits), `server/server.js` (entry) | Only slugs and `maxPlayers` from `public/games.json` |
 | Engine (browser) | `public/engine/` | No |
 | Game | `public/<slug>/` | Yes, only its own |
 
@@ -83,14 +83,18 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws` (and so 
 | `signal {to, data}` | `signal {from, data}` to `to`. `data` is opaque SDP or ICE. |
 | `leave` | `left`. Then `leave {id}` to the others, or `host-left` and the room closes. |
 | `ping` (every 25 s) | `pong` |
-| | `error {code}`: `bad_json`, `bad_game`, `no_such_room`, `room_full`, `room_busy`, `rate_limited`, `declined`, `no_answer`, `host_left`, `not_host`, `not_in_room`, `already_in_room`, `no_such_peer`, `unknown_type`, `server_full` |
+| | `error {code}`: `bad_json`, `bad_game`, `no_such_room`, `room_full`, `room_busy`, `rate_limited`, `declined`, `no_answer`, `host_left`, `not_host`, `not_in_room`, `already_in_room`, `no_such_peer`, `unknown_type`, `server_full`, `too_many_connections`, `too_many_rooms`, `too_fast`, `too_big`, `room_expired` |
 
 - Rooms are keyed `slug/CODE`. A Sea Battle code can't join a Tic Tac Toe room.
 - Codes are 4 characters from an alphabet without look-alikes (no 0/O, 1/I/L).
   A code is only a room's name, not a password (see **Who may join a room**).
 - Room size comes from the registry (`maxPlayers`, 2 to 8).
-- Names are cleaned and capped at 20 characters. Messages are capped at 64 KB.
+- Names are cleaned and capped at 20 characters. Messages are capped at 64 KB,
+  and `signal` data at 16 KB (see **Limits per client**).
 - A socket that has not pinged for 75 s is dropped.
+- When the server closes a socket on purpose, it first sends `error {code}`
+  and uses the same code as the close reason, so a page that is already in a
+  room (and has no request waiting) can still tell the player why.
 
 **Who may join a room.** There are only 31^4 = 923,521 codes, and without a
 limit one socket could ask about every code in seconds. A stranger who hit a
@@ -122,6 +126,38 @@ host's IP address, and children use the site. So:
 
 Together a guess now costs a minute per 5 tries per address, and a hit only
 lets a stranger knock on a door the host can keep shut.
+
+**Limits per client.** Without them one machine could open thousands of
+sockets, fill the 10,000-room table so everyone else gets `server_full`, or
+push 64 KB messages through the relay as fast as it can send them. The
+mechanisms live in `server/limits.js` (`clientIp`, `createQuota`,
+`createTokenBucket`) and are keyed by any string, so accounts can reuse them;
+the numbers are `DEFAULT_LIMITS` in `server/signaling.js`.
+
+| Limit | Value | Over it |
+|---|---|---|
+| Open `/ws` connections per client address | 20 | `too_many_connections`, then close (1008) before `hello` |
+| Open rooms per client address (the host's) | 5 | `too_many_rooms` on `create`; the socket stays open |
+| Messages per connection (token bucket) | 20 a second, bursts of 60 | `too_fast`, then close (1008) |
+| `signal` data (its JSON) | 16 KB | `too_big`; nothing is relayed, the socket stays open |
+| Room age | 30 minutes | everyone in it and everyone knocking gets `room_expired`, then close (1000) |
+| Rooms on the server | 10,000 | `server_full` (last resort) |
+
+- The client address is the same as for the join rate limit above
+  (`X-Forwarded-For` or `CLIENT_IP_HEADER`, else the socket). With no address,
+  the per-address limits don't apply.
+- Every open room is a waiting room: the host closes its signaling socket when
+  the game starts, which frees the room. So "5 rooms" means 5 rooms still
+  waiting for players, and the 30 minutes run from `create`. The check runs
+  with the idle sweep, every 30 s.
+- A family on one Wi-Fi playing a 4-player game uses 4 connections and 1 room.
+  Pings (one every 25 s) and a WebRTC handshake (an SDP and a few dozen ICE
+  candidates per peer) stay far below the message rate.
+- The lobby shows its own text for each code (`ERRORS` in
+  `public/engine/lobby.js`). `RoomClient.connect()` rejects with the code the
+  server sent before `hello`, and its `close` event carries the close reason.
+- Counts live in memory and are dropped when they reach zero. Addresses are
+  never logged.
 
 ### Engine (`public/engine/`)
 
