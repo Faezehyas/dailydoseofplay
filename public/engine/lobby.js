@@ -20,6 +20,10 @@ const ERRORS = {
   rate_limited: "Too many wrong room codes. Wait a minute, or ask your friend for the invite link.",
   bad_game: "This game isn't available right now.",
   server_full: "The lobby is full right now. Please try again in a minute.",
+  too_many_connections: "Too many game tabs on your network are connected to the lobby. Close a few and try again.",
+  too_many_rooms: "Your network already has 5 rooms waiting for players. Start or close one of them first.",
+  too_fast: "The lobby closed the connection because this page sent too many messages. Please reload.",
+  room_expired: "The room closed because the game didn't start within 30 minutes. Make a new one to play.",
   connect_failed: "Couldn't reach the lobby server. Check your connection and try again.",
   closed: "Lost connection to the lobby server.",
   lobby_lost: "Lost connection to the lobby server.",
@@ -237,7 +241,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     }
     if (!current()) return;
     showWaiting(room);
-    room.on("lost", () => current() && showFailure(ERRORS.closed));
+    room.on("lost", (reason) => current() && showFailure(ERRORS[reason] || ERRORS.closed));
     room.on("knocks", () => current() && showRoster(room));
     room.on("players", (players) => {
       if (!current()) return;

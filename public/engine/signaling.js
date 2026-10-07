@@ -50,6 +50,11 @@ export class RoomClient extends Emitter {
           this.id = msg.id;
           resolve(this);
         }
+        // Refused before hello, e.g. too_many_connections.
+        if (msg.t === "error" && !settled) {
+          settled = true;
+          return reject(new SignalingError(msg.code));
+        }
         this.#onMessage(msg);
       };
       ws.onerror = () => {
@@ -58,7 +63,8 @@ export class RoomClient extends Emitter {
           reject(new SignalingError("connect_failed"));
         }
       };
-      ws.onclose = () => {
+      // The server puts its error code in the close reason (room_expired, too_fast, ...).
+      ws.onclose = (ev) => {
         clearInterval(this.pinger);
         if (!settled) {
           settled = true;
@@ -66,7 +72,7 @@ export class RoomClient extends Emitter {
         }
         this.pending?.reject(new SignalingError("closed"));
         this.pending = null;
-        this.emit("close");
+        this.emit("close", ev?.reason || null);
       };
     });
   }

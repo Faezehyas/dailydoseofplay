@@ -3,7 +3,7 @@
 // star over WebRTC today; a server relay or a mesh later) can change without
 // touching the lobby or any game.
 //
-//   new HostRoom({ game, name })        open() -> code (and .key); emits "players", "knocks", "guest-gone", "lost";
+//   new HostRoom({ game, name })        open() -> code (and .key); emits "players", "knocks", "guest-gone", "lost" (reason);
 //                                       accept(id) / decline(id) a knock; start() -> Session
 //   new GuestRoom({ game, code, key, name }) join() -> Session once the host starts; emits "status"
 //   localRoom({ game, names, mode })    one Session per seat, connected in memory (robots, tests)
@@ -18,9 +18,12 @@ import { Session, admitGuest, startHub, sendRoster, greetHost } from "./session.
 export class RoomError extends Error {
   constructor(code) {
     super(code);
-    this.code = code; // no_direct_link | host_gone | host_left | version_mismatch | lobby_lost
+    this.code = code; // no_direct_link | host_gone | host_left | version_mismatch | lobby_lost | room_expired | too_fast
   }
 }
+
+// Close reasons the server sends to someone already in a room.
+const LOBBY_CLOSES = new Set(["room_expired", "too_fast"]);
 
 export class HostRoom extends Emitter {
   constructor({ game, name, signalingUrl }) {
@@ -41,7 +44,7 @@ export class HostRoom extends Emitter {
     const rooms = new RoomClient({ game: this.game, url: this.signalingUrl });
     this.rooms = rooms;
     await rooms.connect();
-    rooms.on("close", () => !this.started && !this.closed && this.emit("lost"));
+    rooms.on("close", (reason) => !this.started && !this.closed && this.emit("lost", reason));
     const { room, key } = await rooms.create(this.name);
     this.code = room;
     this.key = key;
@@ -178,7 +181,7 @@ export class GuestRoom extends Emitter {
       };
       // The host frees the room once the game starts, which can be just before our link opens.
       rooms.on("host-left", () => !link.open && fail("host_left"));
-      rooms.on("close", () => !link.open && fail("lobby_lost"));
+      rooms.on("close", (reason) => !link.open && fail(LOBBY_CLOSES.has(reason) ? reason : "lobby_lost"));
       link.on("failed", (reason) => fail(reason === "closed_before_open" ? "host_gone" : "no_direct_link"));
       link.on("open", () => {
         this.emit("status", { step: "connected" });
