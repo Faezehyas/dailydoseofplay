@@ -251,10 +251,15 @@ test("Dots and Boxes vs the robot on a 360 px phone: touch, keyboard, pen stroke
   await page.locator("#leave").focus();
   await page.keyboard.press("Tab");
   assert.equal(await page.evaluate(() => document.activeElement.id), "db-board");
+  // Zigzag right and down; back at a line already seen (the corner), go left and up.
   let cursor = null;
-  for (let i = 0; i < 12 && !(cursor || "").endsWith("free"); i++) {
-    await page.keyboard.press(i % 2 ? "ArrowDown" : "ArrowRight");
+  let keys = ["ArrowRight", "ArrowDown"];
+  const seen = new Set();
+  for (let i = 0; i < 24 && !(cursor || "").endsWith("free"); i++) {
+    await page.keyboard.press(keys[i % 2]);
     cursor = await page.locator("#db-cursor").innerText();
+    if (seen.has(cursor)) keys = ["ArrowLeft", "ArrowUp"];
+    seen.add(cursor);
   }
   assert.match(cursor, /^(Across|Down) from [A-E]\d to [A-E]\d: free$/);
   const drawnBefore = (await state(page)).drawn;
