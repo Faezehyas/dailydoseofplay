@@ -1,7 +1,11 @@
 /* Sea Battle view. Uses the shared tokens from /engine/theme.css. */
 .sea-battle {
   display: grid;
+  /* One column that never grows past the page, whatever a child's min-content. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+  /* Nicknames can be one long word; break it rather than push the page wider. */
+  overflow-wrap: break-word;
 }
 
 .sb-top {
@@ -15,19 +19,29 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1 1 0;
   min-width: 0;
   font-weight: 700;
 }
 
 .sb-players .who {
+  display: flex;
+  align-items: center;
   padding: 4px 12px;
   border-radius: 999px;
   background: var(--surface);
   border: 1px solid var(--border);
   white-space: nowrap;
+  min-width: 0;
+  /* Each name gets half the row (less the "vs"), so neither crowds the other out. */
+  max-width: min(40vw, calc(50% - 16px));
+}
+
+/* A long nickname is cut short; the score next to it always shows. */
+.sb-players .who .name {
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 40vw;
+  min-width: 0;
 }
 
 .sb-players .who.active {
@@ -37,6 +51,7 @@
 
 .sb-players .score {
   display: inline-block;
+  flex: none;
   min-width: 1.5em;
   margin: 0 6px;
   padding: 0 6px;
@@ -69,6 +84,16 @@
 
 .sb-clocks:not(:has(:not([hidden]))) {
   display: none;
+}
+
+/* A long name in a clock is cut short so the time always shows. */
+.game-clock .name,
+.sb-clock .name {
+  display: inline-block;
+  max-width: 9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }
 
 .sb-config {
@@ -123,6 +148,7 @@
 }
 
 .sb-status {
+  min-width: 0;
   margin: 0;
   text-align: center;
   font-size: 1.15rem;

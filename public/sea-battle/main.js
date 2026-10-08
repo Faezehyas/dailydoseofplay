@@ -289,7 +289,7 @@ function mountSeaBattle(session, root, shell) {
       el(
         "span",
         { class: `who me ${st && st.turn === me && phase === "playing" ? "active" : ""}` },
-        session.me.name === "You" ? "You" : `${session.me.name} (you)`,
+        el("span", { class: "name", title: session.me.name }, session.me.name === "You" ? "You" : `${session.me.name} (you)`),
         el("b", { class: "score", id: "score-me", title: "Wins" }, String(score[me])),
       ),
       el("span", { class: "vs" }, "vs"),
@@ -297,7 +297,7 @@ function mountSeaBattle(session, root, shell) {
         "span",
         { class: `who ${st && st.turn === opp && phase === "playing" ? "active" : ""}` },
         el("b", { class: "score", id: "score-opp", title: "Wins" }, String(score[opp])),
-        oppName,
+        el("span", { class: "name", title: oppName }, oppName),
       ),
     );
 
@@ -406,7 +406,7 @@ function mountSeaBattle(session, root, shell) {
       if (!show) continue;
       const running = playing && st.turn === player;
       const ms = st.clocks[player] - (running ? elapsed() : 0);
-      node.textContent = `${player === me ? "You" : oppName} ${clockText(ms)}`;
+      node.replaceChildren(el("span", { class: "name" }, player === me ? "You" : oppName), ` ${clockText(ms)}`);
       node.classList.toggle("active", running);
       node.classList.toggle("low", ms < 30_000);
     }
@@ -414,7 +414,7 @@ function mountSeaBattle(session, root, shell) {
     clock.hidden = active === -1;
     if (active === -1) return;
     const left = Math.max(0, Math.ceil((R.timeLeft(st, active) - elapsed()) / 1000));
-    clock.textContent = `${active === me ? "Your shot" : oppName}: ${left}s`;
+    clock.replaceChildren(el("span", { class: "name" }, active === me ? "Your shot" : oppName), `: ${left}s`);
     clock.classList.toggle("mine", active === me);
     clock.classList.toggle("low", left <= 10);
   }
