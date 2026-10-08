@@ -35,6 +35,24 @@ const noHorizontalScroll = (page) => page.evaluate(() => document.documentElemen
 const pick = (page, name, value) => page.click(`#db-settings label:has(input[name="db-${name}"][value="${value}"])`);
 const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const state = (page) => page.evaluate(() => window.ddp.match.state);
+// The theme token a CSS property of the first match resolves to, so screens
+// in different themes compare: "--accent" is coral, "--accent-2" teal.
+const tokenOf = (page, selector, prop) =>
+  page.evaluate(
+    ([selector, prop]) => {
+      const resolve = (v) => {
+        const i = document.createElement("i");
+        i.style.color = `var(${v})`;
+        document.body.append(i);
+        const c = getComputedStyle(i).color;
+        i.remove();
+        return c;
+      };
+      const value = getComputedStyle(document.querySelector(selector))[prop];
+      return ["--accent", "--accent-2"].find((v) => resolve(v) === value) ?? value;
+    },
+    [selector, prop],
+  );
 const armed = (page) => page.evaluate(() => !!document.querySelector("#db-board.armed"));
 
 // A sensible player: take a box when one is offered, else a line that
@@ -157,7 +175,13 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   const first = await drawLine(host);
   await wait(guest, (l) => window.ddp.match.state.lines[l] === 0, first);
   await guest.locator(`#db-board .line[data-l="${first}"]`).waitFor();
-  assert.ok(await guest.locator(`#db-board .line[data-l="${first}"]`).evaluate((n) => n.classList.contains("p1")), "the host's line is teal on the friend's screen");
+  for (const page of [host, guest]) {
+    assert.equal(await tokenOf(page, `#db-board .line[data-l="${first}"] .ink`, "stroke"), "--accent", "the host drew first, so their line is coral on both screens");
+  }
+  assert.equal(await tokenOf(host, ".db-players .p0 .swatch", "backgroundColor"), "--accent", "the host's swatch is coral on their screen");
+  assert.equal(await tokenOf(guest, ".db-players .p1 .swatch", "backgroundColor"), "--accent", "and on the friend's");
+  assert.equal(await tokenOf(guest, ".db-players .p0 .swatch", "backgroundColor"), "--accent-2", "the friend is teal on both screens");
+  assert.equal(await tokenOf(host, ".db-players .p1 .swatch", "backgroundColor"), "--accent-2");
   await wait(guest, () => !!document.querySelector("#db-board.armed"));
   await guest.screenshot({ path: `${ARTIFACTS}/db-1-friend-mobile-dark.png`, fullPage: true });
   const { st: won, extra } = await finish();
@@ -169,8 +193,8 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   assert.match(await winner.locator("#db-score").innerText(), /You\s+1\s+\S+\s+0/);
   assert.match(await loser.locator("#db-score").innerText(), /You\s+0\s+\S+\s+1/);
   assert.equal(await host.locator("#db-board .box").count(), 9);
-  assert.equal(await host.locator("#db-board .box.p0").count(), won.score[0], "your boxes are coral on your screen");
-  assert.equal(await guest.locator("#db-board .box.p0").count(), won.score[1], "and theirs are coral on theirs");
+  assert.equal(await host.locator("#db-board .box.p0").count(), won.score[0], "your boxes are marked yours on your screen");
+  assert.equal(await guest.locator("#db-board .box.p0").count(), won.score[1], "and theirs on theirs");
   for (const page of [host, guest]) {
     const r = await page.locator("#db-over").boundingBox();
     assert.ok(r && r.y >= 0 && r.y + r.height <= page.viewportSize().height + 1, "the result is on screen");
