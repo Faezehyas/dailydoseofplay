@@ -336,9 +336,31 @@ input::placeholder {
   opacity: 1;
 }
 
+/* ---------- game page column ---------- */
+/* The lobby, the settings, the game and "How to play" share one column, as
+   wide as the view on show. lobby.js sets data-view ("lobby" or "game") and
+   the game's data-layout on .page; the lobby is always narrow. */
+.page[data-view] {
+  --column: 520px;
+}
+
+.page[data-view="game"][data-layout="medium"] {
+  --column: 640px;
+}
+
+.page[data-view="game"][data-layout="wide"] {
+  --column: 980px;
+}
+
+.page[data-view] > #game,
+.page[data-view] > .rules {
+  max-width: var(--column);
+  margin-inline: auto;
+}
+
 /* ---------- lobby ---------- */
 .lobby-card {
-  max-width: 520px;
+  max-width: var(--column, 520px);
   margin: 16px auto;
   text-align: center;
 }

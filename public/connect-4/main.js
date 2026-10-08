@@ -18,6 +18,7 @@ startGameShell({
   slug: "connect-4",
   title: "Connect 4",
   tagline: "Drop, stack and line up four before your rival does.",
+  layout: "narrow",
   createRobot: (session) => {
     const config = settings.get();
     return startTurnRobot(session, {

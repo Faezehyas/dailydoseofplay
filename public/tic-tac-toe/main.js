@@ -22,6 +22,7 @@ startGameShell({
   slug: "tic-tac-toe",
   title: "Tic Tac Toe",
   tagline: "Line them up before your friend does. Quick to learn, sneaky to master.",
+  layout: "narrow",
   createRobot: (session) =>
     startTurnRobot(session, {
       rules: makeRules(settings.get()),

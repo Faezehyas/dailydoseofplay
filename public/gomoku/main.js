@@ -20,6 +20,7 @@ startGameShell({
   slug: "gomoku",
   title: "Gomoku",
   tagline: "Fifteen lines each way, five stones to win. Build two threats, block every one of theirs.",
+  layout: "medium",
   createRobot: (session) =>
     startTurnRobot(session, {
       rules: makeRules(settings.get()),

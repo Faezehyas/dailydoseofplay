@@ -53,6 +53,7 @@ startGameShell({
   slug: "backgammon",
   title: "Backgammon",
   tagline: "Roll, run and hit. Bring all fifteen checkers home and off the board first.",
+  layout: "medium",
   createRobot: (session) => {
     const config = settings.get();
     const delay = (state, me) => (racingForYou && !inContact(state.pos, me) ? ROBOT_RACING : ROBOT_DELAY);

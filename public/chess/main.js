@@ -76,6 +76,7 @@ startGameShell({
   slug: "chess",
   title: "Chess",
   tagline: "Sixty-four squares, two armies, one king to trap. Your move.",
+  layout: "narrow",
   createRobot(session) {
     const config = settings.get();
     return startRobot(session, { rules: makeRules(config), level: config.level, timeMs: ROBOT_SEARCH_MS });

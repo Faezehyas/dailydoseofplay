@@ -119,6 +119,7 @@ startGameShell({
   slug: "<slug>",
   title: "<Name>",
   tagline: "<one original sentence>",
+  layout: "narrow", // the page column while playing: "narrow", "medium" or "wide"
   createRobot: (session) => startTurnRobot(session, { rules, choose: chooseMove, delay: 600 }),
   onSession(session, root, shell) {
     const router = matchRouter(session);
@@ -164,6 +165,13 @@ The view must provide:
 - A **Leave** button calling `shell.leave()`.
 - On game over: a result banner, a **Rematch** button (`id="rematch"`, calling `session.requestRematch()`), "Waiting for …" / "… wants a rematch!" text (`id="rematch-status"`), and Leave.
 - A draw state if the game has one.
+
+**Width.** Pick the narrowest `layout` the game fits: `"narrow"` (520 px,
+a square board with its status above), `"medium"` (640 px) or `"wide"`
+(980 px, for two boards or a board with a side panel; the default). The
+lobby, the game and "How to play" then share that column (see **Page
+column** in `ARCHITECTURE.md`). Don't give the view's top-level box a
+`max-width`; let it fill `#game`.
 
 It must work at 360 px width with no horizontal scroll (boards sized by
 `width: 100%` and `aspect-ratio`), by touch and by keyboard. A nickname can be
@@ -240,6 +248,7 @@ windows (one private).
 - [ ] Friend match works in two windows: invite link, auto-join, full game, rematch, leave
 - [ ] No hidden information leaks over the wire. If the game has any, it uses commitments like Sea Battle.
 - [ ] All randomness comes from `SharedRandom`, through `TurnMatch` or a custom match
+- [ ] `layout` passed to `startGameShell()`, and the view's top-level box has no `max-width`
 - [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
 - [ ] Original name, text and art; nothing copied from papergames

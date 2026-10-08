@@ -191,7 +191,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 |---|---|
 | `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid (see **Colours and contrast**) |
+| `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid (see **Colours and contrast**), and the game page column (see **Page column**) |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
@@ -200,7 +200,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `session.js` | `Session`: the seated players (`players`, `index`, `me`, `others`, `opponent`), buffering of game messages, rematch votes (`$rematch`, every seat must vote), goodbye (`$bye`). The handshake (`$hello` with a protocol version, `$welcome`, `$roster`, `$start`) that turns links into a group. No DOM. |
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
-| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, connection-failure and player-left screens |
+| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, connection-failure and player-left screens. It also sets which view is on show for the page column. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
 | `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle, Chess, Backgammon and Ludo play CC0 recordings, see each game's `sounds/LICENSE.txt`) |
@@ -307,12 +307,32 @@ toggle's. Faded states use solid muted colours, not `opacity`, so their text
 keeps its contrast (a "Coming soon" card on the home page, for example).
 Disabled buttons are the exception: WCAG doesn't count inactive controls.
 
+**Page column.** A game page stacks the lobby, the game's settings, the game
+and "How to play" (`.rules`), and they all share one centred column, as wide
+as the view on show, so their edges line up. `startGameShell()` sets
+`data-view` (`lobby` or `game`) and `data-layout` on `<main class="page">`,
+and `theme.css` turns them into `--column`, which caps `#game`, `.rules` and
+the lobby cards:
+
+| View | Column at 1280 px | Games |
+|---|---|---|
+| Lobby, invite, waiting room, settings | 520 px | all |
+| Game, `layout: "narrow"` | 520 px | Tic Tac Toe, Connect 4, Chess, Checkers |
+| Game, `layout: "medium"` | 640 px | Gomoku, Backgammon |
+| Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo |
+
+Below that width the column is the page's width less its 16 px gutters. A
+game's own top-level box has no `max-width`, so it fills `#game`. The default
+is the widest, so a game that passes no `layout` is never squeezed: its own
+box keeps whatever width it sets, and its rules panel matches the column.
+`test/browser/layout.test.js` checks every ready game at 1280 and 360 px.
+
 ### Game (`public/<slug>/`)
 
 | File | Job |
 |---|---|
 | `index.html` | Page with `#lobby` and `#game` sections and the rules |
-| `main.js` | `startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`. |
+| `main.js` | `startGameShell({ slug, title, tagline, layout, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; `layout` picks the page column (see **Page column**). |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
 | `match.js` | Only for games with hidden information: one player's protocol state machine. Other games use `engine/turn-match.js`. |
 | `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`; custom-protocol games (Sea Battle) also export `startRobot(session)`. |

@@ -93,6 +93,7 @@ startGameShell({
   slug: "sea-battle",
   title: "Sea Battle",
   tagline: "Hide your fleet, find theirs. Grab gifts for heavy weapons.",
+  layout: "wide",
   createRobot: (session) => startRobot(session, { delay: AI_DELAY, config: settings.get() }),
   onSession: (session, root, shell) => mountSeaBattle(session, root, shell),
 });
