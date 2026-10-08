@@ -28,7 +28,7 @@ forwards messages between them (see **Groups** below).
 
 | Layer | Files | Knows about games? |
 |---|---|---|
-| Server | `server/app.js` (HTTP routes, static files, security headers), `server/signaling.js` (rooms, invite keys, knocks, join rate limits, relay), `server/limits.js` (per-client limits), `server/server.js` (entry) | Only slugs and `maxPlayers` from `public/games.json` |
+| Server | `server/app.js` (HTTP routes, static files, security headers), `server/signaling.js` (rooms, invite keys, knocks, join rate limits, relay), `server/limits.js` (per-client limits), `server/server.js` (entry). It imports the nickname rules from `public/engine/names.js`. | Only slugs and `maxPlayers` from `public/games.json` |
 | Engine (browser) | `public/engine/` | No |
 | Game | `public/<slug>/` | Yes, only its own |
 
@@ -89,7 +89,7 @@ upstream Node: `node:http`, the `upgrade` event, `fs.readFile` and `ws` (and so 
 - Codes are 4 characters from an alphabet without look-alikes (no 0/O, 1/I/L).
   A code is only a room's name, not a password (see **Who may join a room**).
 - Room size comes from the registry (`maxPlayers`, 2 to 8).
-- Names are cleaned and capped at 20 characters. Messages are capped at 64 KB,
+- Names follow the nickname rules (see **Nicknames**). Messages are capped at 64 KB,
   and `signal` data at 16 KB (see **Limits per client**).
 - A socket that has not pinged for 75 s is dropped.
 - When the server closes a socket on purpose, it first sends `error {code}`
@@ -159,11 +159,38 @@ the numbers are `DEFAULT_LIMITS` in `server/signaling.js`.
 - Counts live in memory and are dropped when they reach zero. Addresses are
   never logged.
 
+**Nicknames.** A nickname is shown to everyone in the room, and children use
+the site, so one set of rules in `public/engine/names.js` decides which names
+are used. The lobby, the session handshake and the server all call it; the
+server imports it straight from `public/engine/`, so the two can't drift apart.
+
+- Up to 20 characters (code points), trimmed, control characters removed.
+- Letters of any script (with their combining marks), digits, spaces and
+  `. _ - '` only. Curly apostrophes become `'`; the zero-width joiners that
+  Persian and some Indic names need are allowed.
+- No links (`://`, `www.`, `name.com` and other common endings, `dot com`)
+  and no `@handles`.
+- No word from a short blocklist of offensive English words, compared without
+  case or accents and through the swaps 0/o, 1/i/l, 3/e, 4/a, 5/s, $/s and
+  Cyrillic or Greek letters that look Latin. Most words count anywhere in the
+  name with separators removed (`f.u.c.k`); a few count only at the start of a
+  word (`shit`, so Matsushita is fine) or as a whole word (`ass`, `nazi`,
+  `cock`, so Assam, Nazir and Peacock are fine). Letters spelled out one by
+  one (`a s s`) count as a word. CamelCase splits words (`BigAss`).
+
+A name that breaks a rule is not used: the server shows `Player` instead, the
+session handshake `Friend`, and the lobby plays under its default (`Host`,
+`Guest` or `You`) and says why in one line under the nickname field. The
+lobby never stores such a name. Because the host checks each guest's `$hello`
+and guests check the host's `$roster` and `$start`, a modified page can't push
+a blocked name over WebRTC either. Nicknames are never logged.
+
 ### Engine (`public/engine/`)
 
 | Module | Job |
 |---|---|
 | `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
+| `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
 | `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
