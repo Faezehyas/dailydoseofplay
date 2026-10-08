@@ -395,6 +395,9 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
     const moves = await page.evaluate(() => window.ddp.match.state.moves);
     await page.click(`.enemy .cell[data-i="${i}"]`);
     await page.waitForFunction((n) => window.ddp.match.state.moves > n, moves);
+    // The log line waits for the shell to land; hits fire again without waiting.
+    const name = await page.evaluate(async (i) => (await import("/sea-battle/rules.js")).cellName(i), i);
+    await page.locator("#sb-log li.mine", { hasText: `You fired at ${name}:` }).waitFor();
     shots++;
   }
   assert.ok((await page.locator("#sb-log li").count()) >= 3);
