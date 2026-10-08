@@ -338,9 +338,11 @@ test("Ludo against three robots on a 360 px phone: die, hops, sounds, mute, keyb
   const errors = [];
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" });
   await ctx.addInitScript(() => (window.ddpSounds = []));
+  await ctx.addInitScript(() => (globalThis.ddpRobotPace = 0.1));
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
   const heard = () => page.evaluate(() => window.ddpSounds.slice());
+  await page.clock.install();
 
   await page.goto(`${srv.base}/`);
   await page.click('.game-card[data-slug="ludo"]');
@@ -417,6 +419,9 @@ test("Ludo against three robots on a 360 px phone: die, hops, sounds, mute, keyb
   await page.waitForTimeout(1500);
   assert.equal((await heard()).length, before, "no sound while muted");
   await page.click("#sound-toggle");
+  // Move a token if that roll left a choice, so the timer below starts on a roll.
+  const left = page.locator(".hit-token").first();
+  if (await left.count()) await left.dispatchEvent("click").catch(() => {});
 
   // The move timer: leave the die alone and the game rolls for you. Record
   // every move as it's applied: a forced move follows the roll 650 ms later,
@@ -428,6 +433,7 @@ test("Ludo against three robots on a 360 px phone: die, hops, sounds, mute, keyb
   });
   await wait(page, () => !document.querySelector("#ld-roll").disabled, undefined, 90_000);
   const waited = (await state(page)).ply;
+  await page.clock.fastForward("00:11");
   const auto = await (await wait(page, (n) => window.plays.find((p) => p.ply === n + 1)?.last, waited, 15_000)).jsonValue();
   await page.evaluate(() => window.stopPlays());
   assert.equal(auto.player, 0, "your roll was made for you");

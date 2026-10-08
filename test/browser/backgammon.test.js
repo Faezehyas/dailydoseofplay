@@ -217,6 +217,8 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   page.on("pageerror", (e) => errors.push(e.message));
   const sounds = new Map();
   page.on("response", (r) => r.url().includes("/backgammon/sounds/") && sounds.set(r.url().split("/").pop(), r.status()));
+  await page.addInitScript(() => (globalThis.ddpRobotPace = 0.1));
+  await page.clock.install();
 
   await page.goto(`${srv.base}/`);
   await page.click('.game-card[data-slug="backgammon"]');
@@ -324,9 +326,10 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   await wait(page, () => window.ddp.match.canMove() && window.ddp.match.state.rolled);
   assert.ok(await page.locator("#bg-offer").isHidden(), "asked once a game");
   // Changed your mind: the game moves for you to the end, and the robot
-  // keeps the same quick pace (its usual pause is 800 ms).
+  // keeps the same quick pace (its usual pause is 800 ms, at full pace).
   assert.equal(await page.locator("#bg-auto").innerText(), "Play for me");
   await page.evaluate(() => {
+    globalThis.ddpRobotPace = 1;
     window.__robotPauses = [];
     let sent = 0;
     window.ddp.match.on("events", ({ player, events }) => {
@@ -342,6 +345,7 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   assert.equal(await page.evaluate(() => window.ddp.robot.match.state.ply), await ply(page), "the robot checked every move");
   const pauses = await page.evaluate(() => window.__robotPauses);
   assert.ok(pauses.length && pauses.every((ms) => ms < 650), `the robot raced too: ${pauses.map(Math.round)}`);
+  await page.evaluate(() => (globalThis.ddpRobotPace = 0.1));
 
   // Another rematch: your last checker on your 1 point, so whatever you roll
   // there is only one way to play it. The game plays it and ends your turn.
@@ -364,9 +368,10 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   assert.ok(await noHorizontalScroll(page));
   await wait(page, () => window.ddp.match.state.rolled);
   await page.click(".bg-cell.src >> nth=0");
-  await page.waitForTimeout(1500);
+  await page.clock.fastForward(1500);
   await page.screenshot({ path: `${ARTIFACTS}/bg-8-robot-dark-clock.png`, fullPage: true });
-  await wait(page, () => window.ddp.match.phase === "over", undefined, 45_000);
+  await page.clock.fastForward(30_000);
+  await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
   assert.equal(await page.locator("#bg-result").innerText(), "Defeat");
   assert.equal(await page.locator("#bg-detail").innerText(), "Your clock ran out.");

@@ -193,6 +193,7 @@ test("Chutes and Ladders vs the robot on a 360 px phone: spinner, hops, sounds, 
   const errors = [];
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" });
   await ctx.addInitScript(() => (window.ddpSounds = []));
+  await ctx.addInitScript(() => (globalThis.ddpRobotPace = 0.1));
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
   const heard = () => page.evaluate(() => window.ddpSounds.slice());
@@ -354,6 +355,7 @@ test("Chutes and Ladders against three robots", { skip: !pw && "Playwright not i
   const errors = [];
   const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, reducedMotion: "reduce" })).newPage();
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript(() => (globalThis.ddpRobotPace = 0.1));
   await page.goto(`${srv.base}/chutes-and-ladders/`);
   await pick(page, "robots", 3);
   await page.click("#play-robot");

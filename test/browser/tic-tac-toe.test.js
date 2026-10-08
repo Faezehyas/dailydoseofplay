@@ -181,6 +181,8 @@ test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on th
   const errors = [];
   const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" })).newPage();
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript(() => (globalThis.ddpRobotPace = 0.1));
+  await page.clock.install();
 
   await page.goto(`${srv.base}/`);
   await page.click('.game-card[data-slug="tic-tac-toe"]');
@@ -232,8 +234,9 @@ test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on th
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
   assert.ok(await noHorizontalScroll(page));
-  await page.waitForTimeout(2500);
+  await page.clock.fastForward(2500);
   await page.screenshot({ path: `${ARTIFACTS}/ttt-5-robot-dark-clock.png`, fullPage: true });
+  await page.clock.fastForward(3000);
   await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
   assert.equal(await page.locator("#ttt-result").innerText(), "Defeat");
