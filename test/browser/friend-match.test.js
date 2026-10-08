@@ -516,6 +516,7 @@ test("the host's time settings apply to both friends; a shot's time running out 
     await srv.close();
   });
   const host = await (await browser.newContext()).newPage();
+  await host.clock.install();
   await host.goto(`${srv.base}/sea-battle/`);
   await pick(host, "shotSeconds", 10);
   await pick(host, "gameSeconds", 180);
@@ -525,6 +526,7 @@ test("the host's time settings apply to both friends; a shot's time running out 
   const guestCtx = await browser.newContext();
   await guestCtx.addInitScript(() => localStorage.setItem("ddp-sb-settings", JSON.stringify({ shotSeconds: 40, gameSeconds: 0 })));
   const guest = await guestCtx.newPage();
+  await guest.clock.install();
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
   await guest.click("#join-room");
   for (const p of [host, guest]) assert.equal(await p.locator("#sb-config").innerText(), "10 s a shot · 3 min each");
@@ -540,6 +542,7 @@ test("the host's time settings apply to both friends; a shot's time running out 
     assert.match(await p.locator("#clock-opp").innerText(), /[23]:\d\d/);
   }
   // Nobody clicks: after 10 s the shooter's browser fires on its own.
+  await shooter.clock.fastForward("00:11");
   await shooter.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 15_000 });
   await watcher.waitForFunction(() => window.ddp.match.state.moves >= 1, null, { timeout: 15_000 });
   assert.match(await shooter.locator("#toast").innerText(), /Time's up/);

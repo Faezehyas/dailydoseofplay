@@ -6,6 +6,7 @@
 // sees and how often it plays a random move instead.
 import { randInt } from "../engine/rng.js";
 import { matchRouter } from "../engine/session.js";
+import { robotPause } from "../engine/robot-pace.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { legalMoves, square, YARD, HOME, LAST_LOOP, LOOP, SAFE, STARTS, DIE } from "./rules.js";
 
@@ -166,7 +167,7 @@ export function startRobot(session, { rules, choose, delay, rng = Math.random })
       if (destroyed || !match.canMove()) return;
       if (ms < 0) schedule();
       else match.play(choose(match.state, match.me, rng));
-    }, ms < 0 ? 50 : ms);
+    }, robotPause(ms < 0 ? 50 : ms));
   }
   function newMatch(m) {
     match = new TurnMatch({ send: (msg) => session.send(msg), me: session.index, players: session.players.length, rules, m });

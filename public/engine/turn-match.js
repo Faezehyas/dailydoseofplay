@@ -17,6 +17,7 @@
 import { Emitter } from "./channel.js";
 import { SharedRandom, FairPlayError } from "./fair.js";
 import { matchRouter } from "./session.js";
+import { robotPause } from "./robot-pace.js";
 
 export class RuleError extends Error {
   name = "RuleError";
@@ -162,7 +163,7 @@ export function startTurnRobot(session, { rules, choose, delay = 600, rng = Math
     timer = setTimeout(() => {
       timer = null;
       if (!destroyed && match.canMove()) match.play(choose(match.state, match.me, rng));
-    }, delay);
+    }, robotPause(delay));
   }
   function newMatch(m) {
     match = new TurnMatch({ send: (msg) => session.send(msg), me: session.index, players: session.players.length, rules, m });

@@ -232,6 +232,7 @@ test("Checkers vs the robot on a 360 px phone: a full game by touch, then a rema
   const errors = [];
   const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" })).newPage();
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript(() => (globalThis.ddpRobotPace = 0.1));
 
   await page.goto(`${srv.base}/`);
   await page.click('.game-card[data-slug="checkers"]');

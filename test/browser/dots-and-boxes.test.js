@@ -233,6 +233,7 @@ test("Dots and Boxes vs the robot on a 360 px phone: touch, keyboard, pen stroke
   const errors = [];
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" });
   await ctx.addInitScript(() => (window.ddpSounds = []));
+  await ctx.addInitScript(() => (globalThis.ddpRobotPace = 0.1));
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
   const heard = () => page.evaluate(() => window.ddpSounds.slice());
