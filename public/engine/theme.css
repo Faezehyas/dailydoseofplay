@@ -120,6 +120,34 @@ body {
   overflow-wrap: break-word;
 }
 
+/* Player colours. A player's colour is the same on every screen, so "I'm
+   coral" holds for everyone: in a two-player game whoever moves first this
+   match is coral and the other teal. Styles for your side (.mine) and the
+   other side (.theirs) read --mine and --theirs, and a game sets data-you on
+   its root: "a" when you are coral, "b" when you are teal, "" while the coin
+   toss is still out, which leaves both sides neutral. */
+body,
+[data-you="a"] {
+  --mine: var(--accent);
+  --mine-text: var(--accent-text);
+  --theirs: var(--accent-2);
+  --theirs-text: var(--accent-2-text);
+}
+
+[data-you="b"] {
+  --mine: var(--accent-2);
+  --mine-text: var(--accent-2-text);
+  --theirs: var(--accent);
+  --theirs-text: var(--accent-text);
+}
+
+[data-you=""] {
+  --mine: var(--muted);
+  --mine-text: var(--text);
+  --theirs: var(--muted);
+  --theirs-text: var(--text);
+}
+
 a {
   color: var(--accent-2-text);
 }
