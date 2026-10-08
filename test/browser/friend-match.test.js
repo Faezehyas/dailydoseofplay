@@ -458,6 +458,49 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
   assert.deepEqual(errors, []);
 });
 
+test("a robot game on a 360 px phone with the longest nickname has no sideways scroll", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, hasTouch: true });
+  await ctx.addInitScript(() => localStorage.setItem("ddp-name", "W".repeat(20)));
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => errors.push(e.message));
+  const noSideScroll = async (when) =>
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 360, `no horizontal scroll ${when}`);
+
+  await page.goto(`${srv.base}/sea-battle/`);
+  await page.click("#play-robot");
+  await page.locator("#ready").waitFor();
+  await noSideScroll("while placing ships");
+  // A long name is cut short, but both scores stay on screen.
+  for (const id of ["#score-me", "#score-opp"]) {
+    const box = await page.locator(id).boundingBox();
+    assert.ok(box && box.x >= 0 && box.x + box.width <= 360, `${id} is on screen`);
+  }
+
+  await page.click("#ready");
+  await page.waitForFunction(() => window.ddp.match.phase === "playing", null, { timeout: 10_000 });
+  await page.waitForFunction(() => window.ddp.match.canFire(), null, { timeout: 15_000 });
+  // Every weapon in stock (local only, never fired) and the carpet bomb's row/column button showing.
+  await page.evaluate(() => {
+    const m = window.ddp.match;
+    Object.assign(m.state.inventory[m.me], { big: 1, rain: 1, nuke: 1, carpet: 1 });
+    m.emit("update");
+  });
+  await page.click('.weapon[data-w="carpet"]');
+  await page.locator("#carpet-dir").waitFor();
+  await noSideScroll("with every weapon in the bar");
+  for (const box of await page.locator(".sb-weapons button").evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect().toJSON()))) {
+    assert.ok(box.left >= 0 && box.right <= 360 && box.height >= 44, "each weapon is on screen and big enough to tap");
+  }
+  assert.deepEqual(errors, []);
+});
+
 const pick = (page, name, value) => page.click(`#sb-settings label:has(input[name="sb-${name}"][value="${value}"])`);
 
 test("the host's time settings apply to both friends; a shot's time running out fires a random shot", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
