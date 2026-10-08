@@ -100,11 +100,11 @@
 }
 
 .bg-score .mine dd {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .bg-score .theirs dd {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 /* ---------- status ---------- */
@@ -117,7 +117,7 @@
 }
 
 .bg-status.mine {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .bg-config,
@@ -256,7 +256,7 @@
   min-height: 40px;
   padding: 4px 12px;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   background: var(--surface-2);
   font-weight: 700;
   font-size: 0.9rem;
@@ -272,7 +272,7 @@
 
 .seg-opt input:checked + span {
   background: var(--accent);
-  border-color: transparent;
+  border-color: var(--accent-text);
   color: var(--accent-ink);
 }
 
@@ -306,7 +306,7 @@
 }
 
 .bg-over h2.win {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .bg-over .detail {

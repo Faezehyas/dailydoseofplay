@@ -167,7 +167,13 @@ The view must provide:
 
 It must work at 360 px width with no horizontal scroll (boards sized by
 `width: 100%` and `aspect-ratio`), by touch and by keyboard. Colors come only
-from theme tokens, so light and dark both work.
+from theme tokens, so light and dark both work. Keep WCAG AA contrast (see
+**Colours and contrast** in `ARCHITECTURE.md`): coral or teal text uses
+`var(--accent-text)` or `var(--accent-2-text)`, never `var(--accent)` or
+`var(--accent-2)`; text on a coral or teal fill uses `var(--accent-ink)`;
+inputs and segmented options are outlined in `var(--control-border)`; and
+fade text with a muted colour, not `opacity`. A new game-specific colour
+used as text needs 4.5:1 on its background in both themes.
 
 ### 6. Register it
 
@@ -231,6 +237,7 @@ windows (one private).
 - [ ] No hidden information leaks over the wire. If the game has any, it uses commitments like Sea Battle.
 - [ ] All randomness comes from `SharedRandom`, through `TurnMatch` or a custom match
 - [ ] 360 px wide with no horizontal scroll; light and dark; touch and keyboard
+- [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
 - [ ] Original name, text and art; nothing copied from papergames
 - [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
 - [ ] `npm test` passes; `npm run test:browser` passes or is reported as skipped

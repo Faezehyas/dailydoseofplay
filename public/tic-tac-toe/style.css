@@ -118,11 +118,11 @@
 }
 
 .ttt-score .mine dd {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .ttt-score .theirs dd {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 /* ---------- status ---------- */
@@ -135,7 +135,7 @@
 }
 
 .ttt-status.mine {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .ttt-config,
@@ -349,7 +349,7 @@
 }
 
 .ttt-over h2.win {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .ttt-over .detail {
