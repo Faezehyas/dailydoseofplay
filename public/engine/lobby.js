@@ -2,12 +2,14 @@
 // waiting room, and hand-off of a Session to the game. How players get
 // connected lives in room.js; this file is only the UI around it.
 //
-//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots })
+//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout })
 //
 // onSession(session, root) mounts the game in `root` and returns { destroy }.
 // createRobot(session) drives one robot seat over an in-memory group; robots
 // is how many seats (a number, or a function read when a robot game starts).
 // maxPlayers must match the game's entry in games.json (the server enforces it).
+// layout is the page column while the game is on show: "narrow", "medium" or
+// "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
 import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
@@ -46,10 +48,19 @@ const NO_TURN_HELP =
   "(mobile data, office or school Wi-Fi, VPNs, strict firewalls) block direct connections. We don't run a relay " +
   "(TURN) server, so there's no fallback. Try both joining from home Wi-Fi, turn off VPNs, or play vs the robot.";
 
-export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1 }) {
+const LAYOUTS = ["narrow", "medium", "wide"];
+
+export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide" }) {
   initShell({ title });
   const lobbyRoot = $("#lobby");
   const gameRoot = $("#game");
+  // The lobby, settings, game and "How to play" share one column (theme.css).
+  const page = lobbyRoot.closest(".page");
+  const showView = (name) => {
+    if (page) page.dataset.view = name;
+  };
+  if (page) page.dataset.layout = LAYOUTS.includes(layout) ? layout : "wide";
+  showView("lobby");
   const duel = maxPlayers === 2;
   const state = { room: null, session: null, game: null, robot: null, robots: [], attempt: 0 };
   window.ddp = state; // handy for debugging and browser tests
@@ -59,6 +70,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // ---------- views ----------
   function view(...children) {
     lobbyRoot.replaceChildren(el("div", { class: "card lobby-card" }, ...children));
+    showView("lobby");
     lobbyRoot.hidden = false;
     gameRoot.hidden = true;
   }
@@ -359,6 +371,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   function startSession(session) {
     state.session = session;
     clearRoomParam();
+    showView("game");
     lobbyRoot.hidden = true;
     gameRoot.hidden = false;
     gameRoot.replaceChildren();

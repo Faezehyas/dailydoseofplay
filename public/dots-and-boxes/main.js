@@ -30,6 +30,7 @@ startGameShell({
   slug: "dots-and-boxes",
   title: "Dots and Boxes",
   tagline: "Join the dots, close a box, go again. Whoever ends with the most boxes wins.",
+  layout: "wide",
   createRobot: (session) => {
     const config = settings.get();
     return startRobot(session, { rules: makeRules(config), level: config.level });
