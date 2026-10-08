@@ -299,6 +299,10 @@ h3 {
   color: var(--muted);
 }
 
+.field .field-problem {
+  color: var(--danger);
+}
+
 input[type="text"] {
   width: 100%;
   min-height: 44px;

@@ -1,0 +1,74 @@
+// Headless-browser test for nickname rules: the lobby says why a nickname
+// isn't used, never stores it, and in a friend game neither player sees a
+// blocked name. Skips if Playwright is missing.
+//
+//   npm run test:browser
+import test from "node:test";
+import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { startServer } from "../helpers.js";
+
+async function loadPlaywright() {
+  const require = createRequire(import.meta.url);
+  const candidates = [process.env.PLAYWRIGHT_MODULE, "playwright"];
+  try {
+    candidates.push(path.join(execSync("npm root -g", { encoding: "utf8" }).trim(), "playwright"));
+  } catch {}
+  for (const c of candidates.filter(Boolean)) {
+    try {
+      return require(c);
+    } catch {}
+  }
+  return null;
+}
+
+const pw = await loadPlaywright();
+const names = (page) => page.evaluate(() => window.ddp.session.players.map((p) => p.name));
+
+test("the lobby explains a blocked nickname, and a friend game shows default names instead", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  async function open(name, opts = {}) {
+    const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, ...opts })).newPage();
+    page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
+    return page;
+  }
+
+  // On a phone: each kind of problem gets its own line under the field, and a good name clears it.
+  const host = await open("host", { viewport: { width: 360, height: 760 }, hasTouch: true });
+  await host.goto(`${srv.base}/tic-tac-toe/`);
+  const problem = host.locator("#nickname-problem");
+  assert.equal(await problem.isVisible(), false);
+  for (const [typed, why] of [["sh1t", /kinder/], ["evil.com", /links or @handles/], ["Bo!", /only letters/]]) {
+    await host.fill("#nickname", typed);
+    assert.match(await problem.innerText(), why, typed);
+  }
+  await host.fill("#nickname", "Ada");
+  assert.equal(await problem.isVisible(), false);
+  assert.equal(await host.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "no sideways scroll");
+
+  // A blocked name is never stored, and the host plays under the default name.
+  await host.fill("#nickname", "f.u.c.k");
+  await host.locator("#nickname").blur();
+  assert.equal(await host.evaluate(() => localStorage.getItem("ddp-name")), null);
+  await host.click("#play-friend");
+  const invite = await host.locator("#invite-link").inputValue();
+
+  // A name stored before this rule existed is not used either.
+  const guest = await open("guest");
+  await guest.addInitScript(() => localStorage.setItem("ddp-name", "BigAss"));
+  await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.waitForFunction(() => window.ddp.session, null, { timeout: 20_000 });
+  await host.waitForFunction(() => window.ddp.session, null, { timeout: 20_000 });
+  assert.deepEqual(await names(host), ["Host", "Guest"]);
+  assert.deepEqual(await names(guest), ["Host", "Guest"]);
+  for (const page of [host, guest]) assert.doesNotMatch(await page.locator("body").innerText(), /f\.u\.c\.k|BigAss/);
+  assert.deepEqual(errors, []);
+});

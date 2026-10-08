@@ -2,6 +2,7 @@
 // for WebRTC SDP/ICE blobs. Gameplay never passes through here.
 import { randomBytes } from "node:crypto";
 import { clientIp, createQuota, createTokenBucket } from "./limits.js";
+import { cleanName } from "../public/engine/names.js";
 
 const ROOM_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 4;
@@ -144,11 +145,6 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
     broadcast(room, { t: "peer", id: ws.meta.id, name }, ws.meta.id);
   }
 
-  function cleanName(raw) {
-    const name = String(raw ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 20);
-    return name || "Player";
-  }
-
   function onMessage(ws, raw) {
     if (ws.readyState !== 1) return; // refused or closing: ignore what was already in flight
     if (!ws.meta.bucket.take()) return refuse(ws, "too_fast");
@@ -170,7 +166,7 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
         leave(ws);
         if (!ipRooms.take(ws.meta.ip)) return send(ws, { t: "error", code: "too_many_rooms" });
         const code = newRoomCode(game);
-        const name = cleanName(msg.name);
+        const name = cleanName(msg.name, "Player");
         const secret = newInviteKey();
         rooms.set(key(game, code), {
           game,
@@ -201,7 +197,7 @@ export function createSignaling({ games, log = () => {}, limits = {}, clientIpHe
         }
         if (room.peers.has(ws.meta.id) || room.knocks.has(ws.meta.id)) return send(ws, { t: "error", code: "already_in_room" });
         if (room.peers.size >= games.get(game).maxPlayers) return send(ws, { t: "error", code: "room_full" });
-        const name = cleanName(msg.name);
+        const name = cleanName(msg.name, "Player");
         if (keyOk) return admit(ws, room, name);
         if (room.knocks.size >= MAX_KNOCKS) return send(ws, { t: "error", code: "room_busy" });
         leave(ws);
