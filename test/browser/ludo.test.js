@@ -415,11 +415,18 @@ test("Ludo against three robots on a 360 px phone: die, hops, sounds, mute, keyb
   assert.equal((await heard()).length, before, "no sound while muted");
   await page.click("#sound-toggle");
 
-  // The move timer: leave the die alone and the game rolls for you.
+  // The move timer: leave the die alone and the game rolls for you. Record
+  // every move as it's applied: a forced move follows the roll 650 ms later,
+  // and both can land between two polls.
+  await page.evaluate(() => {
+    const m = window.ddp.match;
+    window.plays = [];
+    window.stopPlays = m.on("events", () => window.plays.push({ ply: m.state.ply, last: structuredClone(m.state.last) }));
+  });
   await wait(page, () => !document.querySelector("#ld-roll").disabled, undefined, 90_000);
   const waited = (await state(page)).ply;
-  // Read the roll in the same check that sees it: a forced move follows 650 ms later.
-  const auto = await (await wait(page, (n) => window.ddp.match.state.ply > n && window.ddp.match.state.last, waited, 15_000)).jsonValue();
+  const auto = await (await wait(page, (n) => window.plays.find((p) => p.ply === n + 1)?.last, waited, 15_000)).jsonValue();
+  await page.evaluate(() => window.stopPlays());
   assert.equal(auto.player, 0, "your roll was made for you");
   assert.equal(auto.type, "roll");
 
