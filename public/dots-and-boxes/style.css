@@ -1,7 +1,8 @@
 /* Dots and Boxes view. Shared tokens come from /engine/theme.css; the
    paper's own palette (sheet, graph lines, ink) is defined here for light
-   and dark. Yours is coral (--accent), theirs teal (--accent-2);
-   text in those colours uses --accent-text and --accent-2-text. */
+   and dark. Your colour (.p0, .mine) is --mine and theirs (.p1, .theirs)
+   --theirs: coral for whoever draws first this match, teal for the other,
+   set by data-you in /engine/theme.css. */
 .dots-boxes {
   --db-paper: #fffdf6;
   --db-paper-edge: #e9dfcd;
@@ -14,8 +15,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
-  max-width: 960px;
-  margin: 0 auto;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -76,13 +75,13 @@
 }
 
 .db-players .who.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border-color: var(--mine);
+  box-shadow: 0 0 0 2px var(--mine) inset;
 }
 
 .db-players .who.p1.active {
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 2px var(--accent-2) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 2px var(--theirs) inset;
 }
 
 /* The swatch carries the initial drawn in your boxes. */
@@ -93,7 +92,7 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--mine);
   color: var(--accent-ink);
   font-size: 0.75rem;
   font-weight: 900;
@@ -101,7 +100,7 @@
 }
 
 .db-players .p1 .swatch {
-  background: var(--accent-2);
+  background: var(--theirs);
 }
 
 .db-players .label {
@@ -180,11 +179,11 @@
 }
 
 .db-score .mine dd {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .db-score .theirs dd {
-  color: var(--accent-2-text);
+  color: var(--theirs-text);
 }
 
 .db-status {
@@ -196,7 +195,7 @@
 }
 
 .db-status.mine {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .db-config,
@@ -244,13 +243,13 @@
 
 .db-clocks .clock.active {
   color: var(--text);
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 1px var(--theirs) inset;
 }
 
 .db-clocks .clock.mine.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  border-color: var(--mine);
+  box-shadow: 0 0 0 1px var(--mine) inset;
 }
 
 .db-clocks .clock.low {
@@ -276,12 +275,12 @@
 .db-movebar > span {
   display: block;
   height: 100%;
-  background: var(--accent-2);
+  background: var(--theirs);
   transition: width 0.2s linear;
 }
 
 .db-movebar.mine > span {
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .db-movebar.low > span {
@@ -378,12 +377,12 @@
 
 /* Board units grow with the board, so lines get a little weight back on big boards. */
 .db-board .line .ink {
-  stroke: var(--accent);
+  stroke: var(--mine);
   stroke-width: calc(4px + var(--db-n, 4) * 0.95px);
 }
 
 .db-board .line.p1 .ink {
-  stroke: var(--accent-2);
+  stroke: var(--theirs);
 }
 
 .db-board .line .sheen {
@@ -408,7 +407,7 @@
 
 .db-board .preview {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--mine);
   stroke-width: calc(4px + var(--db-n, 4) * 0.95px);
   stroke-linecap: round;
   stroke-dasharray: 0.07 0.06;
@@ -434,16 +433,16 @@
 
 /* Claimed boxes: a tint, a pencil hatch and the owner's initial. */
 .db-board .box .tint {
-  fill: color-mix(in srgb, var(--accent) var(--db-tint), transparent);
+  fill: color-mix(in srgb, var(--mine) var(--db-tint), transparent);
 }
 
 .db-board .box.p1 .tint {
-  fill: color-mix(in srgb, var(--accent-2) var(--db-tint), transparent);
+  fill: color-mix(in srgb, var(--theirs) var(--db-tint), transparent);
 }
 
 .db-board .box .hatch {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--mine);
   stroke-width: 2.8;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -452,11 +451,11 @@
 }
 
 .db-board .box.p1 .hatch {
-  stroke: var(--accent-2);
+  stroke: var(--theirs);
 }
 
 .db-board .box .initial {
-  fill: var(--accent-text);
+  fill: var(--mine-text);
   font-size: 46px;
   font-weight: 900;
   text-anchor: middle;
@@ -468,23 +467,23 @@
 }
 
 .db-board .box.p1 .initial {
-  fill: var(--accent-2-text);
+  fill: var(--theirs-text);
 }
 
 .db-board .ring {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--mine);
   stroke-width: 4;
 }
 
 .db-board .ring.p1,
 .db-board .fleck.p1 {
-  stroke: var(--accent-2);
-  fill: var(--accent-2);
+  stroke: var(--theirs);
+  fill: var(--theirs);
 }
 
 .db-board .fleck {
-  fill: var(--accent);
+  fill: var(--mine);
 }
 
 .db-board .ring.p1 {
@@ -524,12 +523,12 @@
 
 .db-tally-bar .mine {
   left: 0;
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .db-tally-bar .theirs {
   right: 0;
-  background: var(--accent-2);
+  background: var(--theirs);
 }
 
 .db-tally-text {
@@ -544,11 +543,11 @@
 }
 
 .db-tally-text .mine {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .db-tally-text .theirs {
-  color: var(--accent-2-text);
+  color: var(--theirs-text);
 }
 
 /* ---------- game over ---------- */

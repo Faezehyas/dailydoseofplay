@@ -1,7 +1,8 @@
 /* Chutes and Ladders view. Shared tokens come from /engine/theme.css; the
    board's own palette (pastel squares, chutes, wood, lawn) is defined here
-   for light and dark. Yours is coral (--accent), the next player's teal
-   (--accent-2), then violet (--cl-p2) and amber (--cl-p3). */
+   for light and dark. Players take colours by seat, the same on every
+   screen: coral (--accent), teal (--accent-2), violet (--cl-p2) and amber
+   (--cl-p3). */
 .chutes-ladders {
   --cl-p2: #7c55e6;
   --cl-p3: #b06d00;
@@ -42,8 +43,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
-  max-width: 960px;
-  margin: 0 auto;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -236,11 +235,11 @@
   line-height: 1.2;
 }
 
-.cl-score .mine dd {
+.cl-score .p0 dd {
   color: var(--accent-text);
 }
 
-.cl-score .theirs dd {
+.cl-score .p1 dd {
   color: var(--accent-2-text);
 }
 
@@ -262,6 +261,18 @@
 
 .cl-status.mine {
   color: var(--accent-text);
+}
+
+.cl-status.mine[data-who="p1"] {
+  color: var(--accent-2-text);
+}
+
+.cl-status.mine[data-who="p2"] {
+  color: var(--cl-p2);
+}
+
+.cl-status.mine[data-who="p3"] {
+  color: var(--cl-p3);
 }
 
 .cl-config,

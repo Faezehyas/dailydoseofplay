@@ -21,6 +21,7 @@ startGameShell({
   slug: "checkers",
   title: "Checkers",
   tagline: "Hop, capture, crown a king. Leave your friend without a piece to move.",
+  layout: "narrow",
   createRobot: (session) => {
     const { level, ...config } = settings.get();
     return startTurnRobot(session, {
@@ -292,6 +293,8 @@ function mountCheckers(session, root, shell) {
     const st = match?.state;
     const phase = match?.phase || "setup";
     root.querySelector(".checkers").dataset.phase = phase;
+    // Coral is whoever moves first this match, on every screen.
+    root.querySelector(".checkers").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     const legal = myMoves();
     if (!legal.length || (picked && !legal.some((m) => startsWith(m, picked)))) picked = null;
     renderPills();

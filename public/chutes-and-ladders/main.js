@@ -34,6 +34,7 @@ startGameShell({
   slug: "chutes-and-ladders",
   title: "Chutes and Ladders",
   tagline: "Spin, hop, climb the ladders and dodge the chutes. First to square 100 wins.",
+  layout: "wide",
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,
   robots: () => settings.get().robots,
@@ -415,9 +416,10 @@ function mountGame(session, root, shell) {
   const count = session.players.length;
   const duel = count === 2;
   const seats = session.players.map((p) => p.seat);
-  // Colours go by whose pawn it is on this screen: yours is p0, the others p1, p2, p3 in seat order.
+  // You come first in the player list, the others in seat order.
   const order = [me, ...session.others.map((p) => p.seat)];
-  const colorOf = (p) => order.indexOf(p);
+  // Colours go by seat, so a player has the same colour on every screen: p0 coral, p1 teal, p2 violet, p3 amber.
+  const colorOf = (p) => p;
   const oppName = session.opponent.name;
   const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
   const nameOf = (p) => (p === me ? "You" : session.players[p].name);
@@ -460,7 +462,7 @@ function mountGame(session, root, shell) {
     : el("div", { class: "cl-players many" }, pills.map((p) => p.node));
   const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
   const scoreBox = el("dl", { class: "cl-score", id: "cl-score", "aria-label": "Score" });
-  const status = el("p", { class: "cl-status", id: "cl-status", role: "status", "aria-live": "polite" });
+  const status = el("p", { class: "cl-status", id: "cl-status", role: "status", "aria-live": "polite", dataset: { who: `p${colorOf(me)}` } });
   const board = buildBoard(count);
   const spinnerParts = spinnerArt();
   const spinner = makeSpinner(spinnerParts.arrow, () => !destroyed);
@@ -489,7 +491,7 @@ function mountGame(session, root, shell) {
       note,
     ),
   );
-  // Pawns are coloured by whose they are: yours is p0 (coral), the first other p1 (teal), then p2, p3.
+  // Pawns are coloured by seat: p0 coral, p1 teal, p2 violet, p3 amber.
   const pawnOf = (player) => board.pawns[colorOf(player)];
   // The seats whose pawns stand on square n once `player` is there too.
   const crowd = (n, player) => seats.filter((p) => p === player || shown[p] === n);

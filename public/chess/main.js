@@ -76,6 +76,7 @@ startGameShell({
   slug: "chess",
   title: "Chess",
   tagline: "Sixty-four squares, two armies, one king to trap. Your move.",
+  layout: "narrow",
   createRobot(session) {
     const config = settings.get();
     return startRobot(session, { rules: makeRules(config), level: config.level, timeMs: ROBOT_SEARCH_MS });
@@ -586,6 +587,8 @@ function mountChess(session, root, shell) {
     const st = match?.state;
     const phase = match?.phase || "setup";
     root.querySelector(".chess").dataset.phase = phase;
+    // Coral is White, who moves first, on every screen.
+    root.querySelector(".chess").dataset.you = st ? (st.white === me ? "a" : "b") : "";
     if (phase === "playing" && !squares.length) buildBoard();
     renderPills();
     renderScore();

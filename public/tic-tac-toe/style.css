@@ -3,8 +3,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  max-width: 480px;
-  margin: 0 auto;
 }
 
 /* "You vs Robot" stays together, centred over the scoreboard, with Leave on
@@ -48,8 +46,13 @@
 }
 
 .ttt-players .who.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 2px var(--theirs) inset;
+}
+
+.ttt-players .who.me.active {
+  border-color: var(--mine);
+  box-shadow: 0 0 0 2px var(--mine) inset;
 }
 
 .ttt-players .name {
@@ -118,11 +121,11 @@
 }
 
 .ttt-score .mine dd {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .ttt-score .theirs dd {
-  color: var(--accent-2-text);
+  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */
@@ -135,7 +138,7 @@
 }
 
 .ttt-status.mine {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .ttt-config,
@@ -174,13 +177,13 @@
 
 .ttt-clocks .clock.active {
   color: var(--text);
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 1px var(--theirs) inset;
 }
 
 .ttt-clocks .clock.mine.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  border-color: var(--mine);
+  box-shadow: 0 0 0 1px var(--mine) inset;
 }
 
 .ttt-clocks .clock.low {
@@ -206,12 +209,12 @@
 .ttt-movebar > span {
   display: block;
   height: 100%;
-  background: var(--accent-2);
+  background: var(--theirs);
   transition: width 0.2s linear;
 }
 
 .ttt-movebar.mine > span {
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .ttt-movebar.low > span {

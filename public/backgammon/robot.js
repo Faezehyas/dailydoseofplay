@@ -6,6 +6,7 @@
 // be hit, every level plays its best move.
 import { randInt } from "../engine/rng.js";
 import { matchRouter } from "../engine/session.js";
+import { robotPause } from "../engine/robot-pace.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { BAR, OFF, CHECKERS, legalPlays, pipCount } from "./rules.js";
 
@@ -175,7 +176,7 @@ export function startRobot(session, { rules, choose, delay, rng = Math.random })
   let destroyed = false;
   function schedule() {
     if (destroyed || timer || !match.canMove()) return;
-    const ms = delay(match.state, match.me);
+    const ms = robotPause(delay(match.state, match.me));
     timer = setTimeout(() => {
       timer = null;
       if (!destroyed && match.canMove()) match.play(choose(match.state, match.me, rng, ms));

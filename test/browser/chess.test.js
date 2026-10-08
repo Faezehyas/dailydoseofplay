@@ -248,6 +248,7 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   await ctx.addInitScript(countEffects);
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.clock.install();
 
   await page.goto(`${srv.base}/`);
   await page.click('.game-card[data-slug="chess"]');
@@ -288,10 +289,14 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
     if (move.promo) await page.tap(`.promo-opt[data-promo="${move.promo}"]`);
     await wait(page, (k) => window.ddp.match.state.moves.length > k || window.ddp.match.phase !== "playing", n);
     assert.ok(await page.locator("#chess-promo").isHidden(), "the promotion picker closes");
-    // How long the robot takes to answer.
+    // How long the robot takes to answer, over its first few replies; then
+    // it speeds up for the rest of the game.
     const t0 = Date.now();
     await wait(page, (k) => window.ddp.match.state.moves.length > k + 1 || window.ddp.match.phase !== "playing", n);
-    if ((await page.evaluate(() => window.ddp.match.phase)) === "playing") replies.push(Date.now() - t0);
+    if (replies.length < 4 && (await page.evaluate(() => window.ddp.match.phase)) === "playing") {
+      replies.push(Date.now() - t0);
+      if (replies.length === 4) await page.evaluate(() => (globalThis.ddpRobotPace = 0.1));
+    }
     taps++;
   }
   await wait(page, () => window.ddp.match.phase === "over");
@@ -315,9 +320,10 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
   assert.ok(await noHorizontalScroll(page));
-  await page.waitForTimeout(3000);
+  await page.clock.fastForward(3000);
   await page.screenshot({ path: `${ARTIFACTS}/chess-7-robot-dark-clock.png`, fullPage: true });
-  await wait(page, () => window.ddp.match.phase === "over", undefined, 45_000);
+  await page.clock.fastForward(28_000);
+  await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
   assert.equal(await page.locator("#chess-result").innerText(), "Defeat");
   assert.equal(await page.locator("#chess-detail").innerText(), "Your clock ran out.");

@@ -30,6 +30,7 @@ startGameShell({
   slug: "dots-and-boxes",
   title: "Dots and Boxes",
   tagline: "Join the dots, close a box, go again. Whoever ends with the most boxes wins.",
+  layout: "wide",
   createRobot: (session) => {
     const config = settings.get();
     return startRobot(session, { rules: makeRules(config), level: config.level });
@@ -204,7 +205,7 @@ function mountGame(session, root, shell) {
   const initial = (name) => (String(name).trim()[0] || "?").toUpperCase();
   const initials = { [me]: initial(session.me.name), [opp]: initial(oppName) };
   const score = { me: 0, them: 0, draws: 0 };
-  const cls = (player) => (player === me ? "p0" : "p1"); // yours coral, theirs teal
+  const cls = (player) => (player === me ? "p0" : "p1"); // yours --mine, theirs --theirs (see data-you)
   let config = null;
   let rules = null;
   let geo = null;
@@ -708,6 +709,8 @@ function mountGame(session, root, shell) {
     const st = match?.state;
     const phase = match?.phase || "setup";
     root.querySelector(".dots-boxes").dataset.phase = phase;
+    // Coral is whoever moves first this match, on every screen.
+    root.querySelector(".dots-boxes").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     const counts = shownScore();
     renderPills(counts);
     renderScore();

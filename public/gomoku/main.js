@@ -20,6 +20,7 @@ startGameShell({
   slug: "gomoku",
   title: "Gomoku",
   tagline: "Fifteen lines each way, five stones to win. Build two threats, block every one of theirs.",
+  layout: "medium",
   createRobot: (session) =>
     startTurnRobot(session, {
       rules: makeRules(settings.get()),
@@ -226,6 +227,8 @@ function mountGomoku(session, root, shell) {
     const st = match?.state;
     const phase = match?.phase || "setup";
     root.querySelector(".gomoku").dataset.phase = phase;
+    // Coral is whoever moves first this match, on every screen.
+    root.querySelector(".gomoku").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills();
     renderScore();
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);

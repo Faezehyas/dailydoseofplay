@@ -119,6 +119,7 @@ startGameShell({
   slug: "<slug>",
   title: "<Name>",
   tagline: "<one original sentence>",
+  layout: "narrow", // the page column while playing: "narrow", "medium" or "wide"
   createRobot: (session) => startTurnRobot(session, { rules, choose: chooseMove, delay: 600 }),
   onSession(session, root, shell) {
     const router = matchRouter(session);
@@ -165,6 +166,13 @@ The view must provide:
 - On game over: a result banner, a **Rematch** button (`id="rematch"`, calling `session.requestRematch()`), "Waiting for …" / "… wants a rematch!" text (`id="rematch-status"`), and Leave.
 - A draw state if the game has one.
 
+**Width.** Pick the narrowest `layout` the game fits: `"narrow"` (520 px,
+a square board with its status above), `"medium"` (640 px) or `"wide"`
+(980 px, for two boards or a board with a side panel; the default). The
+lobby, the game and "How to play" then share that column (see **Page
+column** in `ARCHITECTURE.md`). Don't give the view's top-level box a
+`max-width`; let it fill `#game`.
+
 It must work at 360 px width with no horizontal scroll (boards sized by
 `width: 100%` and `aspect-ratio`), by touch and by keyboard. A nickname can be
 one 20-letter word, wider than a phone. `theme.css` breaks long words in text
@@ -205,6 +213,8 @@ no change.
 - **Protocol** (in `match.test.js` or `robot.test.js`): pair two `TurnMatch`es over `localPair()` + `openSession()` + `matchRouter()` (see `public/engine/turn-match.test.js`), play a full game, and assert both states are equal. For more than two players, seat them with `localRoom()` from `engine/room.js` and pass `players` to each `TurnMatch` (see the three-player test in `turn-match.test.js`).
 - **Message size:** add the game to `GAMES` in `test/message-size.test.js` (its biggest board and most players). It plays a full match and fails if a message is over 4 K characters; a browser cuts off a player whose message is over 64 K (see **Message size** in `ARCHITECTURE.md`). Send moves, not whole states.
 - **Browser (recommended):** add `test/browser/<slug>.test.js` modelled on `test/browser/friend-match.test.js`. Host clicks `#play-friend`, the guest opens `#invite-link`, both play through `window.ddp.match`, then a rematch.
+  - Don't wait in real time. In a robot game, set `globalThis.ddpRobotPace = 0.1` with `addInitScript` so the robot answers in a tenth of its usual pause (leave it at 1 only where the test checks the robot's pace). To let a clock run out, call `page.clock.install()` before the page loads and `page.clock.fastForward()` past the limit.
+  - Files run in parallel, but the tests in one file run one after another. Give a long test its own file, and share the game's helpers through `test/browser/<slug>.shared.js` (see Ludo's).
 
 Run `npm test` and `npm run test:browser`. All tests must pass. Never skip or
 weaken an existing test to get green.
@@ -242,8 +252,10 @@ windows (one private).
 - [ ] Friend match works in two windows: invite link, auto-join, full game, rematch, leave
 - [ ] No hidden information leaks over the wire. If the game has any, it uses commitments like Sea Battle.
 - [ ] All randomness comes from `SharedRandom`, through `TurnMatch` or a custom match
+- [ ] `layout` passed to `startGameShell()`, and the view's top-level box has no `max-width`
 - [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
+- [ ] Each player has the same colour on every screen (see **Player colours** in `ARCHITECTURE.md`): style `.mine` and `.theirs` with `--mine` and `--theirs`, and set `data-you` on the game's root
 - [ ] Original name, text and art; nothing copied from papergames
 - [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
 - [ ] `npm test` passes; `npm run test:browser` passes or is reported as skipped
@@ -261,6 +273,7 @@ windows (one private).
 | `public/engine/group.js` | The group transport: send to everyone, receive `(msg, fromSeat)`; today a star through the host |
 | `public/engine/session.js` | `Session` (players, rematch, leave), the start handshake, and `matchRouter()` |
 | `public/engine/turn-match.js` | `TurnMatch` and `startTurnRobot()` for open-information turn games |
+| `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
 | `public/engine/shell.js` | Header, theme toggle, nickname, `el()`, `toast()` |
 | `public/engine/theme.css` | Design tokens (light and dark) and shared components |

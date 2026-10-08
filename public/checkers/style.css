@@ -3,8 +3,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  max-width: 480px;
-  margin: 0 auto;
 }
 
 .ck-top {
@@ -41,8 +39,13 @@
 }
 
 .ck-players .who.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 2px var(--theirs) inset;
+}
+
+.ck-players .who.me.active {
+  border-color: var(--mine);
+  box-shadow: 0 0 0 2px var(--mine) inset;
 }
 
 .ck-players .name {
@@ -123,11 +126,11 @@
 }
 
 .ck-score .mine dd {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .ck-score .theirs dd {
-  color: var(--accent-2-text);
+  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */
@@ -140,7 +143,7 @@
 }
 
 .ck-status.mine {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .ck-config,
@@ -179,13 +182,13 @@
 
 .ck-clocks .clock.active {
   color: var(--text);
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 1px var(--theirs) inset;
 }
 
 .ck-clocks .clock.mine.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  border-color: var(--mine);
+  box-shadow: 0 0 0 1px var(--mine) inset;
 }
 
 .ck-clocks .clock.low {
@@ -211,12 +214,12 @@
 .ck-movebar > span {
   display: block;
   height: 100%;
-  background: var(--accent-2);
+  background: var(--theirs);
   transition: width 0.2s linear;
 }
 
 .ck-movebar.mine > span {
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .ck-movebar.low > span {

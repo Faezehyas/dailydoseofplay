@@ -29,8 +29,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
-  max-width: 980px;
-  margin: 0 auto;
 }
 
 @media (prefers-color-scheme: dark) {

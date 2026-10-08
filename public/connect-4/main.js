@@ -18,6 +18,7 @@ startGameShell({
   slug: "connect-4",
   title: "Connect 4",
   tagline: "Drop, stack and line up four before your rival does.",
+  layout: "narrow",
   createRobot: (session) => {
     const config = settings.get();
     return startTurnRobot(session, {
@@ -221,6 +222,8 @@ function mountConnect4(session, root, shell) {
     const st = match?.state;
     const phase = match?.phase || "setup";
     root.querySelector(".connect-4").dataset.phase = phase;
+    // Coral is whoever moves first this match, on every screen.
+    root.querySelector(".connect-4").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills();
     renderScore();
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);

@@ -53,6 +53,7 @@ startGameShell({
   slug: "backgammon",
   title: "Backgammon",
   tagline: "Roll, run and hit. Bring all fifteen checkers home and off the board first.",
+  layout: "medium",
   createRobot: (session) => {
     const config = settings.get();
     const delay = (state, me) => (racingForYou && !inContact(state.pos, me) ? ROBOT_RACING : ROBOT_DELAY);
@@ -771,6 +772,8 @@ function mountBackgammon(session, root, shell) {
     const phase = match?.phase || "setup";
     const pos = shownPos();
     root.querySelector(".backgammon").dataset.phase = phase;
+    // Coral is whoever moves first this match, on every screen.
+    root.querySelector(".backgammon").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills(pos);
     renderScore();
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);

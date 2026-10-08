@@ -93,6 +93,7 @@ startGameShell({
   slug: "sea-battle",
   title: "Sea Battle",
   tagline: "Hide your fleet, find theirs. Grab gifts for heavy weapons.",
+  layout: "wide",
   createRobot: (session) => startRobot(session, { delay: AI_DELAY, config: settings.get() }),
   onSession: (session, root, shell) => mountSeaBattle(session, root, shell),
 });
@@ -284,6 +285,8 @@ function mountSeaBattle(session, root, shell) {
     const st = match.state;
     const placing = phase === "placing";
     root.querySelector(".sea-battle").dataset.phase = phase;
+    // Coral is whoever shoots first this match, on every screen.
+    root.querySelector(".sea-battle").dataset.you = st ? (st.first === me ? "a" : "b") : "";
 
     players.replaceChildren(
       el(

@@ -55,6 +55,7 @@ test("two friends play Gomoku on the host's settings through the invite link, wi
     await ctx.addInitScript((n) => localStorage.setItem("ddp-name", n), nickname);
     const page = await ctx.newPage();
     page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
+    await page.clock.install();
     return page;
   }
 
@@ -184,7 +185,9 @@ test("two friends play Gomoku on the host's settings through the invite link, wi
   await host.click(point(at(7, 7)));
   await wait(guest, () => window.ddp.match.canMove());
   await guest.evaluate(() => (window.ddp.match.play = () => {}));
-  await wait(host, () => window.ddp.match.phase === "aborted", undefined, 35_000);
+  await guest.clock.fastForward("00:21");
+  await host.clock.fastForward("00:26");
+  await wait(host, () => window.ddp.match.phase === "aborted");
   assert.equal(await host.locator("#gmk-result").innerText(), "Match stopped");
   assert.equal(await host.locator("#gmk-detail").innerText(), "Bo's clock ran out and their browser stopped answering.");
   await wait(guest, () => window.ddp.match.phase === "aborted");
@@ -208,6 +211,8 @@ test("Gomoku vs the robot on a 360 px phone: a full game, then a loss on the mov
   const errors = [];
   const page = await (await browser.newContext({ viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" })).newPage();
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript(() => (globalThis.ddpRobotPace = 0.1));
+  await page.clock.install();
 
   await page.goto(`${srv.base}/`);
   await page.click('.game-card[data-slug="gomoku"]');
@@ -273,8 +278,9 @@ test("Gomoku vs the robot on a 360 px phone: a full game, then a loss on the mov
   await page.click("#theme-toggle");
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "dark");
   assert.ok(await noHorizontalScroll(page));
-  await page.waitForTimeout(7000);
+  await page.clock.fastForward(7000);
   await page.screenshot({ path: `${ARTIFACTS}/gomoku-6-robot-dark-clock.png`, fullPage: true });
+  await page.clock.fastForward(4000);
   await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
   assert.equal(await page.locator("#gmk-result").innerText(), "Defeat");
