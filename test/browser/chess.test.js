@@ -91,6 +91,7 @@ test("two friends play Chess on the host's settings through the invite link, the
 
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await host.locator("#chess-board .sq").first().waitFor();
   await guest.locator("#chess-board .sq").first().waitFor();
   assert.equal(await guest.locator("#chess-config").innerText(), "60 s a move · 5 min each", "the host's settings reach the friend");

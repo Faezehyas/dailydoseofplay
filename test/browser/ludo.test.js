@@ -99,6 +99,7 @@ test("two friends play Ludo on the host's house rules through the invite link, t
   // The friend (360 px phone, dark) opens the link; the host presses Start with two in.
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await host.locator("#roster li.ready", { hasText: "Bo" }).waitFor();
   assert.match(await host.locator("#start-game").innerText(), /2 players/);
   await host.click("#start-game");
@@ -202,6 +203,7 @@ test("four friends fill a Ludo room in four browsers and play for places, then o
   for (const [name, opts] of [["Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" }], ["Cy", {}], ["Di", {}]]) {
     const page = await open(name, opts);
     await page.goto(invite);
+    await page.click("#join-room");
     friends.push(page);
     if (friends.length === 2) {
       // Three in: the host could start now.
@@ -301,6 +303,7 @@ test("a four-seat Ludo room: two friends join by the invite key, a third types t
   for (const name of ["Bo", "Cy"]) {
     const page = await open(name);
     await page.goto(invite);
+    await page.click("#join-room");
     await host.locator("#roster li.ready", { hasText: name }).waitFor();
     friends.push(page);
   }

@@ -337,6 +337,10 @@ input[type="text"] {
   margin: 16px 0 8px;
 }
 
+.invite-join .lobby-actions {
+  grid-template-columns: 1fr;
+}
+
 .divider {
   display: flex;
   align-items: center;

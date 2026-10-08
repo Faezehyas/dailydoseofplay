@@ -97,6 +97,7 @@ test("three friends fill a room through the invite link, play on shared dice, re
 
   const bo = await open("Bo");
   await bo.goto(invite);
+  await bo.click("#join-room");
   await host.locator("#roster li.ready", { hasText: "Bo" }).waitFor();
   assert.equal(await host.locator("#start-game").innerText(), "Start game (2 players)");
   await bo.locator("#lobby-status", { hasText: "Waiting for Ada to start (2 players in)" }).waitFor();
@@ -104,6 +105,7 @@ test("three friends fill a room through the invite link, play on shared dice, re
   // The third player fills the room, so the game starts by itself.
   const cy = await open("Cy");
   await cy.goto(invite);
+  await cy.click("#join-room");
   const pages = [host, bo, cy];
   for (const p of pages) await wait(p, () => window.ddp.match?.phase === "playing");
   assert.deepEqual(await Promise.all(pages.map((p) => p.evaluate(() => window.ddp.session.index))), [0, 1, 2]);
@@ -118,6 +120,7 @@ test("three friends fill a room through the invite link, play on shared dice, re
   // The room was freed when the game started.
   const late = await open("Dee");
   await late.goto(invite);
+  await late.click("#join-room");
   await late.locator(".notice", { hasText: "doesn't exist any more" }).waitFor();
 
   // A rematch needs all three votes.
@@ -149,6 +152,7 @@ test("the host can start before the room is full; a guest who leaves the waiting
 
   const quitter = await open("Quinn");
   await quitter.goto(invite);
+  await quitter.click("#join-room");
   await host.locator("#roster li.ready", { hasText: "Quinn" }).waitFor();
   await quitter.close();
   await host.locator("#toast", { hasText: "Quinn left. The invite link still works." }).waitFor();
@@ -157,6 +161,7 @@ test("the host can start before the room is full; a guest who leaves the waiting
 
   const bo = await open("Bo");
   await bo.goto(invite);
+  await bo.click("#join-room");
   await host.locator("#roster li.ready", { hasText: "Bo" }).waitFor();
   await host.click("#start-game");
   for (const p of [host, bo]) await wait(p, () => window.ddp.match?.phase === "playing");
@@ -199,9 +204,11 @@ test("a browser that sends an oversized message is cut off, and the others are t
   const invite = await room(ada);
   const bo = await open("Bo");
   await bo.goto(invite);
+  await bo.click("#join-room");
   await ada.locator("#roster li.ready", { hasText: "Bo" }).waitFor();
   const cy = await open("Cy");
   await cy.goto(invite);
+  await cy.click("#join-room");
   for (const p of [ada, bo, cy]) await wait(p, () => window.ddp.match?.phase === "playing");
   await cy.evaluate(huge);
   for (const p of [ada, bo]) await p.locator("#ended", { hasText: UNEXPECTED }).waitFor({ timeout: 20_000 });
@@ -218,12 +225,14 @@ test("a browser that sends an oversized message is cut off, and the others are t
     };
   });
   await odd.goto(invite2);
+  await odd.click("#join-room");
   await host.locator("#toast", { hasText: `${UNEXPECTED} The invite link still works.` }).waitFor({ timeout: 20_000 });
   assert.doesNotMatch(await host.locator("#roster").innerText(), /Mo/);
 
   // The host sends it: the guest refuses it.
   const eve = await open("Eve");
   await eve.goto(invite2);
+  await eve.click("#join-room");
   await host.locator("#roster li.ready", { hasText: "Eve" }).waitFor();
   await host.click("#start-game");
   for (const p of [host, eve]) await wait(p, () => window.ddp.match?.phase === "playing");

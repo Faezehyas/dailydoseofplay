@@ -70,6 +70,7 @@ test("two friends play Connect 4 on the host's settings through the invite link,
 
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await host.locator("#c4-board .c4-col").first().waitFor();
   await guest.locator("#c4-board .c4-col").first().waitFor();
   assert.equal(await guest.locator(".c4-col").count(), 8, "the host's board size reaches the friend");

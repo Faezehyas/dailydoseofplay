@@ -104,6 +104,7 @@ test("two friends play Checkers on the host's settings through the invite link, 
   await guest.addInitScript(() => localStorage.setItem("ddp-checkers-settings", JSON.stringify({ moveSeconds: 30, gameSeconds: 0, first: "guest", level: "hard" })));
   await guest.clock.install();
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await wait(host, () => window.ddp.match?.phase === "playing");
   await wait(guest, () => window.ddp.match?.phase === "playing");
   assert.equal(await guest.locator("#ck-config").innerText(), "8 × 8 checkers · 1 min a move · 5 min each", "the host's settings reach the friend");
