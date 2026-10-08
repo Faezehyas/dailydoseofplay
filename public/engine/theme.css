@@ -114,6 +114,10 @@ body {
   color: var(--text);
   font: 16px/1.5 ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
+  /* A nickname is one word of up to 20 letters (NAME_MAX in names.js), wider
+     than a phone at status-line size. Break it rather than let it run off
+     the screen; lines that fit are untouched. */
+  overflow-wrap: break-word;
 }
 
 a {
