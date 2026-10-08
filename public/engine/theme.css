@@ -488,29 +488,36 @@ input[type="text"] {
   text-align: center;
 }
 
-/* Top of the screen, so it never covers a game board on a phone. */
+/* Top of the screen, so it never covers a game board on a phone. Centred with
+   auto margins rather than left: 50%, so it can use the full width between the
+   16px gutters, and a 20-letter nickname wraps instead of running off screen. */
 .toast {
   position: fixed;
-  left: 50%;
+  left: 16px;
+  right: 16px;
   top: 12px;
-  transform: translate(-50%, -30px);
+  width: fit-content;
+  margin-inline: auto;
+  transform: translateY(-30px);
   opacity: 0;
   pointer-events: none;
   background: var(--text);
   color: var(--bg);
   padding: 10px 16px;
   border-radius: 999px;
+  /* A pill on one line, a rounded box once a long name wraps it. */
+  border-radius: calc(0.5lh + 10px);
   font-weight: 700;
   transition: all 0.2s ease;
   z-index: 60;
-  max-width: calc(100vw - 32px);
   text-align: center;
+  overflow-wrap: anywhere;
   box-shadow: var(--shadow);
 }
 
 .toast.show {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translateY(0);
 }
 
 /* ---------- game pages: rules panel, rematch line ---------- */

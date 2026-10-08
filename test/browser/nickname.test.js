@@ -120,3 +120,50 @@ test("a friend opening an invite link picks a nickname before joining", { skip: 
   assert.equal(await guest.evaluate(() => localStorage.getItem("ddp-name")), "Bo", "the name is kept for next time");
   assert.deepEqual(errors, []);
 });
+
+test("a toast with a 20-letter nickname stays on a 360px screen", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  async function open(name, nickname) {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, hasTouch: true });
+    await ctx.addInitScript((n) => localStorage.setItem("ddp-name", n), nickname);
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
+    return page;
+  }
+
+  // W is the widest letter, so this is the longest a one-word name gets.
+  const long = "W".repeat(20);
+  const host = await open("host", long);
+  await host.goto(`${srv.base}/tic-tac-toe/`);
+  await host.click("#play-friend");
+  const invite = (await host.locator("#invite-link").inputValue()).replace(/^https?:\/\/[^/]+/, srv.base);
+  const guest = await open("guest", long);
+  await guest.goto(invite);
+  await guest.click("#join-room");
+  for (const page of [host, guest]) await page.waitForFunction(() => window.ddp.match?.phase === "playing", null, { timeout: 20_000 });
+
+  // Whoever waits taps a square and is told to wait for the other long name.
+  const waiting = (await host.evaluate(() => window.ddp.match.canMove())) ? guest : host;
+  await waiting.locator(".ttt-cell").first().click({ force: true }); // aria-disabled, but still tappable
+  const toast = waiting.locator("#toast.show");
+  await toast.filter({ hasText: `Wait for ${long}` }).waitFor();
+  await waiting.waitForTimeout(300); // let the slide-in transition finish
+  // Both the pill and the words in it: a long name can spill out of a narrow pill.
+  const [box, text] = await toast.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    return [node, range].map((r) => r.getBoundingClientRect()).map(({ left, right, top, bottom }) => ({ left, right, top, bottom }));
+  });
+  for (const [what, r] of Object.entries({ box, text })) {
+    assert.ok(r.left >= 16 && r.right <= 360 - 16, `toast ${what} spans ${r.left}..${r.right}`);
+    assert.ok(r.top >= 0 && r.bottom <= 780, `toast ${what} spans ${r.top}..${r.bottom} vertically`);
+  }
+  assert.ok(text.left >= box.left && text.right <= box.right, "the words stay inside the pill");
+  assert.deepEqual(errors, []);
+});
