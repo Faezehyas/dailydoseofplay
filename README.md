@@ -22,6 +22,7 @@ More are coming, one at a time; see [GAMES.md](GAMES.md).
 - **Live:** https://dailydoseofplay.wasmer.app (after the one-time setup below)
 - **How it works:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - **Adding a game:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Security:** report a vulnerability privately, as described in [SECURITY.md](SECURITY.md)
 
 ## Run locally
 
