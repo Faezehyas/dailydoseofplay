@@ -605,6 +605,8 @@
 
 .ld-die-actions {
   display: grid;
+  /* A fixed column, so a long nickname in the hint wraps instead of widening it. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   width: 100%;
   justify-items: stretch;

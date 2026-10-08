@@ -166,7 +166,11 @@ The view must provide:
 - A draw state if the game has one.
 
 It must work at 360 px width with no horizontal scroll (boards sized by
-`width: 100%` and `aspect-ratio`), by touch and by keyboard. Colors come only
+`width: 100%` and `aspect-ratio`), by touch and by keyboard. A nickname can be
+one 20-letter word, wider than a phone. `theme.css` breaks long words in text
+lines, but only where the box can't grow: put a line with a name in a
+`minmax(0, 1fr)` grid column or give it `min-width: 0`, and cut one-line labels
+short with `text-overflow: ellipsis`. Colors come only
 from theme tokens, so light and dark both work. Keep WCAG AA contrast (see
 **Colours and contrast** in `ARCHITECTURE.md`): coral or teal text uses
 `var(--accent-text)` or `var(--accent-2-text)`, never `var(--accent)` or
@@ -236,7 +240,7 @@ windows (one private).
 - [ ] Friend match works in two windows: invite link, auto-join, full game, rematch, leave
 - [ ] No hidden information leaks over the wire. If the game has any, it uses commitments like Sea Battle.
 - [ ] All randomness comes from `SharedRandom`, through `TurnMatch` or a custom match
-- [ ] 360 px wide with no horizontal scroll; light and dark; touch and keyboard
+- [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
 - [ ] Original name, text and art; nothing copied from papergames
 - [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
