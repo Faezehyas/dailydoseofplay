@@ -7,7 +7,7 @@
 // the handshake below before it. Everything else is a game message and is
 // handed to session.onMessage handlers as (msg, fromSeat), buffered until the
 // game registers one.
-import { Emitter } from "./channel.js";
+import { Emitter, MESSAGE_TOO_BIG } from "./channel.js";
 import { HubGroup, SpokeGroup } from "./group.js";
 import { cleanName } from "./names.js";
 
@@ -33,9 +33,9 @@ export class Session extends Emitter {
     this.buffer = [];
     this.offs = [
       group.on("message", (msg, from) => this.#onMessage(msg, from)),
-      group.on("leave", (seat) => this.#end("closed", seat)),
+      group.on("leave", (seat, why) => this.#end(why === MESSAGE_TOO_BIG ? why : "closed", seat)),
       // Only a spoke is ever cut off from the group: the hub went away.
-      group.on("close", () => this.#end("closed", 0)),
+      group.on("close", (why) => this.#end(why === MESSAGE_TOO_BIG ? why : "closed", 0)),
     ];
   }
 
@@ -90,7 +90,9 @@ export class Session extends Emitter {
   }
 
   // Any player leaving ends the session for everyone (the match can't go on
-  // without their moves and shared draws). seat: who left.
+  // without their moves and shared draws). seat: who left. reason: "left"
+  // ($bye), "closed" (connection lost), MESSAGE_TOO_BIG (their browser sent
+  // an oversized message) or "self".
   #end(reason, seat) {
     if (this.ended) return;
     this.ended = true;
@@ -116,7 +118,10 @@ export class Session extends Emitter {
 
 function listen(link, onMessage, reject, timeoutMs = HELLO_TIMEOUT_MS) {
   const timer = setTimeout(() => fail(new Error("hello_timeout")), timeoutMs);
-  const offs = [link.on("message", (msg) => onMessage(msg, api)), link.on("close", () => fail(new Error("closed")))];
+  const offs = [
+    link.on("message", (msg) => onMessage(msg, api)),
+    link.on("close", (reason) => fail(new Error(reason === MESSAGE_TOO_BIG ? reason : "closed"))),
+  ];
   function done() {
     clearTimeout(timer);
     for (const off of offs.splice(0)) off();

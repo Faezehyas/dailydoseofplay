@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { localPair } from "./channel.js";
+import { localPair, MAX_MESSAGE_LENGTH, MESSAGE_TOO_BIG } from "./channel.js";
 import { localGroup } from "./group.js";
 import { admitGuest, startHub, greetHost, matchRouter } from "./session.js";
 import { localRoom } from "./room.js";
@@ -98,4 +98,107 @@ test("handshake: the host admits guests one by one, shows them the roster, then 
   const got = [];
   matchRouter(cy).start({ m: 1, receive: (msg, from) => got.push([from, msg.t]) });
   assert.deepEqual(got, [[0, "go"]]);
+});
+
+// A message whose JSON (wrapped as wrap(pad) builds it) is exactly `length` characters.
+function sized(length, wrap = (pad) => pad) {
+  const msg = { t: "x", pad: "" };
+  msg.pad = "a".repeat(length - JSON.stringify(wrap(msg)).length);
+  assert.equal(JSON.stringify(wrap(msg)).length, length);
+  return msg;
+}
+
+function closes(link) {
+  const got = [];
+  link.on("close", (reason) => got.push(reason));
+  return got;
+}
+
+test("local pair: a message at the cap arrives; one over it is dropped and the receiving end closes", async () => {
+  const [a, b] = localPair();
+  const got = [];
+  b.on("message", (msg) => got.push(msg.pad.length));
+  const [closedA, closedB] = [closes(a), closes(b)];
+  const fits = sized(MAX_MESSAGE_LENGTH);
+  a.send(fits);
+  await tick();
+  assert.deepEqual(got, [fits.pad.length]);
+  assert.equal(b.open, true);
+
+  a.send(sized(MAX_MESSAGE_LENGTH + 1));
+  a.send({ t: "after" });
+  await tick();
+  assert.deepEqual(got, [fits.pad.length], "neither the oversized message nor anything after it arrives");
+  assert.deepEqual(closedB, [MESSAGE_TOO_BIG], "the receiver says why it closed");
+  assert.deepEqual(closedA, [undefined], "the sender is just cut off");
+  assert.equal(a.open || b.open, false);
+});
+
+test("group: a guest whose message is too big to forward is cut off, and everyone else is told why", async () => {
+  const groups = localGroup(4);
+  const got = inboxes(groups);
+  const left = groups.map((g) => {
+    const seats = [];
+    g.on("leave", (seat, reason) => seats.push([seat, reason]));
+    return seats;
+  });
+  const closed = closes(groups[1]);
+  // The guest's frame { msg } just fits through its link to the hub, but the
+  // hub's { from, msg } to the others would not: the hub refuses to forward it.
+  groups[1].send(sized(MAX_MESSAGE_LENGTH, (msg) => ({ msg })));
+  groups[2].send({ n: 1 });
+  await tick();
+  assert.deepEqual(closed, [undefined], "the sender is cut off from the hub");
+  assert.deepEqual(got, [[[2, 1]], [], [], [[2, 1]]], "nobody receives the oversized message");
+  assert.deepEqual(left, [[[1, MESSAGE_TOO_BIG]], [], [[1, MESSAGE_TOO_BIG]], [[1, MESSAGE_TOO_BIG]]]);
+  // The others play on.
+  groups[3].send({ n: 2 });
+  await tick();
+  assert.deepEqual(got[0].at(-1), [3, 2]);
+  assert.deepEqual(got[2].at(-1), [3, 2]);
+});
+
+test("group: an oversized message from a guest never reaches the hub's game", async () => {
+  const groups = localGroup(2);
+  const got = inboxes(groups);
+  const left = [];
+  groups[0].on("leave", (seat, reason) => left.push([seat, reason]));
+  groups[1].send({ n: 1, pad: "a".repeat(MAX_MESSAGE_LENGTH) });
+  await tick();
+  assert.deepEqual(got, [[], []]);
+  assert.deepEqual(left, [[1, MESSAGE_TOO_BIG]]);
+});
+
+test("sessions end with message_too_big for the players who refused or were told, from either direction", async () => {
+  const big = { t: "spam", pad: "a".repeat(MAX_MESSAGE_LENGTH) };
+  const ends = (sessions) => sessions.map((s) => new Promise((r) => s.on("end", (reason, seat) => r([reason, seat]))));
+
+  // A guest sends it: the host refuses, the third player hears why.
+  let sessions = localRoom({ game: "demo", names: ["Ada", "Bo", "Cy"], mode: "friend" });
+  let ended = ends(sessions);
+  sessions[2].send(big);
+  assert.deepEqual(await ended[0], [MESSAGE_TOO_BIG, 2]);
+  assert.deepEqual(await ended[1], [MESSAGE_TOO_BIG, 2]);
+  assert.deepEqual(await ended[2], ["closed", 0], "the sender only sees the host go");
+
+  // The host sends it: every guest refuses it.
+  sessions = localRoom({ game: "demo", names: ["Ada", "Bo", "Cy"], mode: "friend" });
+  ended = ends(sessions);
+  sessions[0].send(big);
+  assert.deepEqual(await ended[1], [MESSAGE_TOO_BIG, 0]);
+  assert.deepEqual(await ended[2], [MESSAGE_TOO_BIG, 0]);
+  assert.deepEqual((await ended[0])[0], "closed");
+});
+
+test("handshake: an oversized message before the start fails it with message_too_big", async () => {
+  const [h, g] = localPair();
+  const guest = greetHost(g, { name: "Bo", game: "demo" });
+  await admitGuest(h, { game: "demo" });
+  h.send({ t: "$roster", players: ["a".repeat(MAX_MESSAGE_LENGTH)] });
+  await assert.rejects(guest, { message: MESSAGE_TOO_BIG });
+
+  const [h2, g2] = localPair();
+  const admitted = admitGuest(h2, { game: "demo" });
+  g2.send({ t: "$hello", name: "a".repeat(MAX_MESSAGE_LENGTH), game: "demo", v: 2 });
+  await assert.rejects(admitted, { message: MESSAGE_TOO_BIG });
 });

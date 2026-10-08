@@ -1,7 +1,7 @@
 // One WebRTC DataChannel between two browsers, negotiated through RoomClient.
 // There is no TURN server, so some network pairs cannot connect; we detect
 // that (ICE failure or timeout) and report it instead of hanging.
-import { Emitter } from "./channel.js";
+import { Emitter, MAX_MESSAGE_LENGTH, MESSAGE_TOO_BIG } from "./channel.js";
 
 export const ICE_SERVERS = [
   { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
@@ -71,6 +71,8 @@ export class PeerChannel extends Emitter {
       this.emit("open");
     };
     dc.onmessage = (ev) => {
+      // Measured before parsing; see MAX_MESSAGE_LENGTH in channel.js.
+      if (typeof ev.data === "string" && ev.data.length > MAX_MESSAGE_LENGTH) return this.close(MESSAGE_TOO_BIG);
       let msg;
       try {
         msg = JSON.parse(ev.data);
@@ -104,13 +106,13 @@ export class PeerChannel extends Emitter {
     this.emit("failed", reason);
   }
 
-  #shutdown() {
+  #shutdown(reason) {
     if (this.closed) return;
     this.closed = true;
     const wasOpen = this.open;
     this.open = false;
     this.#cleanup();
-    if (wasOpen) this.emit("close");
+    if (wasOpen) this.emit("close", reason);
     else this.emit("failed", "closed_before_open");
   }
 
@@ -130,7 +132,8 @@ export class PeerChannel extends Emitter {
     return true;
   }
 
-  close() {
-    this.#shutdown();
+  // reason: MESSAGE_TOO_BIG when this end refuses the other's message.
+  close(reason) {
+    this.#shutdown(reason);
   }
 }

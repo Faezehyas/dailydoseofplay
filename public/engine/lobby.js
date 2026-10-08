@@ -31,6 +31,7 @@ const ERRORS = {
   host_gone: "Your friend left before the game started.",
   host_left: "Your friend closed the room. Ask them for a new invite link.",
   version_mismatch: "Your friend has a different version of this page. Both of you, please reload.",
+  message_too_big: "A player's browser sent something unexpected.",
 };
 
 // Why a nickname isn't used (see names.js); the player then plays under the default name.
@@ -269,7 +270,12 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     });
     room.on("guest-gone", ({ name: who, reason }) => {
       if (!current()) return;
-      const why = reason === "left" || reason === "closed_before_open" ? `${duel ? "Your friend" : who} left.` : `Couldn't connect to ${who}.`;
+      const why =
+        reason === "message_too_big"
+          ? ERRORS.message_too_big
+          : reason === "left" || reason === "closed_before_open"
+            ? `${duel ? "Your friend" : who} left.`
+            : `Couldn't connect to ${who}.`;
       toast(`${why} The invite link still works.`);
     });
   }
@@ -345,6 +351,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     session.on("end", (reason, seat) => {
       if (reason === "self") return;
       const who = session.players[seat]?.name ?? session.opponent.name;
+      if (reason === "message_too_big") return showEnded(ERRORS.message_too_big);
       showEnded(reason === "left" ? `${who} left the game.` : `The connection to ${who} was lost.`);
     });
   }

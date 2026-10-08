@@ -193,9 +193,9 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
 | `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
-| `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace |
-| `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests) |
-| `group.js` | The group transport every layer above talks to: `send(msg)` to all other seats, `message (msg, from)`, `leave (seat)`, `close`. `HubGroup` and `SpokeGroup` are today's star over links; `localGroup(n)` connects n seats in memory. |
+| `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
+| `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
+| `group.js` | The group transport every layer above talks to: `send(msg)` to all other seats, `message (msg, from)`, `leave (seat)`, `close`. `HubGroup` and `SpokeGroup` are today's star over links; `localGroup(n)` connects n seats in memory. The hub measures each frame it would forward and cuts off a guest whose frame is over the cap; `leave` and `close` carry `message_too_big` when that was the reason. |
 | `room.js` | How players get seated in a group: `HostRoom` (create, `accept()` / `decline()` knocks, admit guests over WebRTC, `start()`), `GuestRoom` (join, wait for the start) and `localRoom()` (robots). The only engine file that knows about signaling and WebRTC. |
 | `session.js` | `Session`: the seated players (`players`, `index`, `me`, `others`, `opponent`), buffering of game messages, rematch votes (`$rematch`, every seat must vote), goodbye (`$bye`). The handshake (`$hello` with a protocol version, `$welcome`, `$roster`, `$start`) that turns links into a group. No DOM. |
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
@@ -252,8 +252,35 @@ networks, or a mesh), write another group and seat players with it in
 
 **Leaving.** Any player leaving, or losing their connection, ends the session
 for everyone (`end` with the reason and the seat), because the match can't go
-on without their moves and shared draws. Continuing without a player is a
-future, per-game choice.
+on without their moves and shared draws. The reason is `left` (`$bye`),
+`closed` (connection lost), `message_too_big` (see below) or `self`.
+Continuing without a player is a future, per-game choice.
+
+**Message size.** `JSON.parse` blocks the tab, so a modified client could
+freeze other players' tabs with huge messages. Every link therefore checks a
+message's length before parsing it: over `MAX_MESSAGE_LENGTH` (64 K
+characters, in `channel.js`) the message is dropped unread and the link
+closes with `message_too_big`.
+
+- `PeerChannel` checks `ev.data.length`; `localPair()` checks the same JSON
+  text, so robot games and tests behave alike.
+- The hub's `{from, msg}` is a few characters longer than the `{msg}` it
+  received, so it measures the frame again before forwarding. An oversized one
+  cuts off its sender, never the guests it was meant for.
+- Before the start, the host drops that guest from the waiting room. During a
+  game, the session ends for everyone with `message_too_big` and the seat: the
+  hub tells the other guests why in its `{left, reason}` frame. The lobby
+  shows "A player's browser sent something unexpected." The cut-off browser
+  itself only sees the host go.
+
+Real messages are tiny. `test/message-size.test.js` plays a full match of
+every game with robots in every seat, at its biggest board and player count,
+measures every frame, and fails if one is over 4 K characters (1/16 of the
+cap). The largest today, in characters: Sea Battle 283 (`reveal`), Ludo 167
+(`setup`), Connect 4 121 (`setup`), Dots and Boxes 117 (`setup`), Chutes and
+Ladders 116 (`setup`), Backgammon 113, and Tic Tac Toe, Gomoku, Checkers and
+Chess 112 (a shared-random `draw`); the engine's handshake peaks at 127
+(`$start` with four 20-character names).
 
 **Why a pre-negotiated channel.** With the default in-band handshake, the
 guest's channel opens when the host's open request arrives, and Chrome
