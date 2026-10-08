@@ -76,6 +76,7 @@ test("two friends play Gomoku on the host's settings through the invite link, wi
 
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   for (const page of [host, guest]) await wait(page, () => window.ddp.match?.phase === "playing");
   assert.equal(await guest.locator(".gmk-cell").count(), 225);
   assert.equal(await guest.locator("#gmk-config").innerText(), "15 × 15, five in a row · 20 s a move · 3 min each", "the host's settings reach the friend");

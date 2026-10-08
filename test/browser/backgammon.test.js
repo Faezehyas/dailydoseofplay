@@ -122,6 +122,7 @@ test("two friends play Backgammon on the host's settings through the invite link
 
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await host.locator("#bg-board .bg-cell").first().waitFor();
   await guest.locator("#bg-board .bg-cell").first().waitFor();
   await guest.locator("#bg-config").filter({ hasText: "a turn" }).waitFor();

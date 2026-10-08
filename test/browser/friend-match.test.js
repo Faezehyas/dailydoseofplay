@@ -66,6 +66,7 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   });
   const guest = await open("guest", "Bo", { viewport: { width: 390, height: 844 }, hasTouch: true });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await host.locator("#ready").waitFor();
   assert.equal(await host.evaluate(() => window.__sawKnock), false, "an invite link needs no Accept");
   assert.equal(await guest.evaluate(() => location.search), "", "the key leaves the address bar");
@@ -226,6 +227,7 @@ test("a blocked peer connection shows the no-TURN explanation", { skip: !pw && "
   const invite = await host.locator("#invite-link").inputValue();
   const friend = await (await browser.newContext()).newPage();
   await friend.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await friend.click("#join-room");
   await friend.locator("#ready").waitFor({ timeout: 20_000 });
   await host.locator("#ready").waitFor();
 });
@@ -478,6 +480,7 @@ test("the host's time settings apply to both friends; a shot's time running out 
   await guestCtx.addInitScript(() => localStorage.setItem("ddp-sb-settings", JSON.stringify({ shotSeconds: 40, gameSeconds: 0 })));
   const guest = await guestCtx.newPage();
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   for (const p of [host, guest]) assert.equal(await p.locator("#sb-config").innerText(), "10 s a shot · 3 min each");
   await host.click("#ready");
   await guest.click("#ready");

@@ -124,6 +124,21 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     );
   }
 
+  // An invite link stops here first so the friend can pick a nickname before joining.
+  function showInvite(code, key) {
+    view(
+      el("h1", {}, title),
+      el("p", {}, `You're invited to room ${code}.`),
+      el(
+        "form",
+        { class: "invite-join", onsubmit: (e) => (e.preventDefault(), join(code, key)) },
+        nicknameField(),
+        el("div", { class: "lobby-actions" }, el("button", { class: "btn primary big", id: "join-room", type: "submit" }, "Join room")),
+      ),
+      el("button", { class: "btn ghost", type: "button", onclick: () => showHome() }, "Back"),
+    );
+  }
+
   function showWaiting(room) {
     const link = `${location.origin}/${slug}/?room=${room.code}&key=${encodeURIComponent(room.key)}`;
     const linkInput = el("input", { id: "invite-link", type: "text", readonly: true, value: link, "aria-label": "Invite link" });
@@ -389,7 +404,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // bindings declared after its startGameShell() call.
   queueMicrotask(() => {
     const code = params.get("room");
-    if (code) join(code, params.get("key") || undefined);
+    if (code) showInvite(code.trim().toUpperCase(), params.get("key") || undefined);
     else if (params.has("robot")) playRobot();
     else showHome();
   });

@@ -87,6 +87,7 @@ test("two friends play Chutes and Ladders on the host's settings through the inv
   // The room takes up to four, so the host starts it once Bo is in.
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await host.locator("#roster li.ready", { hasText: "Bo" }).waitFor();
   await host.click("#start-game");
   await host.locator("#cl-board").waitFor();
@@ -265,6 +266,7 @@ test("four friends fill a Chutes and Ladders room and play a full game, then a r
   for (const [name, opts] of [["Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" }], ["Cy", {}], ["Di", {}]]) {
     const page = await open(name, opts);
     await page.goto(invite);
+    await page.click("#join-room");
     friends.push(page);
   }
   // The fourth player fills the room, so the game starts by itself.

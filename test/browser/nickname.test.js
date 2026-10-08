@@ -65,10 +65,58 @@ test("the lobby explains a blocked nickname, and a friend game shows default nam
   const guest = await open("guest");
   await guest.addInitScript(() => localStorage.setItem("ddp-name", "BigAss"));
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await guest.waitForFunction(() => window.ddp.session, null, { timeout: 20_000 });
   await host.waitForFunction(() => window.ddp.session, null, { timeout: 20_000 });
   assert.deepEqual(await names(host), ["Host", "Guest"]);
   assert.deepEqual(await names(guest), ["Host", "Guest"]);
   for (const page of [host, guest]) assert.doesNotMatch(await page.locator("body").innerText(), /f\.u\.c\.k|BigAss/);
+  assert.deepEqual(errors, []);
+});
+
+test("a friend opening an invite link picks a nickname before joining", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  async function open(name, nickname) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    if (nickname) await ctx.addInitScript((n) => localStorage.setItem("ddp-name", n), nickname);
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => errors.push(`${name}: ${e.message}`));
+    return page;
+  }
+
+  const host = await open("host", "Ada");
+  await host.goto(`${srv.base}/tic-tac-toe/`);
+  await host.click("#play-friend");
+  const invite = (await host.locator("#invite-link").inputValue()).replace(/^https?:\/\/[^/]+/, srv.base);
+  const code = (await host.locator("#room-code").innerText()).trim();
+
+  // A returning friend sees their saved name, ready to change.
+  const returning = await open("returning", "Cy");
+  await returning.goto(invite);
+  assert.equal(await returning.locator("#nickname").inputValue(), "Cy");
+  await returning.close();
+
+  // A first-time friend gets the card, not a connection, until they press Join.
+  const guest = await open("guest");
+  await guest.goto(invite);
+  await guest.locator("#join-room").waitFor();
+  assert.match(await guest.locator("#lobby").innerText(), new RegExp(`invited to room ${code}`));
+  assert.equal(await guest.locator("#nickname").inputValue(), "");
+  assert.equal(await guest.evaluate(() => window.ddp.room), null, "nothing connects before Join");
+  assert.match(await host.locator("#lobby-status").innerText(), /Waiting for your friend/);
+
+  await guest.fill("#nickname", "Bo");
+  await guest.press("#nickname", "Enter");
+  await guest.waitForFunction(() => window.ddp.session, null, { timeout: 20_000 });
+  await host.waitForFunction(() => window.ddp.session, null, { timeout: 20_000 });
+  assert.deepEqual(await names(host), ["Ada", "Bo"]);
+  assert.deepEqual(await names(guest), ["Ada", "Bo"]);
+  assert.equal(await guest.evaluate(() => localStorage.getItem("ddp-name")), "Bo", "the name is kept for next time");
   assert.deepEqual(errors, []);
 });

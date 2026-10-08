@@ -99,6 +99,7 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   // The friend (360 px phone, dark) opens the link and plays by touch.
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await host.locator("#db-board").waitFor();
   await guest.locator("#db-board").waitFor();
   await guest.locator("#db-config").filter({ hasText: "3×3" }).waitFor();

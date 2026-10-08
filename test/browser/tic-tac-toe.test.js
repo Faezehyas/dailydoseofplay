@@ -67,6 +67,7 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
 
   const guest = await open("guest", "Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "dark" });
   await guest.goto(invite.replace(/^https?:\/\/[^/]+/, srv.base));
+  await guest.click("#join-room");
   await host.locator("#ttt-board .ttt-cell").first().waitFor();
   await guest.locator("#ttt-board .ttt-cell").first().waitFor();
   assert.equal(await guest.locator(".ttt-cell").count(), 25, "the host's board size reaches the friend");
