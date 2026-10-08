@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import WebSocket from "ws";
 import { startServer } from "./helpers.js";
 import { RoomClient } from "../public/engine/signaling.js";
+import { cleanName } from "../public/engine/names.js";
 
 const once = (emitter, type) => new Promise((resolve) => emitter.on(type, resolve));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -87,6 +88,30 @@ test("host creates a room, friend joins with the code, signals relay both ways",
   host.leave();
   await new Promise((r) => setTimeout(r, 50));
   assert.equal((await (await fetch(`${srv.base}/healthz`)).json()).rooms, 0);
+});
+
+test("the server shows other players the same names the lobby would: blocked ones become Player", { timeout: 10_000 }, async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
+  const [host] = await clients(t, srv, "sea-battle", 1);
+  const { room, key } = await host.create("f.u.c.k");
+  const names = ["Ada", "  Bo  ", "Ольга", "فائزه", "a".repeat(30), "sh1t", "$hit", "BigAss", "evil.com", "@bo", "Bo!", "<b>", "", "\u0000"];
+  for (const name of names) {
+    const [guest] = await clients(t, srv, "sea-battle", 1);
+    const seen = once(host, "peer");
+    const joined = await guest.join(room, name, key);
+    const expected = cleanName(name, "Player");
+    assert.deepEqual(joined.peers.map((p) => p.name), ["Player", expected], JSON.stringify(name));
+    assert.equal((await seen).name, expected, JSON.stringify(name));
+    const gone = once(host, "leave");
+    guest.close();
+    await gone;
+  }
+  // Knocks show the host the cleaned name too.
+  const [knocker] = await clients(t, srv, "sea-battle", 1);
+  const knock = once(host, "knock");
+  knocker.join(room, "n1gger").catch(() => {});
+  assert.equal((await knock).name, "Player");
 });
 
 test("rooms are scoped by game slug and unknown games are refused", async (t) => {
