@@ -10,6 +10,7 @@
 // maxPlayers must match the game's entry in games.json (the server enforces it).
 import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
+import { checkName } from "./names.js";
 
 const ERRORS = {
   no_such_room: "That room doesn't exist any more. Ask your friend for a fresh invite link.",
@@ -30,6 +31,13 @@ const ERRORS = {
   host_gone: "Your friend left before the game started.",
   host_left: "Your friend closed the room. Ask them for a new invite link.",
   version_mismatch: "Your friend has a different version of this page. Both of you, please reload.",
+};
+
+// Why a nickname isn't used (see names.js); the player then plays under the default name.
+const NAME_PROBLEMS = {
+  link: "Not used: no links or @handles, please.",
+  word: "Not used: please pick a kinder nickname.",
+  chars: "Not used: only letters, numbers, spaces and . _ - ' are allowed.",
 };
 
 const NO_TURN_HELP =
@@ -62,9 +70,17 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       autocomplete: "nickname",
       placeholder: "Your nickname (optional)",
       value: getNickname(),
+      "aria-describedby": "nickname-problem",
     });
-    input.addEventListener("change", () => setNickname(input.value));
-    return el("label", { class: "field" }, el("span", {}, "Nickname"), input, el("small", {}, "Saved on this device only."));
+    const problem = el("small", { id: "nickname-problem", class: "field-problem", "aria-live": "polite" });
+    const check = () => {
+      problem.textContent = NAME_PROBLEMS[checkName(input.value).problem] ?? "";
+      problem.hidden = !problem.textContent;
+    };
+    input.addEventListener("input", check);
+    input.addEventListener("change", () => (setNickname(input.value), check()));
+    check();
+    return el("label", { class: "field" }, el("span", {}, "Nickname"), input, problem, el("small", {}, "Saved on this device only."));
   }
 
   function currentName(fallback) {
