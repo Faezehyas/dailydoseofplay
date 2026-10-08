@@ -191,7 +191,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 |---|---|
 | `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid |
+| `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid (see **Colours and contrast**) |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
@@ -293,6 +293,19 @@ Engine messages start with `$`. Everything else belongs to the game. The
 game receives messages through `session.onMessage((msg, fromSeat) => …)`,
 which buffers until a handler is attached. The handshake's protocol version is
 2; a page from before groups gets "a different version of this page".
+
+**Colours and contrast.** The shared colours are tokens in `theme.css`, defined for
+light and dark, and both themes meet WCAG 2.2 AA: 4.5:1 for text and 3:1 for
+the edge of a control. Coral (`--accent`) and teal (`--accent-2`) are fills:
+buttons, badges, pieces, selected options. Text in those colours uses
+`--accent-text` and `--accent-2-text`, which are darker in light mode, and
+text on a coral or teal fill uses `--accent-ink`. Text inputs and segmented
+options are outlined in `--control-border`; `--border` is only for card edges
+and dividers. `test/contrast.test.js` reads both token sets from `theme.css`
+and checks each of these pairs, and that the OS dark block matches the
+toggle's. Faded states use solid muted colours, not `opacity`, so their text
+keeps its contrast (a "Coming soon" card on the home page, for example).
+Disabled buttons are the exception: WCAG doesn't count inactive controls.
 
 ### Game (`public/<slug>/`)
 
