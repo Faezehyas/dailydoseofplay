@@ -131,7 +131,7 @@
 }
 
 .sb-status.mine {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .sb-place,
@@ -165,7 +165,7 @@
 }
 
 .sb-over h2.win {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .verdict {

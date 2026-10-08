@@ -1,6 +1,7 @@
 /* Dots and Boxes view. Shared tokens come from /engine/theme.css; the
    paper's own palette (sheet, graph lines, ink) is defined here for light
-   and dark. Yours is coral (--accent), theirs teal (--accent-2). */
+   and dark. Yours is coral (--accent), theirs teal (--accent-2);
+   text in those colours uses --accent-text and --accent-2-text. */
 .dots-boxes {
   --db-paper: #fffdf6;
   --db-paper-edge: #e9dfcd;
@@ -179,11 +180,11 @@
 }
 
 .db-score .mine dd {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .db-score .theirs dd {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 .db-status {
@@ -195,7 +196,7 @@
 }
 
 .db-status.mine {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .db-config,
@@ -455,7 +456,7 @@
 }
 
 .db-board .box .initial {
-  fill: var(--accent);
+  fill: var(--accent-text);
   font-size: 46px;
   font-weight: 900;
   text-anchor: middle;
@@ -467,7 +468,7 @@
 }
 
 .db-board .box.p1 .initial {
-  fill: var(--accent-2);
+  fill: var(--accent-2-text);
 }
 
 .db-board .ring {
@@ -543,11 +544,11 @@
 }
 
 .db-tally-text .mine {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .db-tally-text .theirs {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 /* ---------- game over ---------- */
@@ -566,7 +567,7 @@
 }
 
 .db-over h2.win {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .db-over .detail {

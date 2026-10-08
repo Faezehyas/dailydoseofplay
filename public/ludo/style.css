@@ -222,7 +222,7 @@
 }
 
 .ld-status.mine {
-  color: var(--c-ink, var(--accent));
+  color: var(--c-ink, var(--accent-text));
 }
 
 .ld-status[data-color="red"] { --c-ink: var(--ld-red-ink); }
@@ -948,7 +948,7 @@
 }
 
 .ld-over h2.win {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .ld-standings {

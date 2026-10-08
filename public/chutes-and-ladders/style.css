@@ -237,11 +237,11 @@
 }
 
 .cl-score .mine dd {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .cl-score .theirs dd {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 .cl-score .p2 dd {
@@ -261,7 +261,7 @@
 }
 
 .cl-status.mine {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .cl-config,
@@ -964,7 +964,7 @@
 }
 
 .cl-over h2.win {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .cl-over .detail {
