@@ -12,6 +12,7 @@
 import { randomFleet, remainingShips, shipCells, orthoNeighbors, aimedCells, patternCells, other, idx, CELLS, SIZE, UNKNOWN, HIT, MISS, CLEAR, rowOf, colOf } from "./rules.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
+import { robotPause } from "../engine/robot-pace.js";
 
 export function analyze(board) {
   const sunkCells = new Set(board.sunk.flatMap((s) => s.cells));
@@ -136,7 +137,7 @@ export function startRobot(session, { delay = 650, rng = Math.random, config = n
       if (destroyed || !match.canFire()) return;
       const { weapon, target, dir } = chooseMove(match.state, match.me, rng);
       match.fire(weapon, target, 0, dir);
-    }, delay + Math.floor(rng() * delay * 0.5));
+    }, robotPause(delay + Math.floor(rng() * delay * 0.5)));
   }
 
   function newMatch(m) {

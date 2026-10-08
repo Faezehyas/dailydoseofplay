@@ -5,6 +5,7 @@
 import { randInt } from "../engine/rng.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { matchRouter } from "../engine/session.js";
+import { robotPause } from "../engine/robot-pace.js";
 import {
   genMoves,
   makeMove,
@@ -395,7 +396,7 @@ export function startRobot(session, { rules, level = "easy", rng = Math.random, 
       const move = chooseMove(st, match.me, rng, { level, timeMs });
       const ms = Math.round(performance.now() - started);
       match.play(isTimed(st) && ms > timeLeft(st, match.me) ? { timeout: true } : { ...move, ms });
-    }, think(match.state, match.me, rng));
+    }, robotPause(think(match.state, match.me, rng)));
   }
   function newMatch(m) {
     clearTimeout(timer);
