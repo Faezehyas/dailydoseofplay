@@ -327,6 +327,18 @@ is the widest, so a game that passes no `layout` is never squeezed: its own
 box keeps whatever width it sets, and its rules panel matches the column.
 `test/browser/layout.test.js` checks every ready game at 1280 and 360 px.
 
+**Player colours.** A player has the same colour on every screen, so "I'm the
+coral one" is true for everyone at the table. In a two-player game whoever
+moves first this match is coral and the other teal (in Chess, White is coral),
+which matches the pieces in Connect 4, Checkers, Gomoku and Tic Tac Toe. Games
+with up to four players colour by seat: Ludo by its board, Chutes and Ladders
+coral, teal, violet and amber for seats 0 to 3. Your side is still marked
+`.mine` and the other `.theirs`, but those styles use `--mine` and `--theirs`
+rather than `--accent` and `--accent-2`; the game sets `data-you` on its root
+(`"a"` coral, `"b"` teal, `""` until the coin toss) and `theme.css` maps the
+two. Telling you apart is the job of words ("You", "(you)") and layout, not
+colour.
+
 ### Game (`public/<slug>/`)
 
 | File | Job |
@@ -770,8 +782,8 @@ samples other games play (hops and landings about 0.3 peak, ticks lower).
 `slides` have `players` entries) and pass the turn to the next seat; the game
 has no draws, so `winner` is always a seat. "Next player" as the first-spin
 setting means seat 1, the first friend in. The room creator's `setup` is
-accepted only from seat 0. On each screen your pawn is coral and the others
-take teal, violet and amber in seat order, everywhere a player's colour shows
+accepted only from seat 0. Pawns are coral, teal, violet and amber by seat,
+the same on every screen, everywhere a player's colour shows
 (name, score, pawn, last-square ring, spin log). Two pawns on a square stand
 side by side; three or four stand staggered across it. A robot game has 1 to
 3 robots, from a per-device setting the lobby reads when the game starts
@@ -852,8 +864,9 @@ Medium 81% of the time on 4×4 (14% draws) and 90% on 6×6, and both beat Easy
 
 **Board.** One inline SVG: a sheet of graph paper (`--db-*` tokens with a dark
 set), ink dots, and lines drawn as quadratic curves with a fixed hand wobble
-per line, so both screens show the same sketch. Lines are coral for you and
-teal for the opponent on each screen. A claimed box gets a tint, quick
+per line, so both screens show the same sketch. Lines are coral for whoever
+draws first this match and teal for the other, on both screens (see **Player
+colours**). A claimed box gets a tint, quick
 pencil hatching and its owner's initial. Every line has an invisible diamond
 tap target reaching to the two box centres beside it, so the targets tile the
 board: a tap anywhere picks the nearest line, about 47 px across on a phone

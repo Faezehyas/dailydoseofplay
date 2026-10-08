@@ -36,6 +36,30 @@ const noHorizontalScroll = (page) => page.evaluate(() => document.documentElemen
 const pick = (page, name, value) => page.click(`#cl-settings label:has(input[name="cl-${name}"][value="${value}"])`);
 const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const state = (page) => page.evaluate(() => window.ddp.match.state);
+// Each player's colour on this screen, by name, as the theme token their pill
+// swatch and pawn resolve to, so screens in different themes compare.
+const colours = (page) =>
+  page.evaluate(() => {
+    const root = document.querySelector(".chutes-ladders");
+    const resolve = (value) => {
+      const i = document.createElement("i");
+      i.style.color = value;
+      root.append(i);
+      const c = getComputedStyle(i).color;
+      i.remove();
+      return c;
+    };
+    const token = Object.fromEntries(["--accent", "--accent-2", "--cl-p2", "--cl-p3"].map((v) => [resolve(`var(${v})`), v]));
+    return Object.fromEntries(
+      [...document.querySelectorAll(".cl-players .who")].map((n) => {
+        const seat = [...n.classList].find((c) => /^p\d$/.test(c));
+        const swatch = getComputedStyle(n.querySelector(".swatch")).backgroundColor;
+        const pawn = resolve(getComputedStyle(document.querySelector(`.cl-board .pawn.${seat}`)).getPropertyValue("--pawn"));
+        return [n.querySelector(".name").textContent.replace(" (you)", ""), `${token[swatch]} ${token[pawn]}`];
+      }),
+    );
+  });
+
 // The board has settled: no spin is being played out on screen.
 const settled = (page) => wait(page, () => !document.querySelector("#cl-status")?.textContent.match(/Spinning|spinning|moving|Hop|ladder|chute/i));
 
@@ -279,6 +303,9 @@ test("four friends fill a Chutes and Ladders room and play a full game, then a r
     assert.equal(await p.locator("#cl-score > div").count(), 4);
   }
   assert.match(await friends[1].locator(".cl-players").innerText(), /Cy \(you\)[\s\S]*Ada[\s\S]*Bo[\s\S]*Di/, "you first, then the others in seat order");
+  const seen = await Promise.all(pages.map(colours));
+  assert.deepEqual(seen[0], { Ada: "--accent --accent", Bo: "--accent-2 --accent-2", Cy: "--cl-p2 --cl-p2", Di: "--cl-p3 --cl-p3" }, "colours go by seat");
+  for (const c of seen.slice(1)) assert.deepEqual(c, seen[0], "every screen shows each player in the same colour");
   assert.ok(await noHorizontalScroll(friends[0]), "four players fit a 360 px phone");
   await friends[0].screenshot({ path: `${ARTIFACTS}/cl-7-four-mobile-dark.png`, fullPage: true });
 

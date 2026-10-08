@@ -46,8 +46,13 @@
 }
 
 .gmk-players .who.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 2px var(--theirs) inset;
+}
+
+.gmk-players .who.me.active {
+  border-color: var(--mine);
+  box-shadow: 0 0 0 2px var(--mine) inset;
 }
 
 .gmk-players .name {
@@ -118,11 +123,11 @@
 }
 
 .gmk-score .mine dd {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .gmk-score .theirs dd {
-  color: var(--accent-2-text);
+  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */
@@ -135,7 +140,7 @@
 }
 
 .gmk-status.mine {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .gmk-config,
@@ -174,13 +179,13 @@
 
 .gmk-clocks .clock.active {
   color: var(--text);
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 1px var(--theirs) inset;
 }
 
 .gmk-clocks .clock.mine.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  border-color: var(--mine);
+  box-shadow: 0 0 0 1px var(--mine) inset;
 }
 
 .gmk-clocks .clock.low {
@@ -206,12 +211,12 @@
 .gmk-movebar > span {
   display: block;
   height: 100%;
-  background: var(--accent-2);
+  background: var(--theirs);
   transition: width 0.2s linear;
 }
 
 .gmk-movebar.mine > span {
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .gmk-movebar.low > span {

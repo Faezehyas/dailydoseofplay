@@ -587,6 +587,8 @@ function mountChess(session, root, shell) {
     const st = match?.state;
     const phase = match?.phase || "setup";
     root.querySelector(".chess").dataset.phase = phase;
+    // Coral is White, who moves first, on every screen.
+    root.querySelector(".chess").dataset.you = st ? (st.white === me ? "a" : "b") : "";
     if (phase === "playing" && !squares.length) buildBoard();
     renderPills();
     renderScore();

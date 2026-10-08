@@ -46,8 +46,13 @@
 }
 
 .bg-players .who.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 2px var(--theirs) inset;
+}
+
+.bg-players .who.me.active {
+  border-color: var(--mine);
+  box-shadow: 0 0 0 2px var(--mine) inset;
 }
 
 .bg-players .name {
@@ -98,11 +103,11 @@
 }
 
 .bg-score .mine dd {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .bg-score .theirs dd {
-  color: var(--accent-2-text);
+  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */
@@ -115,7 +120,7 @@
 }
 
 .bg-status.mine {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .bg-config,
@@ -154,13 +159,13 @@
 
 .bg-clocks .clock.active {
   color: var(--text);
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 1px var(--theirs) inset;
 }
 
 .bg-clocks .clock.mine.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  border-color: var(--mine);
+  box-shadow: 0 0 0 1px var(--mine) inset;
 }
 
 .bg-clocks .clock.low {
@@ -186,12 +191,12 @@
 .bg-movebar > span {
   display: block;
   height: 100%;
-  background: var(--accent-2);
+  background: var(--theirs);
   transition: width 0.2s linear;
 }
 
 .bg-movebar.mine > span {
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .bg-movebar.low > span {
@@ -335,11 +340,11 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .bg-players .them .swatch {
-  background: var(--accent-2);
+  background: var(--theirs);
 }
 
 .bg-players .label {
@@ -450,13 +455,13 @@
 }
 
 .checker.mine {
-  background: var(--accent);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, var(--text));
+  background: var(--mine);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mine) 55%, var(--text));
 }
 
 .checker.theirs {
-  background: var(--accent-2);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-2) 55%, var(--text));
+  background: var(--theirs);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--theirs) 55%, var(--text));
 }
 
 .checker b {
@@ -466,20 +471,16 @@
   line-height: 1;
 }
 
-.checker.theirs b {
-  color: var(--bg);
-}
-
 .slab {
   flex: 0 1 5px;
   min-height: 2px;
   width: 78%;
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .slab.theirs {
-  background: var(--accent-2);
+  background: var(--theirs);
 }
 
 .tray-count {
@@ -515,7 +516,7 @@
 }
 
 .bg-cell.point.dest::before {
-  background: color-mix(in srgb, var(--accent) 45%, var(--surface));
+  background: color-mix(in srgb, var(--mine) 45%, var(--surface));
 }
 
 /* Where a picked checker would land: the next free spot on the point… */
@@ -524,7 +525,7 @@
   width: 88%;
   aspect-ratio: 1;
   border-radius: 50%;
-  border: 3px dashed var(--accent);
+  border: 3px dashed var(--mine);
   animation: bg-pulse 1s ease-in-out infinite alternate;
 }
 
@@ -534,21 +535,21 @@
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  border: 3px dashed var(--accent);
+  border: 3px dashed var(--mine);
   animation: bg-pulse 1s ease-in-out infinite alternate;
 }
 
 .bg-cell.point.dest.over::before {
-  background: color-mix(in srgb, var(--accent) 75%, var(--surface));
+  background: color-mix(in srgb, var(--mine) 75%, var(--surface));
 }
 
 .bg-cell.tray.dest {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border-color: var(--mine);
+  box-shadow: 0 0 0 2px var(--mine) inset;
 }
 
 .bg-cell.tray.dest.over {
-  background: color-mix(in srgb, var(--accent) 25%, var(--surface));
+  background: color-mix(in srgb, var(--mine) 25%, var(--surface));
 }
 
 @keyframes bg-pulse {
@@ -563,12 +564,12 @@
   width: 88%;
   aspect-ratio: 1;
   border-radius: 50%;
-  border: 2px solid var(--accent-2);
+  border: 2px solid var(--theirs);
   opacity: 0.55;
 }
 
 .checker.arrived {
-  outline: 2px solid var(--accent-2);
+  outline: 2px solid var(--theirs);
   outline-offset: 2px;
 }
 
@@ -602,14 +603,14 @@
   height: 40px;
   padding: 5px;
   border-radius: 9px;
-  border: 2px solid var(--accent);
+  border: 2px solid var(--mine);
   background: var(--surface);
   box-shadow: var(--shadow);
   transition: opacity 0.2s ease;
 }
 
 .die.theirs {
-  border-color: var(--accent-2);
+  border-color: var(--theirs);
 }
 
 .die i {
@@ -660,11 +661,11 @@
 }
 
 .checker.ghost.mine {
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 55%, var(--text)), 0 6px 14px color-mix(in srgb, var(--text) 28%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mine) 55%, var(--text)), 0 6px 14px color-mix(in srgb, var(--text) 28%, transparent);
 }
 
 .checker.ghost.theirs {
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-2) 55%, var(--text)), 0 6px 14px color-mix(in srgb, var(--text) 28%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--theirs) 55%, var(--text)), 0 6px 14px color-mix(in srgb, var(--text) 28%, transparent);
 }
 
 .checker.pending,

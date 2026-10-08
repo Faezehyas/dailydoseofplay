@@ -251,6 +251,7 @@ windows (one private).
 - [ ] `layout` passed to `startGameShell()`, and the view's top-level box has no `max-width`
 - [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
+- [ ] Each player has the same colour on every screen (see **Player colours** in `ARCHITECTURE.md`): style `.mine` and `.theirs` with `--mine` and `--theirs`, and set `data-you` on the game's root
 - [ ] Original name, text and art; nothing copied from papergames
 - [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
 - [ ] `npm test` passes; `npm run test:browser` passes or is reported as skipped

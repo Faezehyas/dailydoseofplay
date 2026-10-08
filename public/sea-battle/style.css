@@ -45,8 +45,13 @@
 }
 
 .sb-players .who.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 2px var(--theirs) inset;
+}
+
+.sb-players .who.me.active {
+  border-color: var(--mine);
+  box-shadow: 0 0 0 2px var(--mine) inset;
 }
 
 .sb-players .score {
@@ -116,11 +121,11 @@
 
 .game-clock.active {
   color: var(--text);
-  border-color: var(--accent-2);
+  border-color: var(--theirs);
 }
 
 .game-clock.mine.active {
-  border-color: var(--accent);
+  border-color: var(--mine);
 }
 
 .game-clock.low {
@@ -139,7 +144,7 @@
 
 .sb-clock.mine {
   color: var(--text);
-  border-color: var(--accent);
+  border-color: var(--mine);
 }
 
 .sb-clock.low {
@@ -157,7 +162,7 @@
 }
 
 .sb-status.mine {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .sb-place,
@@ -763,8 +768,8 @@ button.cell {
   color: var(--text);
 }
 
-.sb-log li.mine { border-left-color: var(--accent); }
-.sb-log li.theirs { border-left-color: var(--accent-2); }
+.sb-log li.mine { border-left-color: var(--mine); }
+.sb-log li.theirs { border-left-color: var(--theirs); }
 .sb-log li.big { font-weight: 800; }
 .sb-log li.gift { border-left-color: var(--gift); }
 .sb-log li.bad { border-left-color: var(--danger); color: var(--danger); }

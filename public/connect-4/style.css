@@ -39,8 +39,13 @@
 }
 
 .c4-players .who.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 2px var(--theirs) inset;
+}
+
+.c4-players .who.me.active {
+  border-color: var(--mine);
+  box-shadow: 0 0 0 2px var(--mine) inset;
 }
 
 .c4-players .name {
@@ -122,11 +127,11 @@
 }
 
 .c4-score .mine dd {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .c4-score .theirs dd {
-  color: var(--accent-2-text);
+  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */
@@ -139,7 +144,7 @@
 }
 
 .c4-status.mine {
-  color: var(--accent-text);
+  color: var(--mine-text);
 }
 
 .c4-config,
@@ -178,13 +183,13 @@
 
 .c4-clocks .clock.active {
   color: var(--text);
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 1px var(--accent-2) inset;
+  border-color: var(--theirs);
+  box-shadow: 0 0 0 1px var(--theirs) inset;
 }
 
 .c4-clocks .clock.mine.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  border-color: var(--mine);
+  box-shadow: 0 0 0 1px var(--mine) inset;
 }
 
 .c4-clocks .clock.low {
@@ -210,12 +215,12 @@
 .c4-movebar > span {
   display: block;
   height: 100%;
-  background: var(--accent-2);
+  background: var(--theirs);
   transition: width 0.2s linear;
 }
 
 .c4-movebar.mine > span {
-  background: var(--accent);
+  background: var(--mine);
 }
 
 .c4-movebar.low > span {

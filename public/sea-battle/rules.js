@@ -183,6 +183,7 @@ export function newMatchState(first, { shotSeconds = 0, gameSeconds = 0 } = {}) 
     boards: [newBoard(), newBoard()],
     inventory: [newInventory(), newInventory()],
     turn: first,
+    first,
     moves: 0,
     winner: -1,
     reason: null, // "fleet" | "timeout" once over
