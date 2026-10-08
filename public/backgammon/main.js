@@ -772,6 +772,8 @@ function mountBackgammon(session, root, shell) {
     const phase = match?.phase || "setup";
     const pos = shownPos();
     root.querySelector(".backgammon").dataset.phase = phase;
+    // Coral is whoever moves first this match, on every screen.
+    root.querySelector(".backgammon").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills(pos);
     renderScore();
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
