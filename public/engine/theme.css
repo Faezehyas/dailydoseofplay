@@ -1,16 +1,23 @@
 /* Shared look for the home page and every game. Colours are tokens; dark
-   mode follows the OS unless the header toggle pins a theme. */
+   mode follows the OS unless the header toggle pins a theme.
+   Contrast (WCAG 2.2 AA, checked by test/contrast.test.js): --accent and
+   --accent-2 are fills; text in those colours uses --accent-text and
+   --accent-2-text, text on a coral fill uses --accent-ink, and the edges of
+   inputs and options use --control-border. */
 :root {
   color-scheme: light;
   --bg: #f6f3ee;
   --surface: #ffffff;
   --surface-2: #efeae2;
   --text: #1f2430;
-  --muted: #646b7a;
+  --muted: #5f6675;
   --border: #ddd6ca;
+  --control-border: #8a8172;
   --accent: #ff6b4a;
-  --accent-ink: #ffffff;
+  --accent-ink: #1a0e0a;
+  --accent-text: #b93a1f;
   --accent-2: #2b8a8a;
+  --accent-2-text: #1d7373;
   --focus: #2f6fed;
   --danger: #c93a2b;
   --ok: #23845a;
@@ -37,9 +44,12 @@
     --text: #e9ecf2;
     --muted: #9aa3b5;
     --border: #2f3646;
+    --control-border: #6b7386;
     --accent: #ff7a5c;
     --accent-ink: #1a0e0a;
+    --accent-text: #ff7a5c;
     --accent-2: #4fc1c1;
+    --accent-2-text: #4fc1c1;
     --focus: #7aa7ff;
     --danger: #ff6b5e;
     --ok: #4cc38a;
@@ -65,9 +75,12 @@
   --text: #e9ecf2;
   --muted: #9aa3b5;
   --border: #2f3646;
+  --control-border: #6b7386;
   --accent: #ff7a5c;
   --accent-ink: #1a0e0a;
+  --accent-text: #ff7a5c;
   --accent-2: #4fc1c1;
+  --accent-2-text: #4fc1c1;
   --focus: #7aa7ff;
   --danger: #ff6b5e;
   --ok: #4cc38a;
@@ -104,7 +117,7 @@ body {
 }
 
 a {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 :focus-visible {
@@ -148,7 +161,7 @@ h3 {
 
 .brand em {
   font-style: normal;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .logo-mark {
@@ -308,10 +321,15 @@ input[type="text"] {
   min-height: 44px;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   background: var(--bg);
   color: var(--text);
   font: inherit;
+}
+
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 /* ---------- lobby ---------- */
@@ -382,7 +400,7 @@ input[type="text"] {
   font-weight: 900;
   letter-spacing: 0.25em;
   padding-left: 0.25em;
-  color: var(--accent);
+  color: var(--accent-text);
   margin: 8px 0;
 }
 
@@ -601,7 +619,6 @@ a.game-card:hover {
   font-size: 2.6rem;
   font-weight: 900;
   color: var(--muted);
-  opacity: 0.6;
   letter-spacing: -0.04em;
 }
 
@@ -628,8 +645,13 @@ a.game-card:hover {
   color: var(--muted);
 }
 
-.game-card.soon {
-  opacity: 0.75;
+/* Not playable yet: muted, but at full opacity so the text keeps its contrast. */
+.game-card.soon h2 {
+  color: var(--muted);
+}
+
+.game-card.soon .game-icon img {
+  filter: grayscale(1);
 }
 
 @media (max-width: 520px) {
@@ -699,7 +721,7 @@ a.game-card:hover {
   min-height: 40px;
   padding: 4px 12px;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   background: var(--surface-2);
   font-weight: 700;
   font-size: 0.9rem;
@@ -715,7 +737,7 @@ a.game-card:hover {
 
 .seg-opt input:checked + span {
   background: var(--accent);
-  border-color: transparent;
+  border-color: var(--accent-text);
   color: var(--accent-ink);
 }
 
