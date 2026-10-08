@@ -9,12 +9,10 @@
 // game registers one.
 import { Emitter } from "./channel.js";
 import { HubGroup, SpokeGroup } from "./group.js";
+import { cleanName } from "./names.js";
 
 export const PROTOCOL_VERSION = 2;
 const HELLO_TIMEOUT_MS = 10_000;
-const NAME_MAX = 20;
-
-const cleanName = (raw, fallback) => String(raw ?? "").slice(0, NAME_MAX) || fallback;
 
 export class Session extends Emitter {
   // players: names by seat; group.seat is mine.
