@@ -1,6 +1,15 @@
 // Tiny event emitter and the in-memory channel used for robot games and tests.
 // Every transport (WebRTC DataChannel, local pair) exposes the same shape:
-//   send(msg), on("message" | "close", fn), close(), open
+//   send(msg), on("message" | "close", fn), close(reason), open
+// "close" carries a reason when this end closed itself on purpose
+// (MESSAGE_TOO_BIG below); otherwise none.
+
+// The longest message (its JSON text, in characters) a browser accepts from
+// another. Real messages stay under 1 KB (test/message-size.test.js lists each
+// game's largest). A longer one is dropped before JSON.parse and the link
+// closes with MESSAGE_TOO_BIG, so a modified client can't freeze other tabs.
+export const MAX_MESSAGE_LENGTH = 64 * 1024;
+export const MESSAGE_TOO_BIG = "message_too_big";
 
 export class Emitter {
   #handlers = new Map();
@@ -28,13 +37,18 @@ class LocalEnd extends Emitter {
     if (!this.open) return false;
     const wire = JSON.stringify(msg); // same serialisation as the real wire
     const other = this.other;
-    this.#deliver(() => other.open && other.emit("message", JSON.parse(wire)));
+    this.#deliver(() => {
+      if (!other.open) return;
+      // Refused unparsed, like PeerChannel does: the receiving end closes.
+      if (wire?.length > MAX_MESSAGE_LENGTH) return other.close(MESSAGE_TOO_BIG);
+      other.emit("message", JSON.parse(wire));
+    });
     return true;
   }
-  close() {
+  close(reason) {
     if (!this.open) return;
     this.open = false;
-    this.emit("close");
+    this.emit("close", reason);
     const other = this.other;
     this.#deliver(() => {
       if (!other.open) return;

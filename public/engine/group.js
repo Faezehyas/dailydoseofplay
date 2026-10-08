@@ -5,17 +5,20 @@
 //   group.seat                       my seat, 0..n-1 (seat 0 is the room creator)
 //   group.send(msg)                  deliver msg to every other seat
 //   group.on("message", (msg, from)) a message from seat `from`
-//   group.on("leave", seat)          that seat's connection is gone
-//   group.on("close")                I am cut off from every other seat
+//   group.on("leave", seat, reason)  that seat's connection is gone
+//   group.on("close", reason)        I am cut off from every other seat
 //   group.close()
+//
+// reason is MESSAGE_TOO_BIG (channel.js) when a link was closed because the
+// other end sent an oversized message; otherwise it is undefined.
 //
 // Today's layout is a star: seat 0 (the hub) holds one link to each other
 // seat (a spoke) and forwards every message to everyone else, so all players
 // see other players' messages in the hub's order. A link is any two-ended
 // channel: a PeerChannel (WebRTC) or one end of localPair().
-import { Emitter, localPair } from "./channel.js";
+import { Emitter, localPair, MAX_MESSAGE_LENGTH, MESSAGE_TOO_BIG } from "./channel.js";
 
-// Wire frames: spoke -> hub { msg }; hub -> spoke { from, msg } or { left }.
+// Wire frames: spoke -> hub { msg }; hub -> spoke { from, msg } or { left, reason? }.
 export class HubGroup extends Emitter {
   constructor({ links }) {
     super();
@@ -27,7 +30,7 @@ export class HubGroup extends Emitter {
         link.on("message", (frame) => {
           if (frame && typeof frame === "object" && "msg" in frame) this.#relay(seat, frame.msg);
         }),
-        link.on("close", () => this.#drop(seat)),
+        link.on("close", (reason) => this.#drop(seat, reason)),
       );
     }
   }
@@ -38,14 +41,20 @@ export class HubGroup extends Emitter {
   }
 
   #relay(from, msg) {
+    // The forwarded frame is a little longer than the one that arrived, so it is
+    // measured again: an oversized one cuts off its sender, not the receivers.
+    if (from !== this.seat && JSON.stringify({ from, msg }).length > MAX_MESSAGE_LENGTH) {
+      return this.links.get(from)?.close(MESSAGE_TOO_BIG);
+    }
     for (const [seat, link] of this.links) if (seat !== from) link.send({ from, msg });
     if (from !== this.seat) this.emit("message", msg, from);
   }
 
-  #drop(seat) {
+  #drop(seat, reason) {
     if (!this.links.delete(seat)) return;
-    for (const link of this.links.values()) link.send({ left: seat });
-    this.emit("leave", seat);
+    const frame = reason === MESSAGE_TOO_BIG ? { left: seat, reason } : { left: seat };
+    for (const link of this.links.values()) link.send(frame);
+    this.emit("leave", seat, frame.reason);
   }
 
   close() {
@@ -66,10 +75,10 @@ export class SpokeGroup extends Emitter {
     this.offs = [
       link.on("message", (frame) => {
         if (!frame || typeof frame !== "object") return;
-        if (Number.isInteger(frame.left)) this.emit("leave", frame.left);
+        if (Number.isInteger(frame.left)) this.emit("leave", frame.left, frame.reason === MESSAGE_TOO_BIG ? MESSAGE_TOO_BIG : undefined);
         else if ("msg" in frame && Number.isInteger(frame.from)) this.emit("message", frame.msg, frame.from);
       }),
-      link.on("close", () => this.#closed()),
+      link.on("close", (reason) => this.#closed(reason)),
     ];
   }
 
@@ -77,11 +86,11 @@ export class SpokeGroup extends Emitter {
     return this.link.send({ msg });
   }
 
-  #closed() {
+  #closed(reason) {
     if (this.closed) return;
     this.closed = true;
     for (const off of this.offs.splice(0)) off();
-    this.emit("close");
+    this.emit("close", reason);
   }
 
   close() {

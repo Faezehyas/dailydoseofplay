@@ -182,3 +182,52 @@ test("against robots (straight from a ?robot link), every robot seat plays", { s
   for (const k of [0, 1]) assert.deepEqual(await page.evaluate((k) => window.ddp.robots[k].match.state, k), state, `robot ${k + 1} agrees`);
   assert.deepEqual(errors, []);
 });
+
+test("a browser that sends an oversized message is cut off, and the others are told why", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
+  const { srv, open, errors } = await setup(t);
+  const UNEXPECTED = "A player's browser sent something unexpected.";
+  const huge = () => window.ddp.session.send({ t: "spam", pad: "x".repeat(70_000) });
+  async function room(host) {
+    await host.goto(`${srv.base}/party/`);
+    await host.click("#play-friend");
+    await host.locator("#room-code").waitFor();
+    return (await host.locator("#invite-link").inputValue()).replace(/^https?:\/\/[^/]+/, srv.base);
+  }
+
+  // A guest sends it during the game: the host refuses it unread and ends the game for everyone.
+  const ada = await open("Ada");
+  const invite = await room(ada);
+  const bo = await open("Bo");
+  await bo.goto(invite);
+  await ada.locator("#roster li.ready", { hasText: "Bo" }).waitFor();
+  const cy = await open("Cy");
+  await cy.goto(invite);
+  for (const p of [ada, bo, cy]) await wait(p, () => window.ddp.match?.phase === "playing");
+  await cy.evaluate(huge);
+  for (const p of [ada, bo]) await p.locator("#ended", { hasText: UNEXPECTED }).waitFor({ timeout: 20_000 });
+  await cy.locator("#ended", { hasText: "The connection to Ada was lost." }).waitFor({ timeout: 20_000 });
+
+  // A guest sends it in the waiting room (its first message, padded with spaces, is still valid JSON).
+  const host = await open("Dee");
+  const invite2 = await room(host);
+  const odd = await open("Mo");
+  await odd.context().addInitScript(() => {
+    const send = RTCDataChannel.prototype.send;
+    RTCDataChannel.prototype.send = function (data) {
+      return send.call(this, " ".repeat(70_000) + data);
+    };
+  });
+  await odd.goto(invite2);
+  await host.locator("#toast", { hasText: `${UNEXPECTED} The invite link still works.` }).waitFor({ timeout: 20_000 });
+  assert.doesNotMatch(await host.locator("#roster").innerText(), /Mo/);
+
+  // The host sends it: the guest refuses it.
+  const eve = await open("Eve");
+  await eve.goto(invite2);
+  await host.locator("#roster li.ready", { hasText: "Eve" }).waitFor();
+  await host.click("#start-game");
+  for (const p of [host, eve]) await wait(p, () => window.ddp.match?.phase === "playing");
+  await host.evaluate(huge);
+  await eve.locator("#ended", { hasText: UNEXPECTED }).waitFor({ timeout: 20_000 });
+  assert.deepEqual(errors, []);
+});

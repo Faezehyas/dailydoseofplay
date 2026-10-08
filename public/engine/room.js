@@ -7,7 +7,7 @@
 //                                       accept(id) / decline(id) a knock; start() -> Session
 //   new GuestRoom({ game, code, key, name }) join() -> Session once the host starts; emits "status"
 //   localRoom({ game, names, mode })    one Session per seat, connected in memory (robots, tests)
-import { Emitter } from "./channel.js";
+import { Emitter, MESSAGE_TOO_BIG } from "./channel.js";
 import { RoomClient } from "./signaling.js";
 import { PeerChannel } from "./peer.js";
 import { localGroup } from "./group.js";
@@ -18,12 +18,14 @@ import { Session, admitGuest, startHub, sendRoster, greetHost } from "./session.
 export class RoomError extends Error {
   constructor(code) {
     super(code);
-    this.code = code; // no_direct_link | host_gone | host_left | version_mismatch | lobby_lost | room_expired | too_fast
+    this.code = code; // no_direct_link | host_gone | host_left | version_mismatch | lobby_lost | room_expired | too_fast | message_too_big
   }
 }
 
 // Close reasons the server sends to someone already in a room.
 const LOBBY_CLOSES = new Set(["room_expired", "too_fast"]);
+// Why greetHost() failed -> RoomError code.
+const GREET_ERRORS = { version_mismatch: "version_mismatch", closed: "host_gone", [MESSAGE_TOO_BIG]: MESSAGE_TOO_BIG };
 
 export class HostRoom extends Emitter {
   constructor({ game, name, signalingUrl }) {
@@ -94,7 +96,7 @@ export class HostRoom extends Emitter {
     const guest = { name, link, ready: false };
     this.guests.set(id, guest);
     link.on("failed", (reason) => this.#drop(id, reason));
-    link.on("close", () => this.#drop(id, "left"));
+    link.on("close", (reason) => this.#drop(id, reason || "left"));
     link.on("open", async () => {
       try {
         guest.name = await admitGuest(link, { game: this.game });
@@ -197,7 +199,7 @@ export class GuestRoom extends Emitter {
             this.rooms = null;
             resolve(session);
           },
-          (err) => fail(err.message === "version_mismatch" ? "version_mismatch" : err.message === "closed" ? "host_gone" : "no_direct_link"),
+          (err) => fail(GREET_ERRORS[err.message] || "no_direct_link"),
         );
       });
     });
