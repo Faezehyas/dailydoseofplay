@@ -680,6 +680,48 @@ a.game-card:hover {
   filter: grayscale(1);
 }
 
+/* Loading tiles in index.html: real card markup with blank text, shimmering. */
+.game-card.placeholder .game-icon,
+.game-card.placeholder h2,
+.game-card.placeholder p,
+.game-card.placeholder .game-meta span {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--surface-2) 30%, var(--border) 50%, var(--surface-2) 70%) 100% 0 / 300% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.game-card.placeholder h2 {
+  width: 60%;
+}
+
+.game-card.placeholder .game-meta span:first-child {
+  display: inline-block;
+  width: 30%;
+}
+
+.game-card.placeholder .badge {
+  width: 52px;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: 0 0;
+  }
+}
+
+.grid-notice {
+  grid-column: 1 / -1;
+}
+
+.grid-notice .notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
 @media (max-width: 520px) {
   .lobby-actions {
     grid-template-columns: 1fr;
@@ -698,6 +740,9 @@ a.game-card:hover {
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+  .game-card.placeholder * {
+    animation: none !important;
   }
 }
 

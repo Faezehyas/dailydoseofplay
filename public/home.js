@@ -26,15 +26,35 @@ function card(game) {
   );
 }
 
-async function main() {
-  const list = $("#games");
+const list = $("#games");
+const placeholders = [...list.children];
+
+// After a retry, focus moves to the first tile or the new Retry button, so a
+// keyboard user keeps their place.
+async function load(retrying = false) {
+  list.replaceChildren(...placeholders);
+  list.setAttribute("aria-busy", "true");
   try {
     const res = await fetch("/games.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { games } = await res.json();
     list.replaceChildren(...games.map(card));
   } catch {
-    list.replaceChildren(el("li", { class: "card" }, "Couldn't load the game list. Please reload the page."));
+    list.replaceChildren(
+      el(
+        "li",
+        { class: "grid-notice" },
+        el(
+          "p",
+          { class: "notice error", role: "alert" },
+          "Couldn't load the game list.",
+          el("button", { class: "btn primary small", type: "button", id: "retry", onclick: () => load(true) }, "Retry"),
+        ),
+      ),
+    );
   }
+  list.removeAttribute("aria-busy");
+  if (retrying) list.querySelector("a, button")?.focus();
 }
 
-main();
+load();
