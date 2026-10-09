@@ -917,60 +917,13 @@ input::placeholder {
   text-align: center;
 }
 
-/* The title centred, the fold chevron at the right; the empty first column
-   balances it, as in the player bar. */
-.result-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
-  align-items: center;
-}
-
-.result-head h2 {
-  grid-column: 2;
+.result-panel h2 {
   margin: 0;
   font-size: 1.5rem;
 }
 
-.result-head h2.win {
+.result-panel h2.win {
   color: var(--accent-text);
-}
-
-/* A round button with a chevron: down folds the panel, up opens it again. */
-.result-toggle {
-  grid-column: 3;
-  justify-self: end;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin: -6px -8px -6px 8px;
-  padding: 0;
-  border: 1px solid var(--control-border);
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.result-toggle::before {
-  content: "";
-  width: 10px;
-  height: 10px;
-  border: solid currentColor;
-  border-width: 0 2.5px 2.5px 0;
-  transform: translateY(-2px) rotate(45deg);
-  transition: transform var(--dur-med) var(--ease-out);
-}
-
-.result-toggle[aria-expanded="false"]::before {
-  transform: translateY(2px) rotate(-135deg);
-}
-
-@media (hover: hover) {
-  .result-toggle:hover {
-    background: var(--surface-2);
-    color: var(--text);
-  }
 }
 
 .result-places {

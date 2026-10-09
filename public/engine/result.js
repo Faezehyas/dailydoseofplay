@@ -1,7 +1,7 @@
 // The game-over panel every game shows, pinned to the bottom of the screen so
 // the board never moves: who won, the places when a game plays on for them, a
 // reason line, an optional node of the game's, Rematch with everyone's votes,
-// and Leave. A chevron folds it down to its title, to see the whole board.
+// and Leave.
 import { el, toast } from "./shell.js";
 
 const PLACE = ["1st", "2nd", "3rd", "4th"];
@@ -11,27 +11,18 @@ export function resultPanel(session, { onLeave, onShow = () => {}, classes = () 
   const me = session.index;
   const name = (seat) => session.players[seat].name;
   let votes = { me: false, them: false, seats: [] };
-  let folded = false;
 
   const title = el("h2", { id: "result", tabindex: "-1" });
-  const toggle = el("button", { class: "result-toggle", type: "button", id: "result-toggle", "aria-label": "Result details", "aria-controls": "result-body", onclick: () => fold(!folded) });
   const places = el("ol", { class: "result-places", id: "result-places" });
   const reason = el("p", { class: "result-reason", id: "result-reason" });
   const extra = el("div", { class: "result-extra" });
   const rematch = el("button", { class: "btn primary", type: "button", id: "rematch", onclick: () => session.requestRematch() });
   const status = el("p", { class: "rematch-status", id: "rematch-status" });
   const leave = el("button", { class: "btn", type: "button", onclick: onLeave }, "Leave");
-  const body = el("div", { class: "result-body", id: "result-body" }, places, reason, extra, el("div", { class: "result-actions" }, rematch, leave), status);
-  const node = el("section", { class: "result-panel", id: "result-panel", "aria-labelledby": "result", hidden: true }, el("div", { class: "result-head" }, title, toggle), body);
+  const actions = el("div", { class: "result-actions" }, rematch, leave);
+  const node = el("section", { class: "result-panel", id: "result-panel", "aria-labelledby": "result", hidden: true }, title, places, reason, extra, actions, status);
   // The page keeps room below the game for the panel (see theme.css).
   new ResizeObserver(() => document.body.style.setProperty("--result-h", `${node.offsetHeight}px`)).observe(node);
-
-  function fold(on) {
-    folded = on;
-    body.hidden = on;
-    toggle.title = on ? "Show the result" : "Show the board";
-    toggle.setAttribute("aria-expanded", String(!on));
-  }
 
   function renderVotes() {
     rematch.disabled = votes.me;
@@ -77,7 +68,6 @@ export function resultPanel(session, { onLeave, onShow = () => {}, classes = () 
     if (extra.firstChild !== more) extra.replaceChildren(more ?? "");
     if (!node.hidden) return;
     node.hidden = false;
-    fold(false);
     title.focus({ preventScroll: true });
     onShow({ winner, stopped });
   }
