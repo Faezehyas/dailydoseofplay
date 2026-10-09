@@ -6,7 +6,8 @@
 //
 // onSession(session, root, shell) mounts the game in `root` and returns { destroy }.
 // shell.leave() goes back to the lobby; while the game says a friend match is
-// on (shell.setInProgress(true)), it asks first. The browser's Back does the same.
+// on (shell.setInProgress(true)), it asks first. The browser's Back does the same,
+// and closing or reloading the tab gets the browser's own prompt.
 // createRobot(session) drives one robot seat over an in-memory group; robots
 // is how many seats (a number, or a function read when a robot game starts).
 // maxPlayers must match the game's entry in games.json (the server enforces it).
@@ -73,7 +74,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   if (page) page.dataset.layout = LAYOUTS.includes(layout) ? layout : "wide";
   showView("lobby");
   const duel = maxPlayers === 2;
-  const state = { room: null, session: null, game: null, leave: null, robot: null, robots: [], attempt: 0 };
+  const state = { room: null, session: null, game: null, mustAsk: () => false, leave: null, robot: null, robots: [], attempt: 0 };
   window.ddp = state; // handy for debugging and browser tests
 
   const params = new URLSearchParams(location.search);
@@ -479,8 +480,9 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     // The game has a history entry of its own, so Back leaves it as Leave does.
     history.pushState({ game: slug }, "");
     let inProgress = false;
+    state.mustAsk = () => inProgress && session.mode === "friend" && askBeforeLeaving();
     state.leave = async () => {
-      if (inProgress && session.mode === "friend" && askBeforeLeaving() && !(await confirmLeave(session))) return;
+      if (state.mustAsk() && !(await confirmLeave(session))) return;
       leaveGame();
     };
     state.game = onSession(session, gameRoot, { leave: state.leave, setInProgress: (on) => (inProgress = on) });
@@ -528,6 +530,13 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   }
 
   addEventListener("pagehide", () => state.session?.leave());
+
+  // Closing or reloading the tab mid-match: only the browser's own prompt can ask.
+  addEventListener("beforeunload", (e) => {
+    if (!state.session || !state.mustAsk()) return;
+    e.preventDefault();
+    e.returnValue = true; // older Safari and Chrome
+  });
 
   // Back during a game: stay on the game's entry and leave as Leave does. Back
   // while the question is open closes it, like Esc.

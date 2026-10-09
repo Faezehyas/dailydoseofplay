@@ -494,7 +494,9 @@ playing. Robot games, finished matches and a game that never calls
 in `shell.js` says no. The browser's Back (or a phone's back gesture) is
 Leave too: a game gets a history entry of its own when it starts, so Back
 returns to the lobby, asking first in the same cases; Back while the question
-is open closes it, like Esc.
+is open closes it, like Esc. Closing or reloading the tab in those cases gets the
+browser's own "Leave site?" prompt (`beforeunload`), since a page can't show
+its own dialog there.
 
 **Message size.** `JSON.parse` blocks the tab, so a modified client could
 freeze other players' tabs with huge messages. Every link therefore checks a

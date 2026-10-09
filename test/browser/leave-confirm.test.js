@@ -1,7 +1,8 @@
 // Headless-browser test for leaving a game: in a live friend match Leave, or
 // the browser's Back, asks first in the site's dialog (Cancel, Esc or Back
-// keeps playing, Leave ends it for the others); robot games and finished
-// matches leave at once. Skips if Playwright is missing.
+// keeps playing, Leave ends it for the others), and closing the tab gets the
+// browser's prompt; robot games and finished matches leave at once. Skips if
+// Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -19,6 +20,7 @@ async function setup(t) {
     await srv.close();
   });
   const errors = [];
+  const prompts = []; // the browser's own dialogs, each dismissed
   async function open(nickname, opts = {}) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce", ...opts });
     await ctx.addInitScript((n) => {
@@ -27,7 +29,10 @@ async function setup(t) {
     }, nickname);
     const page = await ctx.newPage();
     page.on("pageerror", (e) => errors.push(`${nickname}: ${e.message}`));
-    page.on("dialog", (d) => errors.push(`${nickname}: a browser dialog: ${d.message()}`));
+    page.on("dialog", (d) => {
+      prompts.push(`${nickname}: ${d.type()}`);
+      d.dismiss();
+    });
     return page;
   }
   // The host makes a room for the game; each friend opens the invite link.
@@ -41,7 +46,7 @@ async function setup(t) {
       await page.click("#join-room");
     }
   }
-  return { srv, open, room, errors };
+  return { srv, open, room, errors, prompts };
 }
 
 const focused = (page) => page.evaluate(() => document.activeElement?.id);
@@ -49,7 +54,7 @@ const phase = (page) => page.evaluate(() => window.ddp.match.phase);
 const back = (page) => page.goBack({ waitUntil: "commit" });
 
 test("in a live friend game, Leave or Back asks first: Cancel, Esc or Back keeps playing, Leave ends it for the friend", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
-  const { open, room, errors } = await setup(t);
+  const { open, room, errors, prompts } = await setup(t);
   const host = await open("Ada", { colorScheme: "dark" });
   const guest = await open("Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" });
   await room("tic-tac-toe", host, [guest]);
@@ -86,6 +91,13 @@ test("in a live friend game, Leave or Back asks first: Cancel, Esc or Back keeps
   await host.locator("dialog#confirm").waitFor({ state: "detached" });
   assert.equal(await phase(host), "playing");
 
+  // Closing the tab gets the browser's own prompt; staying keeps the game.
+  const prompted = guest.waitForEvent("dialog");
+  await guest.close({ runBeforeUnload: true });
+  await prompted;
+  assert.deepEqual(prompts, ["Bo: beforeunload"]);
+  assert.equal(await phase(guest), "playing");
+
   // Leave → Leave: the host is back in the lobby and the friend is told.
   await host.click("#leave");
   await host.click("#confirm-yes");
@@ -96,7 +108,7 @@ test("in a live friend game, Leave or Back asks first: Cancel, Esc or Back keeps
 });
 
 test("a finished friend match and a robot game leave at once, by Leave or Back", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
-  const { srv, open, room, errors } = await setup(t);
+  const { srv, open, room, errors, prompts } = await setup(t);
   const host = await open("Ada");
   const guest = await open("Bo");
   await room("tic-tac-toe", host, [guest]);
@@ -122,6 +134,12 @@ test("a finished friend match and a robot game leave at once, by Leave or Back",
   await back(solo);
   await solo.locator("#play-friend").waitFor();
   assert.equal(await solo.locator("dialog").count(), 0);
+  // Closing the tab mid robot game doesn't ask.
+  await solo.click("#play-robot");
+  await wait(solo, () => window.ddp.match?.phase === "playing");
+  await solo.close({ runBeforeUnload: true });
+  await solo.waitForEvent("close");
+  assert.deepEqual(prompts, []);
   assert.deepEqual(errors, []);
 });
 
