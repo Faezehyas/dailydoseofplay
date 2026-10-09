@@ -10,7 +10,7 @@
 // maxPlayers must match the game's entry in games.json (the server enforces it).
 // layout is the page column while the game is on show: "narrow", "medium" or
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
-import { initShell, el, $, toast, copyText, getNickname, setNickname, setLastGame, setTabAlert } from "./shell.js";
+import { initShell, el, $, toast, copyText, getNickname, setNickname, setLastGame, setTabAlert, loadGames } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
 
@@ -54,10 +54,29 @@ const LAYOUTS = ["narrow", "medium", "wide"];
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 4;
 
+// "More games" under the lobby (and the game's settings): the other ready
+// games. theme.css hides it while a game is on show.
+function moreGames(slug, gameRoot) {
+  const row = el("nav", { class: "more-games", "aria-labelledby": "more-games-title", hidden: true });
+  gameRoot.before(row);
+  loadGames().then(
+    (games) => {
+      const others = games.filter((g) => g.status === "ready" && g.slug !== slug);
+      row.replaceChildren(
+        el("h2", { id: "more-games-title" }, "More games"),
+        el("ul", {}, others.map((g) => el("li", {}, el("a", { href: `/${g.slug}/` }, g.name)))),
+      );
+      row.hidden = !others.length;
+    },
+    () => {},
+  );
+}
+
 export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide" }) {
-  initShell({ title });
+  initShell();
   const lobbyRoot = $("#lobby");
   const gameRoot = $("#game");
+  moreGames(slug, gameRoot);
   // The lobby, settings, game and "How to play" share one column (theme.css).
   const page = lobbyRoot.closest(".page");
   const showView = (name) => {
