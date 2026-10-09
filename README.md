@@ -80,7 +80,7 @@ server/            Node server: static files, /ws signaling, /healthz
 public/
   index.html       home page (cards from games.json)
   games.json       game registry
-  engine/          shared browser engine: lobby, signaling client, WebRTC, sessions, fair play, UI shell
+  engine/          shared browser engine: lobby, signaling client, WebRTC, sessions, fair play, card decks, UI shell
   sea-battle/      Sea Battle: rules, protocol, robot, view, tests
   tic-tac-toe/     Tic Tac Toe: rules, robot, view, tests (TurnMatch protocol)
   connect-4/       Connect 4: rules, robot, view, tests (TurnMatch protocol)
@@ -91,6 +91,8 @@ public/
   chutes-and-ladders/  Chutes and Ladders: rules, view, sounds, tests (TurnMatch with shared spins)
   dots-and-boxes/  Dots and Boxes: rules, robot, view, sounds, tests (TurnMatch)
 test/              integration and browser tests
+vendor/            the mental-poker library behind card decks (git submodule), our patches and lock file
+scripts/           build-mental-poker.sh builds it into public/engine/vendor/mental-poker/ (committed); install-wasm-tools.sh gets the pinned tools for CI
 app.yaml           Wasmer Edge app config (name dailydoseofplay, owner faezeh_yass)
 ```
 

@@ -41,6 +41,10 @@ relative imports resolve.
 
 Every page response carries `Content-Security-Policy`, `X-Content-Type-Options`
 and `Referrer-Policy` headers. Scripts can only load from the site itself.
+Only `engine/deck-worker.js` gets `'wasm-unsafe-eval'` in its `script-src`:
+the card deck's WebAssembly compiles in that worker (see **Card games**), and
+a worker runs under its own script's policy. Pages can't compile any code.
+`.wasm` files are served as `application/wasm`.
 
 **Who may open `/ws`.** Browsers always send an `Origin` header on a
 WebSocket handshake, and a page can't change it, so the upgrade handler
@@ -200,7 +204,13 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `session.js` | `Session`: the seated players (`players`, `index`, `me`, `others`, `opponent`), buffering of game messages, rematch votes (`$rematch`, every seat must vote), goodbye (`$bye`). The handshake (`$hello` with a protocol version, `$welcome`, `$roster`, `$start`) that turns links into a group. No DOM. |
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
 | `robot-pace.js` | `robotPause(ms)`: every robot's pause before it moves goes through it, so browser tests can speed robots up by setting `globalThis.ddpRobotPace` (1 for players) |
-| `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
+| `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games. Card games use `card-match.js`; Sea Battle hides a fleet, not cards, so it has its own `match.js`. |
+| `card-match.js` | `CardMatch` and `startCardRobot()`: turn games with hidden cards and no dealer (mental poker, see **Card games**). Like `TurnMatch`, plus a deck the rules deal from (`deck.deal`, `deck.open`, `deck.shuffle`, `deck.face`), every shuffle and share checked as it arrives, and an audit when the match ends. |
+| `deck-service.js` | `deckService()`: the deck cryptography as async calls, in one Web Worker per tab (`deck-worker.js`) or in-process in Node. Replaces the worker if the WebAssembly crashes. Also `DeckError` and the byte sizes. |
+| `deck-worker.js` | The worker: runs `deck-crypto.js` off the main thread |
+| `deck-crypto.js` | A synchronous layer over the vendored mental-poker WebAssembly (`vendor/mental-poker/`): keys, shuffles and their proofs, shares, opening, the audit. Bytes in, bytes out. |
+| `base64.js` | Bytes to base64 and back, strict about its input, for binary data in JSON messages |
+| `vendor/mental-poker/` | The built library, committed (see **Card games**): `cards_play_bg.wasm`, its loader `cards_play.js`, `LICENSE`, and `SOURCE` (the commit it was built from) |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. It also sets which view is on show for the page column, and saves the game's slug when a game starts. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
@@ -283,7 +293,10 @@ cap). The largest today, in characters: Sea Battle 283 (`reveal`), Ludo 167
 (`setup`), Connect 4 121 (`setup`), Dots and Boxes 117 (`setup`), Chutes and
 Ladders 116 (`setup`), Backgammon 113, and Tic Tac Toe, Gomoku, Checkers and
 Chess 112 (a shared-random `draw`); the engine's handshake peaks at 127
-(`$start` with four 20-character names).
+(`$start` with four 20-character names). A card game's shuffles and shares
+grow with the deck, so `CardMatch` sends them in parts (see **Card games**);
+its largest message, with four players and a 108-card deck, is 3063 (a part
+of a `shuffle`).
 
 **Why a pre-negotiated channel.** With the default in-band handshake, the
 guest's channel opens when the host's open request arrives, and Chrome
@@ -403,11 +416,134 @@ its own audio context or output.
 | `index.html` | Page with `#lobby` and `#game` sections and the rules |
 | `main.js` | `startGameShell({ slug, title, tagline, layout, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; `layout` picks the page column (see **Page column**). |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
-| `match.js` | Only for games with hidden information: one player's protocol state machine. Other games use `engine/turn-match.js`. |
+| `match.js` | Only for games with hidden information that isn't a deck of cards (Sea Battle's fleet): one player's protocol state machine. Card games use `engine/card-match.js`, the others `engine/turn-match.js`. |
 | `sounds.js` | Optional: the game's sounds, `export const sounds = defineSounds({...})` with a role for each (see **Sound levels**), and the `play` helpers `main.js` calls. The only file that imports `engine/sound.js`. |
-| `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`; custom-protocol games (Sea Battle) also export `startRobot(session)`. |
+| `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`, card games to `startCardRobot()`; custom-protocol games (Sea Battle) also export `startRobot(session)`. |
 | `*.test.js` | `node --test` unit tests, next to the code |
 | `icon.svg` | Card art for the home page (16:10) |
+
+## Card games (`CardMatch`)
+
+A card game hides each hand from every other player, including the browser
+that started the room, and has no dealer. `engine/card-match.js` does it with
+mental poker: every player holds a share of the deck's key, and a card can
+only be read with every share. With three or more players, a modified host
+can still read a hand (see **A modified host** below). The rules contract is
+at the top of that file; Crazy Eights is the first game meant to use it.
+
+**How a match runs.** Every message carries `m`, as in `TurnMatch`.
+
+1. **Keys.** Each browser makes a key and sends `hello {tip, key}`: its
+   `SharedRandom` chain tip, and its public key with a proof that it holds
+   the secret. The proof covers the match number, the seat and the tip, so a
+   key can't be reused by another seat or in another match. Everyone checks
+   every proof and adds the keys into one joint key. One shared draw picks
+   who starts.
+2. **The shuffle.** The deck starts as the cards 0 to `deckSize` − 1 in
+   order. Seat 0 re-encrypts every card under the joint key, permutes them,
+   and sends the result with a proof that it is still the same cards
+   (`shuffle`). Every other seat checks the proof before taking it as the
+   deck; then seat 1 shuffles, and so on. Nobody knows the final order.
+3. **Dealing and opening.** The rules call `deck.deal(slot, seat)` or
+   `deck.open(slot)`. For a deal, every other seat sends its share of that
+   card with a proof (`shares`); the receiver adds its own, which it never
+   sends, and reads the card. For an open, everyone sends theirs. Shares go to
+   everyone, so the holder of a dealt card can later show it to all by sending
+   just its own share: a move that plays a card (`rules.reveals()`) carries
+   it (`move {move, sh}`). Every seat sends its part of every round, empty if
+   it has no shares to give, so no seat runs more than a round ahead.
+4. **Reshuffles.** `deck.shuffle(slots)` sends those cards, say a discard
+   pile, through another round of shuffles by every seat, into new slots.
+   Faces that were open are hidden again.
+5. **The audit.** When `state.winner` is set, everyone sends their secret key
+   (`audit {key}`). Each browser checks every key against the one that player
+   used, reads every card it couldn't see, and replays the game from the deal
+   with every face known. The result is `match.verdict`: `{ ok: true }`, or
+   what went wrong and, when it was a move, whose.
+
+| Cheat | Caught |
+|---|---|
+| Looking at another hand | Prevented: a card can only be read with every player's share. |
+| A shuffle that swaps, copies or drops a card, or one passed off as another seat's | At once: the proof fails, and the match stops naming the shuffler. |
+| A wrong share, or a share for another card | At once: its proof fails. |
+| Showing a card that isn't in your hand, or moving out of turn | At once, like any illegal move. |
+| Breaking a rule that depends on a hidden card ("draw only if nothing plays") | In the audit, where `deck.face()` returns every face, so the rule throws. The result stands; the audit only reports. |
+| Revealing a different key at the end | In the audit. |
+
+The audit needs every player's key. A player who leaves after the last move,
+or never sends their key, leaves the match unverified (`verdict` stays null):
+the view should say so. Nothing stops stalling either: a player who never
+sends their shares holds the game up until someone leaves. A seat that sends
+more than `MAX_AHEAD` shuffle or share parts ahead of the match is flooding,
+and is blamed for it. A hidden card can't pass from one player to another (Go
+Fish, Hearts' pass): that needs a private message, and every message here
+goes to everyone. A card that is already open can.
+
+**A modified host, with three or more players.** Every message goes through
+the host's browser (see **Groups**), and messages aren't signed. A modified
+host can therefore hold back one player's messages and forge a game-ending
+move in their name. Your browser then sends your key for the audit while the
+real game goes on, and the host can read your hand and play your seat.
+Signing moves wouldn't close this, because the host also relays the keys a
+signature would be checked against, and could swap in its own. It would
+take direct links between every pair of players (a mesh, see **Groups**).
+With two players the host is your only opponent, so this gives them nothing
+the game doesn't already.
+
+**Writing rules.** The rules see slots, never ciphertexts, and `deck.face()`
+only returns faces every player can see, so the state is the same in every
+browser. The one thing to get right: the state must never depend on a face
+that may be hidden. The audit replays with every face known, and any
+difference fails it ("the game plays out differently with every card known").
+A check that needs a hidden card throws only when the face is known, which is
+in the audit. A card opened in a call has no face until the others' shares
+arrive, so reading it in the same call is an error; read it from the next call
+on, such as `settle()`. `test/fixtures/toy-cards.js` is a small example of all
+of this.
+
+**The library.** The cryptography is `paritytech/mental-poker`: ElGamal on
+secp256k1 (Barnett–Smart's protocol), Bayer–Groth shuffle proofs and
+Chaum–Pedersen reveal proofs, in Rust compiled to WebAssembly. Before we
+adopted it, we checked that every proof hashes all of its inputs into its
+challenges (Fiat–Shamir), regenerated its commitment generators from their
+public seed to confirm the committed ones, and tried swapping, copying and
+replaying shuffles and shares; all were rejected. It has no professional
+audit. `deck-crypto.js` adds what the library leaves to its caller: a share
+is tied to the seat that sent it (the library accepts a valid share from any
+key), the same key can't join twice, and a WebAssembly crash (a malformed
+proof can trap the module) becomes an error that blames whoever sent the input.
+
+**Vendoring.** The site has no build step, so the WebAssembly is committed:
+
+- `vendor/mental-poker/`: a git submodule, pinned to the commit we reviewed. It is outside `public/`, so it is never served.
+- `vendor/patches/mental-poker/*.patch`: our changes to it. Today that is one line that makes upstream's WebAssembly build work.
+- `vendor/mental-poker.Cargo.lock`: upstream has no lock file; this one pins every Rust dependency.
+- `scripts/build-mental-poker.sh`: builds the pinned commit with the patches and the lock file, using pinned Rust, `wasm-pack` and `wasm-opt`, into `public/engine/vendor/mental-poker/` (a 370 KB `.wasm`, 160 KB gzipped, plus its loader, `LICENSE` and `SOURCE`). `--check` builds into a temporary folder and fails if anything differs from the committed files. CI's `mental-poker` job runs it, with tools from `scripts/install-wasm-tools.sh`, which checks their hashes. `wasm-pack` fetches the `wasm-bindgen` matching the lock file without a hash check, which the byte comparison covers. Builds on Arch Linux (system `wasm-opt`) and in a Debian container (binaryen's release) gave the same bytes.
+- Upstream declares `MIT OR Apache-2.0` but ships no license files. We use it under MIT; the text is in `vendor/mental-poker.LICENSE` and is copied next to the build.
+
+To update: move the submodule, refresh the patches and the lock file, run the
+script and review what changed. Wasmer's builder runs `npm run build` when
+`package.json` has one, and it has no Rust, so the script must never be wired
+up as `build`. A checkout without submodules still deploys, because the site
+only uses the committed files.
+
+**The worker.** Proving a 52-card shuffle takes about 0.25 s and checking
+one about 0.08 s (desktop Chrome). In a robot game every seat lives in your
+tab, so four seats spend about 2 s on the first shuffle. `deck-service.js`
+runs this in one Web Worker per tab (`deck-worker.js`), so the page never
+freezes: `test/browser/card-engine.test.js` fails if any task blocks the
+page for 200 ms. In Node it runs in-process. If the WebAssembly crashes, the
+job that crashed it fails (and its input is blamed), and the jobs queued
+behind it run again on a fresh worker. A stopped match drops whatever its
+running deck job returns.
+
+**Sizes.** A card is 66 bytes, a share 131. A shuffle message is 66 bytes a
+card plus its proof (7.7 KB for 52 cards, 13 KB for 108), so `CardMatch` sends
+it in parts of 3000 base64 characters (`shuffle {k, i, n, d}`), and shares 16
+to a message (`shares {k, i, n, d}`), and a move may show at most 16 hidden
+cards. Every message stays under 4 K characters (see **Message size**). In the
+browser test, four robots with 52 cards and seven-card hands have the deck
+shuffled in about 2.6 s, and finish 30 turns and the audit in about 4 s.
 
 ## Sea Battle in depth
 
@@ -1095,4 +1231,4 @@ the `?room=CODE` invite contract; and pinning one region.
 - **No TURN server.** Edge has no UDP, so relays can't run there. Some network pairs (symmetric NAT, strict firewalls, some mobile carriers or VPNs) can't connect. The lobby detects ICE failure or a timeout and explains this, offering a retry and the robot. A TURN service hosted elsewhere could be added to `ICE_SERVERS` in `engine/peer.js`.
 - **Rooms live in one instance's memory.** Edge may run several instances, so `app.yaml` pins a single region. If joins ever miss rooms, move rooms to Wasmer's managed Postgres.
 - **Instances are ephemeral.** Once players are connected nothing depends on the server, so an instance going away never ends a game.
-- **No build step.** Plain ES modules are served as-is, and `node --test` imports the same files the browser runs.
+- **No build step.** Plain ES modules are served as-is, and `node --test` imports the same files the browser runs. The one compiled file, the card deck's WebAssembly, is built ahead and committed, and CI checks it matches its source (see **Card games**).
