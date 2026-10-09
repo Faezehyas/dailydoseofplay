@@ -68,11 +68,29 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   const params = new URLSearchParams(location.search);
 
   // ---------- views ----------
+  // Progress text for screen readers ("Creating a room…", "Bo joined"). It
+  // outlives the views, so each change is read out; errors use role="alert".
+  const progress = el("p", { class: "sr-only", id: "lobby-progress", role: "status" });
+  lobbyRoot.append(progress);
+  let firstView = true;
+
+  // A new view takes focus to its heading, except on page load.
   function view(...children) {
-    lobbyRoot.replaceChildren(el("div", { class: "card lobby-card" }, ...children));
+    const card = el("div", { class: "card lobby-card" }, ...children);
+    const old = $(".lobby-card", lobbyRoot);
+    if (old) old.replaceWith(card);
+    else lobbyRoot.prepend(card);
+    progress.textContent = "";
     showView("lobby");
     lobbyRoot.hidden = false;
     gameRoot.hidden = true;
+    $("h1", card).tabIndex = -1;
+    if (!firstView) focusHeading();
+    firstView = false;
+  }
+
+  function focusHeading() {
+    $("h1", lobbyRoot).focus();
   }
 
   function nicknameField() {
@@ -186,10 +204,11 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       ),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
       el("ul", { class: "roster", id: "roster", "aria-label": "Players", hidden: duel }),
-      el("p", { class: "waiting", id: "lobby-status" }, el("span", { class: "spinner" }), duel ? "Waiting for your friend to join…" : "Waiting for friends to join…"),
+      el("p", { class: "waiting", id: "lobby-status" }),
       !duel && el("button", { class: "btn primary", type: "button", id: "start-game", disabled: true, onclick: () => begin(room) }, "Start game"),
       el("button", { class: "btn ghost", type: "button", onclick: () => showHome() }, "Cancel"),
     );
+    setStatus(duel ? "Waiting for your friend to join…" : "Waiting for friends to join…");
     showRoster(room);
   }
 
@@ -201,6 +220,8 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     const knocks = room.knocking;
     list.hidden = duel && knocks.length === 0;
     setTabAlert(knocks.length ? `${knocks[0].name} wants to join` : null);
+    // Accept and Decline go with their row, so focus moves back to the heading.
+    const hadFocus = list.contains(document.activeElement);
     list.replaceChildren(
       ...(duel ? [] : players).map((p, i) =>
         el("li", { class: p.ready ? "ready" : "" }, el("span", {}, p.name), el("small", {}, i === 0 ? "host" : p.ready ? "in" : "connecting…")),
@@ -219,6 +240,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
         ),
       ),
     );
+    if (hadFocus) focusHeading();
     if (duel) return;
     const ready = players.filter((p) => p.ready).length;
     const start = $("#start-game");
@@ -229,14 +251,17 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   function showBusy(text) {
     view(
       el("h1", {}, title),
-      el("p", { class: "waiting", id: "lobby-status" }, el("span", { class: "spinner" }), text),
+      el("p", { class: "waiting", id: "lobby-status" }),
       el("button", { class: "btn ghost", type: "button", onclick: () => showHome() }, "Cancel"),
     );
+    setStatus(text);
   }
 
   function setStatus(...text) {
     const node = $("#lobby-status");
-    if (node) node.replaceChildren(el("span", { class: "spinner" }), ...text);
+    if (!node) return;
+    node.replaceChildren(el("span", { class: "spinner" }), ...text);
+    progress.textContent = node.textContent;
   }
 
   function showFailure(text, retry = host) {
@@ -291,12 +316,24 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     if (!current()) return;
     showWaiting(room);
     room.on("lost", (reason) => current() && showFailure(ERRORS[reason] || ERRORS.closed));
-    room.on("knocks", () => current() && showRoster(room));
+    let knockCount = 0;
+    room.on("knocks", (knocks) => {
+      if (!current()) return;
+      if (knocks.length > knockCount) progress.textContent = `${knocks.at(-1).name} wants to join`;
+      knockCount = knocks.length;
+      showRoster(room);
+    });
+    let seated = [name]; // who is in, in join order, to say who just joined
     room.on("players", (players) => {
       if (!current()) return;
       const ready = players.filter((p) => p.ready).length;
       if (ready >= maxPlayers) return begin(room);
-      if (!duel) return showRoster(room);
+      if (!duel) {
+        const inRoom = players.filter((p) => p.ready).map((p) => p.name);
+        if (inRoom.length > seated.length) progress.textContent = `${inRoom.find((n, i) => n !== seated[i])} joined`;
+        seated = inRoom;
+        return showRoster(room);
+      }
       const joining = players.find((p, i) => i > 0 && !p.ready);
       setStatus(joining ? `${joining.name} joined. Connecting directly…` : "Waiting for your friend to join…");
     });
@@ -398,11 +435,13 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       el(
         "div",
         { class: "card" },
-        el("p", { class: "notice", role: "alert" }, text),
+        el("h2", { tabindex: "-1", "aria-describedby": "ended-why" }, "Game ended"),
+        el("p", { class: "notice", id: "ended-why" }, text),
         el("button", { class: "btn primary", type: "button", onclick: () => leaveGame() }, "Back to lobby"),
       ),
     );
     gameRoot.append(overlay);
+    $("h2", overlay).focus();
   }
 
   function leaveGame(message) {

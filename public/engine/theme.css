@@ -187,6 +187,22 @@ a {
   display: none !important;
 }
 
+/* Read out by screen readers, not shown. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The lobby moves focus to a view's heading (lobby.js); it isn't a control, so no ring. */
+h1[tabindex="-1"]:focus,
+h2[tabindex="-1"]:focus {
+  outline: none;
+}
+
 h1,
 h2,
 h3 {
