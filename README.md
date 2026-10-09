@@ -31,18 +31,68 @@ introduces the players.
 
 ## Games
 
-| | Game | Players |
-|:-:|---|:-:|
-| <a href="https://www.dailydoseofplay.com/sea-battle/"><img src="public/sea-battle/icon.svg" width="120" alt=""></a> | **[Sea Battle](https://www.dailydoseofplay.com/sea-battle/)**<br>Battleship rules, with gifts and special weapons; optional shot and game clocks. | 2 |
-| <a href="https://www.dailydoseofplay.com/tic-tac-toe/"><img src="public/tic-tac-toe/icon.svg" width="120" alt=""></a> | **[Tic Tac Toe](https://www.dailydoseofplay.com/tic-tac-toe/)**<br>3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks. | 2 |
-| <a href="https://www.dailydoseofplay.com/connect-4/"><img src="public/connect-4/icon.svg" width="120" alt=""></a> | **[Connect 4](https://www.dailydoseofplay.com/connect-4/)**<br>Drop discs and line up four, on a 7×6 board or bigger; optional clocks; an Easy, Medium or Hard robot. | 2 |
-| <a href="https://www.dailydoseofplay.com/gomoku/"><img src="public/gomoku/icon.svg" width="120" alt=""></a> | **[Gomoku](https://www.dailydoseofplay.com/gomoku/)**<br>Five in a row on a 15×15 board; optional move and game clocks. | 2 |
-| <a href="https://www.dailydoseofplay.com/chess/"><img src="public/chess/icon.svg" width="120" alt=""></a> | **[Chess](https://www.dailydoseofplay.com/chess/)**<br>Standard rules with castling, en passant and promotion; optional clocks; a robot with three levels. | 2 |
-| <a href="https://www.dailydoseofplay.com/checkers/"><img src="public/checkers/icon.svg" width="120" alt=""></a> | **[Checkers](https://www.dailydoseofplay.com/checkers/)**<br>English draughts on 8×8, with forced captures, multi-jumps and kings; optional clocks; an Easy, Medium or Hard robot. | 2 |
-| <a href="https://www.dailydoseofplay.com/backgammon/"><img src="public/backgammon/icon.svg" width="120" alt=""></a> | **[Backgammon](https://www.dailydoseofplay.com/backgammon/)**<br>Race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels. | 2 |
-| <a href="https://www.dailydoseofplay.com/chutes-and-ladders/"><img src="public/chutes-and-ladders/icon.svg" width="120" alt=""></a> | **[Chutes and Ladders](https://www.dailydoseofplay.com/chutes-and-ladders/)**<br>The classic 100-square board with a 1–6 spinner, for 2 to 4 players; climb the ladders, slide down the chutes; house rules for the finish and for a 6. | 2–4 |
-| <a href="https://www.dailydoseofplay.com/dots-and-boxes/"><img src="public/dots-and-boxes/icon.svg" width="120" alt=""></a> | **[Dots and Boxes](https://www.dailydoseofplay.com/dots-and-boxes/)**<br>Join the dots on a 3×3 to 6×6 board; closing a box earns another line; optional clocks; an Easy, Medium or Hard robot that plays the chains properly. | 2 |
-| <a href="https://www.dailydoseofplay.com/ludo/"><img src="public/ludo/icon.svg" width="120" alt=""></a> | **[Ludo](https://www.dailydoseofplay.com/ludo/)**<br>The classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send rivals back to their yard, and race four tokens home; house rules for three 6s, blocks and capture bonuses, play on for places, a move timer, and 1–3 robots at three levels. | 2–4 |
+<table>
+<tr>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/sea-battle/"><img src="public/sea-battle/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/sea-battle/">Sea Battle</a></b> · 2 players<br>
+Battleship rules, with gifts and special weapons; optional shot and game clocks.
+</td>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/tic-tac-toe/"><img src="public/tic-tac-toe/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/tic-tac-toe/">Tic Tac Toe</a></b> · 2 players<br>
+3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/connect-4/"><img src="public/connect-4/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/connect-4/">Connect 4</a></b> · 2 players<br>
+Drop discs and line up four, on a 7×6 board or bigger; optional clocks; an Easy, Medium or Hard robot.
+</td>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/gomoku/"><img src="public/gomoku/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/gomoku/">Gomoku</a></b> · 2 players<br>
+Five in a row on a 15×15 board; optional move and game clocks.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/chess/"><img src="public/chess/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/chess/">Chess</a></b> · 2 players<br>
+Standard rules with castling, en passant and promotion; optional clocks; a robot with three levels.
+</td>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/checkers/"><img src="public/checkers/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/checkers/">Checkers</a></b> · 2 players<br>
+English draughts on 8×8, with forced captures, multi-jumps and kings; optional clocks; an Easy, Medium or Hard robot.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/backgammon/"><img src="public/backgammon/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/backgammon/">Backgammon</a></b> · 2 players<br>
+Race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels.
+</td>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/chutes-and-ladders/"><img src="public/chutes-and-ladders/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/chutes-and-ladders/">Chutes and Ladders</a></b> · 2–4 players<br>
+The classic 100-square board with a 1–6 spinner, for 2 to 4 players; climb the ladders, slide down the chutes; house rules for the finish and for a 6.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/dots-and-boxes/"><img src="public/dots-and-boxes/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/dots-and-boxes/">Dots and Boxes</a></b> · 2 players<br>
+Join the dots on a 3×3 to 6×6 board; closing a box earns another line; optional clocks; an Easy, Medium or Hard robot that plays the chains properly.
+</td>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/ludo/"><img src="public/ludo/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/ludo/">Ludo</a></b> · 2–4 players<br>
+The classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send rivals back to their yard, and race four tokens home; house rules for three 6s, blocks and capture bonuses, play on for places, a move timer, and 1–3 robots at three levels.
+</td>
+</tr>
+</table>
 
 More are coming; [GAMES.md](GAMES.md) has the backlog. Found a security
 problem? Report it privately, as [SECURITY.md](SECURITY.md) describes.
