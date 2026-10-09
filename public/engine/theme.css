@@ -615,18 +615,55 @@ input::placeholder {
 /* ---------- home ---------- */
 .hero {
   text-align: center;
-  padding: 24px 0 8px;
+  padding: 4px 0 0;
 }
 
 .hero h1 {
-  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  margin: 0 0 4px;
+  font-size: clamp(1.6rem, 5vw, 2.6rem);
+  line-height: 1.15;
   letter-spacing: -0.02em;
 }
 
 .hero p {
   color: var(--muted);
-  max-width: 560px;
-  margin: 0 auto;
+  margin: 0;
+}
+
+/* How it works: three numbered steps, one row on wide screens, stacked on phones. */
+.steps {
+  counter-reset: step;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 28px;
+  margin: 12px auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  counter-increment: step;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  text-align: left;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.steps li::before {
+  content: counter(step);
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 800;
+  font-size: 0.85rem;
 }
 
 .game-grid {
@@ -779,6 +816,14 @@ a.game-card:hover {
 }
 
 @media (max-width: 520px) {
+  .steps {
+    flex-direction: column;
+    gap: 2px;
+    width: fit-content;
+  }
+  .steps li {
+    font-size: 0.85rem;
+  }
   .lobby-actions {
     grid-template-columns: 1fr;
   }
