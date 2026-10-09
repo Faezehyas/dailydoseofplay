@@ -12,7 +12,7 @@
 // overrides it (older games passed their own).
 // layout is the page column while the game is on show: "narrow", "medium" or
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
-import { initShell, el, $, toast, copyText, getNickname, setNickname, setLastGame, setTabAlert } from "./shell.js";
+import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
 
@@ -458,7 +458,6 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // ---------- game hand-off ----------
   function startSession(session) {
     state.session = session;
-    setLastGame(slug);
     clearRoomParam();
     showView("game");
     lobbyRoot.hidden = true;
