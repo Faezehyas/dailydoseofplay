@@ -7,21 +7,39 @@ themselves run browser to browser over WebRTC DataChannels: with more than
 two players, every guest connects to the room creator's browser, which
 forwards messages between them (see **Groups** below).
 
-```
-            ┌──────────────── Wasmer Edge: one app, one URL ────────────────┐
-            │  GET /             home page (cards from games.json)           │
-            │  GET /<slug>/      a game: public/<slug>/                      │
-            │  GET /engine/…     shared browser engine                       │
-            │  WS  /ws           signaling: rooms scoped by game slug,       │
-            │                    opaque SDP/ICE relay                        │
-            │  GET /healthz      {ok, rooms, players, games} (CORS *)        │
-            └───────────▲──────────────────────────────────▲─────────────────┘
-                        │ WebSocket (only until connected)  │
-                 ┌──────┴──────┐                     ┌──────┴──────┐
-                 │  browser A  │◄═══ DataChannel ═══►│  browser B  │
-                 │ rules + own │   moves, answers,   │ rules + own │
-                 │ secret state│   shared random     │ secret state│
-                 └─────────────┘                     └─────────────┘
+The diagrams here are Mermaid, which GitHub draws from the text; edit them
+like the prose. They are the maintained map of the code.
+
+**What runs where.** Every push to `main` deploys the app. Browsers load the
+pages from it and use `/ws` only until their DataChannels open. The public
+STUN servers (in `peer.js`) tell each browser its public address; there is no
+TURN server.
+
+```mermaid
+flowchart TB
+  github["GitHub: Faezehyas/dailydoseofplay"]
+  github -- "every push to main deploys" --> app
+  subgraph app ["Wasmer Edge: one app, one URL"]
+    home["GET /<br>home page (cards from games.json)"]
+    game["GET /#lt;slug#gt;/<br>a game: public/#lt;slug#gt;/"]
+    engine["GET /engine/…<br>shared browser engine"]
+    ws["WS /ws<br>signaling: rooms scoped by game slug,<br>opaque SDP/ICE relay"]
+    healthz["GET /healthz<br>{ok, rooms, players, games} (CORS *)"]
+  end
+  app -- "pages, and WebSocket only until connected" --> two
+  app -- "pages, and WebSocket only until connected" --> star
+  subgraph two ["Two players: one direct link"]
+    a["browser A<br>rules + own secret state"] <== "DataChannel:<br>moves, answers, shared random" ==> b["browser B<br>rules + own secret state"]
+  end
+  subgraph star ["3 or 4 players: a star"]
+    hub["host's browser (the hub)<br>forwards every message"]
+    g1["guest 1"] <== "DataChannel" ==> hub
+    g2["guest 2"] <== "DataChannel" ==> hub
+    g3["guest 3"] <== "DataChannel" ==> hub
+  end
+  stun["public STUN servers<br>(Google, Cloudflare)"]
+  stun -. "your public address" .- two
+  stun -. "your public address" .- star
 ```
 
 ## Layers
@@ -31,6 +49,123 @@ forwards messages between them (see **Groups** below).
 | Server | `server/app.js` (HTTP routes, static files, security headers), `server/signaling.js` (rooms, invite keys, knocks, join rate limits, relay), `server/limits.js` (per-client limits), `server/server.js` (entry). It imports the nickname rules from `public/engine/names.js`. | Only slugs and `maxPlayers` from `public/games.json` |
 | Engine (browser) | `public/engine/` | No |
 | Game | `public/<slug>/` | Yes, only its own |
+
+**Import graph.** An arrow is an `import`. The game box stands for every
+`public/<slug>/` folder, so its arrows are those of all the games together;
+`art.js` and `sounds.js` are optional and `match.js` is Sea Battle's alone.
+Dotted arrows are reads of `games.json`, not imports. Every module in
+`public/` and `server/` has a box: `test/architecture.test.js` fails when one
+is missing and names the line to add.
+
+```mermaid
+flowchart TB
+  subgraph pages ["Pages"]
+    p_home["home.js"]
+    p_main["main.js<br>one per game"]
+  end
+  subgraph game ["A game's folder: public/#lt;slug#gt;/"]
+    g_rules["rules.js"]
+    g_robot["robot.js"]
+    g_settings["settings.js"]
+    g_sounds["sounds.js"]
+    g_art["art.js"]
+    g_match["match.js<br>Sea Battle only"]
+  end
+  subgraph engine ["Engine: public/engine/"]
+    e_boot["boot.js<br>static pages"]
+    e_lobby["lobby.js"]
+    e_room["room.js"]
+    e_group["group.js"]
+    e_signaling["signaling.js"]
+    e_peer["peer.js"]
+    e_session["session.js"]
+    e_turn_match["turn-match.js"]
+    e_fair["fair.js"]
+    e_rng["rng.js"]
+    e_channel["channel.js"]
+    e_shell["shell.js"]
+    e_players["players.js"]
+    e_settings["settings.js"]
+    e_names["names.js"]
+    e_robot_pace["robot-pace.js"]
+    e_sound["sound.js"]
+    e_synth["synth.js"]
+    e_loudness["loudness.js"]
+    e_theme["theme.css<br>linked by every page"]
+  end
+  subgraph server ["Server: server/"]
+    s_server["server.js"]
+    s_app["app.js"]
+    s_signaling["signaling.js"]
+    s_limits["limits.js"]
+    s_ws["ws"]
+  end
+  games_json[("public/games.json")]
+
+  p_home --> e_shell
+  p_main --> e_lobby
+  p_main --> e_players
+  p_main --> e_session
+  p_main --> e_shell
+  p_main --> e_turn_match
+  p_main --> g_art
+  p_main --> g_match
+  p_main --> g_robot
+  p_main --> g_rules
+  p_main --> g_settings
+  p_main --> g_sounds
+  g_art --> g_rules
+  g_match --> e_channel
+  g_match --> e_fair
+  g_match --> g_rules
+  g_robot --> e_rng
+  g_robot --> e_robot_pace
+  g_robot --> e_session
+  g_robot --> e_turn_match
+  g_robot --> g_match
+  g_robot --> g_rules
+  g_rules --> e_rng
+  g_rules --> e_turn_match
+  g_settings --> e_settings
+  g_settings --> e_shell
+  g_settings --> g_robot
+  g_settings --> g_rules
+  g_sounds --> e_sound
+  g_sounds --> e_synth
+  e_boot --> e_shell
+  e_fair --> e_rng
+  e_group --> e_channel
+  e_lobby --> e_names
+  e_lobby --> e_room
+  e_lobby --> e_shell
+  e_peer --> e_channel
+  e_players --> e_shell
+  e_room --> e_channel
+  e_room --> e_group
+  e_room --> e_peer
+  e_room --> e_session
+  e_room --> e_signaling
+  e_session --> e_channel
+  e_session --> e_group
+  e_session --> e_names
+  e_settings --> e_shell
+  e_shell --> e_names
+  e_shell --> e_sound
+  e_signaling --> e_channel
+  e_sound --> e_loudness
+  e_turn_match --> e_channel
+  e_turn_match --> e_fair
+  e_turn_match --> e_robot_pace
+  e_turn_match --> e_session
+  s_server --> s_app
+  s_app --> s_signaling
+  s_app --> s_ws
+  s_signaling --> s_limits
+  s_signaling --> e_names
+  s_app -.-> games_json
+  p_home -.-> games_json
+  e_lobby -.-> games_json
+```
 
 ### Server
 
@@ -231,7 +366,35 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `loudness.js` | `loudness(samples, sampleRate)`: how loud a sound is to the ear, in LUFS (K-weighted, loudest 100 ms). No DOM; runs in node too. |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
 
-**Session flow.**
+**Session flow.** A friend joining by invite link; the steps below give the
+details.
+
+```mermaid
+sequenceDiagram
+  participant H as Host's browser
+  participant S as Server (/ws)
+  participant F as Friend's browser
+  H->>S: create {game, name}
+  S-->>H: created {room, key}
+  H-->>F: invite link /#lt;slug#gt;/?room=CODE&key=KEY (sent by the host)
+  F->>S: join {game, room, name, key}
+  S-->>F: joined
+  S-->>H: peer {id, name}
+  H->>S: signal (offer)
+  S->>F: signal (offer)
+  F->>S: signal (answer)
+  S->>H: signal (answer)
+  Note over H,F: ICE candidates are relayed the same way
+  H-)F: DataChannel opens, browser to browser
+  F->>H: $hello
+  H->>F: $welcome
+  H->>F: $roster
+  H->>F: $start {seat, players}
+  H-xS: close the WebSocket
+  F-xS: close the WebSocket
+  Note over S: the room is deleted
+  Note over H,F: game messages only, over the DataChannel
+```
 
 1. Host: `create` → waiting room (code and invite link with the key).
 2. Each friend opens `/<slug>/?room=CODE&key=KEY` → `join`, and is seated at once. A friend who types the code knocks instead and waits until the host presses Accept (see **Who may join a room**). The lobby drops `room` and `key` from the address bar.
@@ -253,6 +416,31 @@ peer**, so robot games use exactly the same protocol and rules code as friend
 games. The lobby acts on `?room=`, `?robot` and `?friend` only after the
 game's module has finished loading, because a robot game's `onSession` runs at once and may
 use bindings the module declares after its `startGameShell()` call.
+
+Side by side, only the group transport differs (dashed boxes):
+
+```mermaid
+flowchart TB
+  subgraph friend ["Friend game: one browser per player"]
+    direction TB
+    f_main["main.js + rules.js"] --> f_match["TurnMatch, or Sea Battle's match.js"]
+    f_match --> f_session["Session"]
+    f_session --> f_group["HubGroup on the host,<br>SpokeGroup on each guest"]
+    f_group --> f_link["PeerChannel:<br>WebRTC DataChannel"]
+    f_link <==> f_others["the other browsers"]
+  end
+  subgraph robot ["Robot game: every seat in one tab"]
+    direction TB
+    r_main["main.js + rules.js<br>your seat"] --> r_match["TurnMatch, or Sea Battle's match.js"]
+    r_match --> r_session["Session"]
+    r_bot["robot.js + rules.js<br>a robot's seat"] --> r_bot_match["TurnMatch, or Sea Battle's match.js"]
+    r_bot_match --> r_bot_session["Session"]
+    r_session --> r_group["localGroup(n):<br>localPair() links in memory"]
+    r_bot_session --> r_group
+  end
+  classDef transport stroke-dasharray: 5 5
+  class f_group,f_link,r_group transport
+```
 
 **Groups.** Everything above `room.js` sees a group: send to everyone, receive
 `(msg, from)`, hear that a seat left. Today it is a star. The room creator's
