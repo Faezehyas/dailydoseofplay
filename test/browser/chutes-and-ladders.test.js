@@ -95,12 +95,13 @@ test("two friends play Chutes and Ladders on the host's settings through the inv
   await guest.screenshot({ path: `${ARTIFACTS}/cl-1-friend-mobile-dark.png`, fullPage: true });
   const won = await finish();
   const [winner, loser] = won.winner === 0 ? [host, guest] : [guest, host];
-  await winner.locator("#cl-result").filter({ hasText: "You win!" }).waitFor();
-  assert.match(await loser.locator("#cl-result").innerText(), /wins$/);
-  assert.match(await loser.locator("#cl-detail").innerText(), /reached 100 in \d+ spins?/);
+  await winner.locator("#result").filter({ hasText: "You won" }).waitFor();
+  await loser.locator("#result").waitFor();
+  assert.equal(await loser.locator("#result").innerText(), "You lost");
+  assert.match(await loser.locator("#result-reason").innerText(), /reached 100 in \d+ spins?/);
   assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
   assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
-  assert.ok(await winner.locator("#cl-over").isVisible());
+  assert.ok(await winner.locator("#result-panel").isVisible());
   await host.screenshot({ path: `${ARTIFACTS}/cl-2-friend-over-light.png`, fullPage: true });
 
   // Rematch: host asks, the friend accepts; same settings, everyone back on the lawn.

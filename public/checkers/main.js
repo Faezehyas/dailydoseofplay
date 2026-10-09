@@ -5,6 +5,7 @@ import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, legalMoves, capturedBy, countPieces, isTimed, timeLeft, owner, isKing, isJump, isDark, EMPTY, DRAW, QUIET_LIMIT } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings, normalizeLevel } from "./settings.js";
@@ -61,7 +62,6 @@ function mountCheckers(session, root, shell) {
   let rules = null;
   let match = null;
   let m = 0;
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let turnStart = 0;
   let forfeited = false;
@@ -91,7 +91,7 @@ function mountCheckers(session, root, shell) {
   const board = el("div", { class: "ck-board", id: "ck-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "ck-config", id: "ck-config" });
   const note = el("p", { class: "ck-note", id: "ck-note" });
-  const overBox = el("div", { class: "ck-over", id: "ck-over", hidden: true });
+  const result = resultPanel(session, { onLeave: () => shell.leave() });
 
   // Visual position v (row-major, from this player's side) <-> board square.
   const toSq = (v) => (flip ? 63 - v : v);
@@ -118,7 +118,7 @@ function mountCheckers(session, root, shell) {
       el("div", { class: "ck-board-wrap" }, board),
       configLine,
       note,
-      overBox,
+      result.node,
     ),
   );
 
@@ -353,44 +353,21 @@ function mountCheckers(session, root, shell) {
 
   function renderOver() {
     const phase = match?.phase;
-    if (phase !== "over" && phase !== "aborted") {
-      overBox.hidden = true;
-      return;
-    }
-    overBox.hidden = false;
+    if (phase !== "over" && phase !== "aborted") return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === DRAW ? "Draw" : winner === me ? "Victory!" : "Defeat";
-    let detail;
-    if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
-    else if (winner === DRAW) detail = `${QUIET_LIMIT} turns in a row with no capture and no new king.`;
-    else if (st.reason === "timeout") detail = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
-    else if (st.reason === "captured") detail = winner === me ? `You captured all of ${oppName}'s pieces.` : `${oppName} captured all your pieces.`;
-    else detail = winner === me ? `${oppName} has no legal move left.` : "You have no legal move left.";
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : "", id: "ck-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "ck-detail" }, detail),
-      el(
-        "div",
-        { class: "ck-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (winner === DRAW) reason = `${QUIET_LIMIT} turns in a row with no capture and no new king.`;
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    else if (st.reason === "captured") reason = winner === me ? `You captured all of ${oppName}'s pieces.` : `${oppName} captured all your pieces.`;
+    else reason = winner === me ? `${oppName} has no legal move left.` : "You have no legal move left.";
+    result.show({ winner: winner === DRAW ? -1 : winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
-    rematch = { me: false, them: false };
     forfeited = false;
     claimed = false;
     picked = null;
@@ -434,11 +411,6 @@ function mountCheckers(session, root, shell) {
 
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") {

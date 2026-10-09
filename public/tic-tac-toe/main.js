@@ -5,6 +5,7 @@ import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, markOf, isTimed, timeLeft, EMPTY, DRAW, IN_A_ROW } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -54,7 +55,6 @@ function mountTicTacToe(session, root, shell) {
   let rules = null;
   let match = null;
   let m = 0;
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let turnStart = 0;
   let forfeited = false;
@@ -81,7 +81,7 @@ function mountTicTacToe(session, root, shell) {
   const board = el("div", { class: "ttt-board", id: "ttt-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "ttt-config", id: "ttt-config" });
   const note = el("p", { class: "ttt-note", id: "ttt-note" });
-  const overBox = el("div", { class: "ttt-over", id: "ttt-over", hidden: true });
+  const result = resultPanel(session, { onLeave: () => shell.leave() });
   let cells = [];
 
   root.append(
@@ -94,7 +94,7 @@ function mountTicTacToe(session, root, shell) {
       el("div", { class: "ttt-board-wrap" }, board),
       configLine,
       note,
-      overBox,
+      result.node,
     ),
   );
 
@@ -241,46 +241,23 @@ function mountTicTacToe(session, root, shell) {
 
   function renderOver() {
     const phase = match?.phase;
-    if (phase !== "over" && phase !== "aborted") {
-      overBox.hidden = true;
-      return;
-    }
-    overBox.hidden = false;
+    if (phase !== "over" && phase !== "aborted") return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === DRAW ? "Draw" : winner === me ? "Victory!" : "Defeat";
-    let detail;
-    if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
-    else if (winner === DRAW) detail = "A full board and no line. Well defended, both of you.";
-    else if (st.reason === "timeout") detail = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (winner === DRAW) reason = "A full board and no line. Well defended, both of you.";
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
     else {
       const who = winner === me ? "You" : oppName;
-      detail = `${who} lined up ${IN_A_ROW_WORD[st.k]} ${markOf(st, winner)}s.`;
+      reason = `${who} lined up ${IN_A_ROW_WORD[st.k]} ${markOf(st, winner)}s.`;
     }
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : "", id: "ttt-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "ttt-detail" }, detail),
-      el(
-        "div",
-        { class: "ttt-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    result.show({ winner: winner === DRAW ? -1 : winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
-    rematch = { me: false, them: false };
     forfeited = false;
     claimed = false;
     note.textContent = m === 1 ? `Playing against ${oppName}. Good luck!` : `Rematch #${m - 1}. Same settings, fresh board.`;
@@ -319,11 +296,6 @@ function mountTicTacToe(session, root, shell) {
 
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") begin(settings.get());

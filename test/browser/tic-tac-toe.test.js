@@ -133,9 +133,9 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   await playOut([o, x], [5, 1, 6, 2, 7, 3], { keyboardAt: 1 });
   assert.deepEqual(await host.evaluate(() => window.ddp.match.state.line), [0, 1, 2, 3]);
   assert.equal(await x.locator(".ttt-cell.win").count(), 4);
-  assert.equal(await x.locator("#ttt-result").innerText(), "Victory!");
-  assert.equal(await o.locator("#ttt-result").innerText(), "Defeat");
-  assert.match(await o.locator("#ttt-detail").innerText(), /Ada lined up four Xs/);
+  assert.equal(await x.locator("#result").innerText(), "You won");
+  assert.equal(await o.locator("#result").innerText(), "You lost");
+  assert.match(await o.locator("#result-reason").innerText(), /Ada lined up four Xs/);
   assert.match(await x.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
   assert.match(await o.locator("#score").innerText(), /You\s+0\s+Draws\s+0\s+\S+\s+1/);
   const clocks = await host.evaluate(() => window.ddp.match.state.clocks);
@@ -156,8 +156,8 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   // Game 2: the friend lines up four along the bottom row.
   await playOut([x, o], [0, 20, 6, 21, 12, 22, 4, 23]);
   assert.deepEqual(await host.evaluate(() => window.ddp.match.state.line), [20, 21, 22, 23]);
-  assert.equal(await guest.locator("#ttt-result").innerText(), "Victory!");
-  assert.equal(await host.locator("#ttt-result").innerText(), "Defeat");
+  assert.equal(await guest.locator("#result").innerText(), "You won");
+  assert.equal(await host.locator("#result").innerText(), "You lost");
   assert.match(await host.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
   assert.ok(await noHorizontalScroll(guest));
   await guest.waitForTimeout(500);
@@ -224,7 +224,7 @@ test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on th
   const counts = [0, 1].map((p) => st.board.filter((v) => v === p).length);
   assert.ok(Math.abs(counts[0] - counts[1]) <= 1, "the robot made one legal move per turn");
   assert.equal(new Set(st.moves).size, st.moves.length);
-  assert.match(await page.locator("#ttt-result").innerText(), /^(Victory!|Defeat|Draw)$/);
+  assert.match(await page.locator("#result").innerText(), /^(You won|You lost|Draw)$/);
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${ARTIFACTS}/ttt-4-robot-light.png`, fullPage: true });
 
@@ -239,8 +239,8 @@ test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on th
   await page.clock.fastForward(3000);
   await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
-  assert.equal(await page.locator("#ttt-result").innerText(), "Defeat");
-  assert.equal(await page.locator("#ttt-detail").innerText(), "Your clock ran out.");
+  assert.equal(await page.locator("#result").innerText(), "You lost");
+  assert.equal(await page.locator("#result-reason").innerText(), "Your clock ran out.");
   assert.match(await page.locator("#score").innerText(), /Robot\s+[1-2]/);
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();

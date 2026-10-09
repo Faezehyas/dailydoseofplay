@@ -830,39 +830,3 @@
     display: none;
   }
 }
-
-/* ---------- game over ---------- */
-.cl-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-  animation: cl-in 0.3s ease-out;
-}
-
-.cl-over h2 {
-  font-size: 1.6rem;
-}
-
-.cl-over h2.win {
-  color: var(--accent-text);
-}
-
-.cl-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.cl-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.cl-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
