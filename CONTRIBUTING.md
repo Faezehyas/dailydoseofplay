@@ -24,6 +24,9 @@ npm install
 npm start               # http://localhost:8080 (PORT to change)
 npm test                # unit + integration tests (node --test)
 npm run test:browser    # Playwright: full friend match, robot game, failure screen
+anybuild plan .                       # Anybuild: show the detected build (see README)
+anybuild . --start                    # build and serve on PORT (default 8080)
+anybuild . --start --runner=wasmer    # the same inside Wasmer's runtime; needs the Wasmer CLI
 ```
 
 `npm run test:browser` skips itself when Playwright is missing. If it is
