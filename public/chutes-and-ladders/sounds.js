@@ -1,8 +1,9 @@
 // Chutes and Ladders sounds, synthesized: spinner clicks that slow down
 // with the pointer, a marimba note per hop that counts up the scale, a
-// xylophone run up a ladder, a slide whistle down a chute, a spring for
-// bouncing back off 100, and little tunes for winning and losing. They play
-// through the engine (engine/sound.js), which sets their loudness.
+// xylophone run up a ladder, a slide whistle down a chute and a spring for
+// bouncing back off 100. The result chimes are the engine's
+// (engine/chimes.js). They play through the engine (engine/sound.js), which
+// sets their loudness.
 import { defineSounds } from "../engine/sound.js";
 import { tone, noise, decay, pentatonic } from "../engine/synth.js";
 
@@ -110,15 +111,6 @@ const SYNTH = {
     tone(a, o, t, { freq: note(12), dur: 0.16, gain: 0.05 });
     tone(a, o, t + 0.1, { freq: note(14), dur: 0.22, gain: 0.05 });
   },
-  win: (a, o, t) => {
-    [10, 12, 13, 15].forEach((s, i) => marimba(a, o, t + i * 0.11, note(s), 0.12));
-    for (const s of [15, 17, 18, 20]) tone(a, o, t + 0.46, { freq: note(s), type: "triangle", dur: 0.9, gain: 0.045, attack: 0.02 });
-    SYNTH.sparkle(a, o, t + 0.5);
-  },
-  lose: (a, o, t) => {
-    [12, 11, 10].forEach((s, i) => tone(a, o, t + i * 0.2, { freq: note(s), type: "triangle", dur: 0.3, gain: 0.08 }));
-    tone(a, o, t + 0.6, { freq: note(8), to: note(7), type: "triangle", dur: 0.6, gain: 0.08 });
-  },
 };
 
 export const sounds = defineSounds({
@@ -133,8 +125,6 @@ export const sounds = defineSounds({
   boing: { role: "highlight", synth: SYNTH.boing, trim: 5.1 },
   stay: { role: "ui", synth: SYNTH.stay, trim: 4.8 },
   turn: { role: "ui", synth: SYNTH.turn, trim: 5.6 },
-  win: { role: "fanfare", synth: SYNTH.win, trim: 4.8 },
-  lose: { role: "fanfare", synth: SYNTH.lose, trim: 12 },
 });
 
 // Plays `name` now, or `at` seconds from now.

@@ -4,6 +4,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
@@ -158,7 +159,7 @@ function mountSeaBattle(session, root, shell) {
   );
   const weaponsBar = el("div", { class: "sb-weapons", role: "toolbar", "aria-label": "Weapons" });
   const log = el("ol", { class: "sb-log", id: "sb-log", "aria-label": "Battle log" });
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, { onLeave: () => shell.leave(), onShow: celebrateOnLanding });
 
   root.append(
     el(
@@ -514,6 +515,21 @@ function mountSeaBattle(session, root, shell) {
     result.show({ winner, reason: why, extra: verdict });
   }
 
+  // The result shows at once; its moment waits for the last shell to land.
+  function celebrateOnLanding({ winner, outcome }) {
+    if (!outcome) return;
+    const current = match;
+    const wait = Math.max(0, ...landsAt.map((t) => t - performance.now()));
+    setTimeout(() => {
+      if (destroyed || match !== current) return;
+      const { reason, boards } = match.state;
+      const loser = 1 - winner;
+      const view = loser === me ? ownBoard : enemyBoard;
+      const highlight = reason === "timeout" ? [] : boards[loser].sunk.at(-1).cells.map((i) => view.cells[i]);
+      celebrate({ outcome, flavour: "water", highlight, board: enemyBoard.wrap.parentElement });
+    }, wait + 600);
+  }
+
   function addLog(text, cls = "") {
     log.prepend(el("li", { class: cls }, text));
     while (log.children.length > 8) log.lastChild.remove();
@@ -827,7 +843,6 @@ function mountSeaBattle(session, root, shell) {
         if (destroyed || match !== current) return;
         if (reason === "timeout") addLog(winner === me ? `${oppName}'s clock ran out. You win!` : "Your clock ran out.", "big");
         else addLog(winner === me ? "You sank the whole fleet!" : `${oppName} sank your whole fleet.`, "big");
-        play(winner === me ? "win" : "lose");
       }, wait + 600);
     });
     match.on("verified", () => render());
