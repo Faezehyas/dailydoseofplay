@@ -14,7 +14,7 @@
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
 // settings is the game's gameSettings() (settings.js): the home screen shows
 // them inside the lobby card, and the host's waiting screen their summary.
-import { initShell, el, $, toast, copyText, getNickname, setNickname, setLastGame, setTabAlert } from "./shell.js";
+import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
 
@@ -462,7 +462,6 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // ---------- game hand-off ----------
   function startSession(session) {
     state.session = session;
-    setLastGame(slug);
     clearRoomParam();
     showView("game");
     lobbyRoot.hidden = true;
