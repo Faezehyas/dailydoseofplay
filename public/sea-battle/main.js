@@ -137,7 +137,7 @@ function mountSeaBattle(session, root, shell) {
 
   // ---------- layout ----------
   const status = el("p", { class: "sb-status", id: "sb-status", role: "status", "aria-live": "polite" });
-  const bar = playerBar(session, { onLeave: confirmLeave });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
   const clock = el("span", { class: "sb-clock mono", id: "sb-clock", role: "timer", hidden: true, "aria-live": "off" });
   const myClock = el("span", { class: "game-clock mine mono", id: "clock-me", role: "timer", "aria-label": "Your clock", hidden: true });
   const oppClock = el("span", { class: "game-clock mono", id: "clock-opp", role: "timer", "aria-label": `${oppName}'s clock`, hidden: true });
@@ -268,6 +268,7 @@ function mountSeaBattle(session, root, shell) {
       return;
     }
     const phase = match.phase;
+    shell.setInProgress(phase !== "over" && phase !== "aborted");
     const st = match.state;
     const placing = phase === "placing";
     root.querySelector(".sea-battle").dataset.phase = phase;
@@ -428,12 +429,6 @@ function mountSeaBattle(session, root, shell) {
     if (r.top >= 0 && r.bottom <= innerHeight) return;
     const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
     view.wrap.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "nearest" });
-  }
-
-  function confirmLeave() {
-    const live = session.mode === "friend" && match && (match.phase === "playing" || match.phase === "placing");
-    if (live && !confirm(`Leave the game? ${oppName} will be told you left.`)) return;
-    shell.leave();
   }
 
   function renderWeapons() {

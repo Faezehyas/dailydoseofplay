@@ -165,14 +165,10 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   await guest.click("#ready");
   await wait(host, () => window.ddp.match.phase === "playing");
 
-  // Leaving a live friend game asks first; dismissing keeps the game.
-  let asked = "";
-  host.once("dialog", (d) => {
-    asked = d.message();
-    d.dismiss();
-  });
+  // Leaving a live friend game asks first; Cancel keeps the game.
   await host.click("#leave");
-  assert.match(asked, /Leave the game\?/);
+  assert.equal(await host.locator("dialog#confirm p").innerText(), "Bo will be told you left.");
+  await host.click("#confirm-no");
   assert.equal(await host.evaluate(() => window.ddp.match.phase), "playing");
 
   // Friend closes the tab: host is told.

@@ -212,6 +212,7 @@ function mountTicTacToe(session, root, shell) {
     if (destroyed) return;
     const st = match?.state;
     const phase = match?.phase || "setup";
+    shell.setInProgress(phase !== "over" && phase !== "aborted");
     root.querySelector(".tic-tac-toe").dataset.phase = phase;
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".tic-tac-toe").dataset.you = st ? (st.first === me ? "a" : "b") : "";

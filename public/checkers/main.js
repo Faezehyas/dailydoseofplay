@@ -286,6 +286,7 @@ function mountCheckers(session, root, shell) {
     if (destroyed) return;
     const st = match?.state;
     const phase = match?.phase || "setup";
+    shell.setInProgress(phase !== "over" && phase !== "aborted");
     root.querySelector(".checkers").dataset.phase = phase;
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".checkers").dataset.you = st ? (st.first === me ? "a" : "b") : "";

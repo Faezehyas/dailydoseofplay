@@ -54,6 +54,10 @@ export function setNickname(name) {
 }
 export const displayName = (fallback = "Player") => getNickname() || fallback;
 
+// Whether Leave asks first during a live friend match. Always, until an "Ask
+// before leaving" setting can turn it off here.
+export const askBeforeLeaving = () => true;
+
 // Theme: "system" (default), "light" or "dark", applied as <html data-theme>.
 function applyTheme(theme) {
   if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
