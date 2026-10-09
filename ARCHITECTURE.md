@@ -7,22 +7,48 @@ themselves run browser to browser over WebRTC DataChannels: with more than
 two players, every guest connects to the room creator's browser, which
 forwards messages between them (see **Groups** below).
 
+The diagrams here are Mermaid, which GitHub draws from the text; edit them
+like the prose. They are the maintained map of the code.
+
+**What runs where.** Every push to `main` deploys the app. Browsers load the
+pages from it and use `/ws` only until their DataChannels open. The public
+STUN servers (in `peer.js`) tell each browser its public address; there is no
+TURN server.
+
+```mermaid
+flowchart TB
+  github["GitHub: Faezehyas/dailydoseofplay"]
+  github -- "every push to main deploys" --> app
+  subgraph app ["Wasmer Edge: one app, one URL"]
+    home["GET /<br>home page (cards from games.json)"]
+    game["GET /#lt;slug#gt;/<br>a game: public/#lt;slug#gt;/"]
+    engine["GET /engine/…<br>shared browser engine"]
+    ws["WS /ws<br>signaling: rooms scoped by game slug,<br>opaque SDP/ICE relay"]
+    healthz["GET /healthz<br>{ok, rooms, players, games} (CORS *)"]
+  end
+  app -- "pages, and WebSocket only until connected" --> two
+  app -- "pages, and WebSocket only until connected" --> star
+  subgraph two ["Two players: one direct link"]
+    a["browser A<br>rules + own secret state"] <== "DataChannel:<br>moves, answers, shared random" ==> b["browser B<br>rules + own secret state"]
+  end
+  subgraph star ["3 or 4 players: a star"]
+    hub["host's browser (the hub)<br>forwards every message"]
+    g1["guest 1"] <== "DataChannel" ==> hub
+    g2["guest 2"] <== "DataChannel" ==> hub
+    g3["guest 3"] <== "DataChannel" ==> hub
+  end
+  stun["public STUN servers<br>(Google, Cloudflare)"]
+  stun -. "your public address" .- two
+  stun -. "your public address" .- star
 ```
-            ┌──────────────── Wasmer Edge: one app, one URL ────────────────┐
-            │  GET /             home page (cards from games.json)           │
-            │  GET /<slug>/      a game: public/<slug>/                      │
-            │  GET /engine/…     shared browser engine                       │
-            │  WS  /ws           signaling: rooms scoped by game slug,       │
-            │                    opaque SDP/ICE relay                        │
-            │  GET /healthz      {ok, rooms, players, games} (CORS *)        │
-            └───────────▲──────────────────────────────────▲─────────────────┘
-                        │ WebSocket (only until connected)  │
-                 ┌──────┴──────┐                     ┌──────┴──────┐
-                 │  browser A  │◄═══ DataChannel ═══►│  browser B  │
-                 │ rules + own │   moves, answers,   │ rules + own │
-                 │ secret state│   shared random     │ secret state│
-                 └─────────────┘                     └─────────────┘
-```
+
+**Privacy page.** `/privacy/` (`public/privacy/index.html`, a static page on
+`engine/boot.js`) tells visitors, in plain words, what the site stores on
+their device, what the lobby server sees and logs, and who sees their address
+over WebRTC and STUN. It lists every `localStorage` key: `test/server.test.js`
+fails when a `"ddp-…"` key in `public/` is missing from it. Change the page
+with the facts it states (a log line, an ICE server, a new kind of data); the
+accounts work (F1) must rewrite it before it ships.
 
 ## Layers
 
@@ -32,6 +58,151 @@ forwards messages between them (see **Groups** below).
 | Engine (browser) | `public/engine/` | No |
 | Game | `public/<slug>/` | Yes, only its own |
 
+**Import graph.** An arrow is an `import`. The game box stands for every
+`public/<slug>/` folder, so its arrows are those of all the games together;
+`art.js` and `sounds.js` are optional and `match.js` is Sea Battle's alone.
+Dotted arrows are reads of `games.json`, not imports. Every module in
+`public/` and `server/` has a box: `test/architecture.test.js` fails when one
+is missing and names the line to add.
+
+```mermaid
+flowchart TB
+  subgraph pages ["Pages"]
+    p_home["home.js"]
+    p_main["main.js<br>one per game"]
+  end
+  subgraph game ["A game's folder: public/#lt;slug#gt;/"]
+    g_rules["rules.js"]
+    g_robot["robot.js"]
+    g_settings["settings.js"]
+    g_sounds["sounds.js"]
+    g_art["art.js"]
+    g_match["match.js<br>Sea Battle only"]
+  end
+  subgraph engine ["Engine: public/engine/"]
+    e_boot["boot.js<br>static pages"]
+    e_lobby["lobby.js"]
+    e_room["room.js"]
+    e_group["group.js"]
+    e_signaling["signaling.js"]
+    e_peer["peer.js"]
+    e_session["session.js"]
+    e_turn_match["turn-match.js"]
+    e_card_match["card-match.js"]
+    e_deck_service["deck-service.js"]
+    e_deck_worker["deck-worker.js<br>Web Worker"]
+    e_deck_crypto["deck-crypto.js"]
+    e_vendor_mental_poker_cards_play["vendor/mental-poker/cards_play.js"]
+    e_base64["base64.js"]
+    e_fair["fair.js"]
+    e_rng["rng.js"]
+    e_channel["channel.js"]
+    e_shell["shell.js"]
+    e_players["players.js"]
+    e_result["result.js"]
+    e_celebrate["celebrate.js"]
+    e_chimes["chimes.js"]
+    e_settings["settings.js"]
+    e_names["names.js"]
+    e_robot_pace["robot-pace.js"]
+    e_sound["sound.js"]
+    e_synth["synth.js"]
+    e_loudness["loudness.js"]
+    e_theme["theme.css<br>linked by every page"]
+  end
+  subgraph server ["Server: server/"]
+    s_server["server.js"]
+    s_app["app.js"]
+    s_signaling["signaling.js"]
+    s_limits["limits.js"]
+    s_ws["ws"]
+  end
+  games_json[("public/games.json")]
+
+  p_home --> e_shell
+  p_main --> e_celebrate
+  p_main --> e_lobby
+  p_main --> e_players
+  p_main --> e_result
+  p_main --> e_session
+  p_main --> e_shell
+  p_main --> e_turn_match
+  p_main --> g_art
+  p_main --> g_match
+  p_main --> g_robot
+  p_main --> g_rules
+  p_main --> g_settings
+  p_main --> g_sounds
+  g_art --> g_rules
+  g_match --> e_channel
+  g_match --> e_fair
+  g_match --> g_rules
+  g_robot --> e_rng
+  g_robot --> e_robot_pace
+  g_robot --> e_session
+  g_robot --> e_turn_match
+  g_robot --> g_match
+  g_robot --> g_rules
+  g_rules --> e_rng
+  g_rules --> e_turn_match
+  g_settings --> e_settings
+  g_settings --> g_robot
+  g_settings --> g_rules
+  g_sounds --> e_sound
+  g_sounds --> e_synth
+  e_boot --> e_shell
+  e_card_match --> e_base64
+  e_card_match --> e_channel
+  e_card_match --> e_deck_service
+  e_card_match --> e_fair
+  e_card_match --> e_robot_pace
+  e_card_match --> e_session
+  e_card_match --> e_turn_match
+  e_celebrate --> e_chimes
+  e_celebrate --> e_shell
+  e_chimes --> e_sound
+  e_chimes --> e_synth
+  e_deck_crypto --> e_deck_service
+  e_deck_crypto --> e_vendor_mental_poker_cards_play
+  e_deck_service --> e_deck_crypto
+  e_deck_worker --> e_deck_crypto
+  e_deck_worker --> e_deck_service
+  e_fair --> e_rng
+  e_group --> e_channel
+  e_lobby --> e_names
+  e_lobby --> e_room
+  e_lobby --> e_shell
+  e_peer --> e_channel
+  e_players --> e_shell
+  e_result --> e_celebrate
+  e_result --> e_shell
+  e_room --> e_channel
+  e_room --> e_group
+  e_room --> e_peer
+  e_room --> e_session
+  e_room --> e_signaling
+  e_session --> e_channel
+  e_session --> e_group
+  e_session --> e_names
+  e_settings --> e_shell
+  e_shell --> e_names
+  e_shell --> e_sound
+  e_signaling --> e_channel
+  e_sound --> e_loudness
+  e_turn_match --> e_channel
+  e_turn_match --> e_fair
+  e_turn_match --> e_robot_pace
+  e_turn_match --> e_session
+  s_server --> s_app
+  s_app --> s_signaling
+  s_app --> s_ws
+  s_signaling --> s_limits
+  s_signaling --> e_names
+  s_app -.-> games_json
+  p_home -.-> games_json
+  e_lobby -.-> games_json
+```
+
 ### Server
 
 The HTTP routes are listed in the diagram. Static files come from `public/`.
@@ -39,12 +210,34 @@ Dotfiles, path traversal, directory paths and `*.test.js` return 404. A bare
 `/<slug>` gets a 301 to `/<slug>/` (the query string is kept) so the game's
 relative imports resolve.
 
-Every page response carries `Content-Security-Policy`, `X-Content-Type-Options`
-and `Referrer-Policy` headers. Scripts can only load from the site itself.
+**Security headers.** Every response carries the same set (`SECURITY_HEADERS`
+in `server/app.js`): pages, files, `304`, the `301` redirect, `400`, `404`,
+`405`, `426`, `/healthz` (which also keeps `Access-Control-Allow-Origin: *`)
+and the `403` that refuses a `/ws` handshake.
+
+| Header | Value | Why |
+|---|---|---|
+| `Content-Security-Policy` | `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'` | Scripts, fetches and sockets stay on the site itself. `connect-src 'self'` covers our own `ws:`/`wss:` in current browsers (CSP Level 3: Chrome 71, Firefox since 2018, Safari 16), so injected code can't open a socket to another host. WebRTC's STUN servers are not under `connect-src`. |
+| `Strict-Transport-Security` | `max-age=31536000` | Once a browser has seen the site over HTTPS, it never uses plain HTTP for it for a year. No `includeSubDomains` and no `preload`, so it can be dropped later. Browsers ignore it over plain HTTP, so `localhost` and LAN play are unaffected. |
+| `Cross-Origin-Opener-Policy` | `same-origin` | A page on another site that opens ours gets no handle to our window. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | No game needs them. The invite link's Share (`navigator.share`) and Copy (`navigator.clipboard`) stay allowed. |
+| `X-Content-Type-Options` | `nosniff` | Files are only run as the type we send. |
+| `Referrer-Policy` | `same-origin` | Invite links with their keys never leak to other sites. |
+
 Only `engine/deck-worker.js` gets `'wasm-unsafe-eval'` in its `script-src`:
 the card deck's WebAssembly compiles in that worker (see **Card games**), and
 a worker runs under its own script's policy. Pages can't compile any code.
 `.wasm` files are served as `application/wasm`.
+
+`test/browser/security-headers.test.js` checks that, under these headers, the
+lobby still reaches `/ws` and the invite link still copies and shares.
+
+**Caching.** Static files carry `Cache-Control: no-cache` and a strong `ETag`,
+a 64-bit FNV-1a hash of the file's bytes (`etagOf` in `server/app.js`, pure JS,
+so no `node:crypto` or `fs.stat`). Browsers keep their copy but ask every time;
+a matching `If-None-Match` (GET or HEAD) gets `304` with no body. The hash is
+taken on each request, so a deploy or a local edit shows up on the next load.
+`/healthz`, `/ws` and the 404 page carry no `ETag`.
 
 **Who may open `/ws`.** Browsers always send an `Origin` header on a
 WebSocket handshake, and a page can't change it, so the upgrade handler
@@ -193,9 +386,9 @@ a blocked name over WebRTC either. Nicknames are never logged.
 
 | Module | Job |
 |---|---|
-| `shell.js` | Header with light/dark and sound toggles, nickname and last game played in `localStorage` (the home page shows that game first; it never leaves the device), toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
+| `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`), the footer every page ends with (how games run, then links to this file, the repository and the privacy page; more links join `FOOTER_LINKS`), nickname in `localStorage`, toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero and its steps, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), its loading tiles and the "Last played" label (see **Colours and contrast**), and the game page column (see **Page column**) |
+| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), the moves the tiles' previews use (see **Tile previews**) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar, the result panel, the result moment and `.text-page` (the privacy page's reading column) |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
@@ -211,15 +404,47 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `deck-crypto.js` | A synchronous layer over the vendored mental-poker WebAssembly (`vendor/mental-poker/`): keys, shuffles and their proofs, shares, opening, the audit. Bytes in, bytes out. |
 | `base64.js` | Bytes to base64 and back, strict about its input, for binary data in JSON messages |
 | `vendor/mental-poker/` | The built library, committed (see **Card games**): `cards_play_bg.wasm`, its loader `cards_play.js`, `LICENSE`, and `SOURCE` (the commit it was built from) |
-| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. It also sets which view is on show for the page column, and saves the game's slug when a game starts. |
+| `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), the "Play with a friend" / "Play vs robot" / join-by-code UI with a quiet line under the Play buttons that games connect browsers directly, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. With a game's `settings` it shows them inside the home screen's card, between the nickname and the Play buttons, and their summary on the host's waiting screen, so friends see the rules before the game starts. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
-| `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
+| `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
+| `result.js` | `resultPanel(session, { onLeave, onShow, classes })`: the game-over panel of every game, with Rematch and Leave (see **Result panel**). |
+| `celebrate.js` | `celebrate({ outcome, flavour, highlight, anchor, board })`: the result moment a game plays from the panel's `onShow`, and `calm()`, which the panel calls when it hides (see **Result moment**). |
+| `chimes.js` | The result chimes: the site's jingle for each outcome in each game's timbre, through `sound.js` (see **Result moment**). No DOM. |
+| `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a group marked `robot` is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary. `get()` is the current config, which the game sends to its guests (`setup`). |
 | `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
 | `loudness.js` | `loudness(samples, sampleRate)`: how loud a sound is to the ear, in LUFS (K-weighted, loudest 100 ms). No DOM; runs in node too. |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
 
-**Session flow.**
+**Session flow.** A friend joining by invite link; the steps below give the
+details.
+
+```mermaid
+sequenceDiagram
+  participant H as Host's browser
+  participant S as Server (/ws)
+  participant F as Friend's browser
+  H->>S: create {game, name}
+  S-->>H: created {room, key}
+  H-->>F: invite link /#lt;slug#gt;/?room=CODE&key=KEY (sent by the host)
+  F->>S: join {game, room, name, key}
+  S-->>F: joined
+  S-->>H: peer {id, name}
+  H->>S: signal (offer)
+  S->>F: signal (offer)
+  F->>S: signal (answer)
+  S->>H: signal (answer)
+  Note over H,F: ICE candidates are relayed the same way
+  H-)F: DataChannel opens, browser to browser
+  F->>H: $hello
+  H->>F: $welcome
+  H->>F: $roster
+  H->>F: $start {seat, players}
+  H-xS: close the WebSocket
+  F-xS: close the WebSocket
+  Note over S: the room is deleted
+  Note over H,F: game messages only, over the DataChannel
+```
 
 1. Host: `create` → waiting room (code and invite link with the key).
 2. Each friend opens `/<slug>/?room=CODE&key=KEY` → `join`, and is seated at once. A friend who types the code knocks instead and waits until the host presses Accept (see **Who may join a room**). The lobby drops `room` and `key` from the address bar.
@@ -241,6 +466,31 @@ peer**, so robot games use exactly the same protocol and rules code as friend
 games. The lobby acts on `?room=`, `?robot` and `?friend` only after the
 game's module has finished loading, because a robot game's `onSession` runs at once and may
 use bindings the module declares after its `startGameShell()` call.
+
+Side by side, only the group transport differs (dashed boxes):
+
+```mermaid
+flowchart TB
+  subgraph friend ["Friend game: one browser per player"]
+    direction TB
+    f_main["main.js + rules.js"] --> f_match["TurnMatch, or Sea Battle's match.js"]
+    f_match --> f_session["Session"]
+    f_session --> f_group["HubGroup on the host,<br>SpokeGroup on each guest"]
+    f_group --> f_link["PeerChannel:<br>WebRTC DataChannel"]
+    f_link <==> f_others["the other browsers"]
+  end
+  subgraph robot ["Robot game: every seat in one tab"]
+    direction TB
+    r_main["main.js + rules.js<br>your seat"] --> r_match["TurnMatch, or Sea Battle's match.js"]
+    r_match --> r_session["Session"]
+    r_bot["robot.js + rules.js<br>a robot's seat"] --> r_bot_match["TurnMatch, or Sea Battle's match.js"]
+    r_bot_match --> r_bot_session["Session"]
+    r_session --> r_group["localGroup(n):<br>localPair() links in memory"]
+    r_bot_session --> r_group
+  end
+  classDef transport stroke-dasharray: 5 5
+  class f_group,f_link,r_group transport
+```
 
 **Groups.** Everything above `room.js` sees a group: send to everyone, receive
 `(msg, from)`, hear that a seat left. Today it is a star. The room creator's
@@ -333,12 +583,42 @@ dot for a seat or a fact ("2–4 players" on the home tiles): the dot is
 `--dot`, muted by default, `--mine` or `--theirs` with `.mine` or `.theirs`.
 Transitions use `--dur-fast`, `--dur-med` or `--dur-slow` and `--ease-out` or
 `--ease-spring`. The rules, at the top of the motion section in `theme.css`:
-animate only transform and opacity; nothing loops forever except a hero scene;
-everything stops under `prefers-reduced-motion`; no motion starts without a
-user action, except the room code, whose letters settle in one by one (350 ms)
-when the waiting room opens. Loading indicators run only while something loads.
+animate only transform and opacity; nothing loops forever except the home
+hero's scene and a tile's preview while it is hovered, focused or, on a touch
+screen, in view; everything stops under `prefers-reduced-motion`; no motion starts
+without a user action, except the room code, whose letters settle in one by
+one (350 ms) when the waiting room opens, the result moment when a match
+ends (see **Result moment**), the hero's scene, and a tile's preview on a
+touch screen. Loading indicators run only while something loads.
 
-**Page column.** A game page stacks the lobby, the game's settings, the game
+**Hero scene.** The home hero ends with a small game table, an inline SVG in
+`index.html` (decorative, `aria-hidden`), drawn in theme tokens so it follows
+light and dark. Each piece (cards, a checker, a die, a Ludo pawn, a Connect 4
+disc) and the lamp's glow loops on its own period, so the scene never repeats
+exactly; hovering or tapping a piece swaps its loop for one run of its move.
+The loops animate only transform and opacity, which Chrome runs on the
+compositor, so they cause no layout or paint. `home.js` adds `.paused` while
+the scene is off screen (IntersectionObserver) or the tab is hidden, and with
+`prefers-reduced-motion` the scene is still.
+
+**Tile previews.** While a ready game's home tile is hovered or has keyboard
+focus, or on a touch screen (`hover: none`) while it is at least 60% in view,
+it loops a 3–5 second preview of the game: its pieces move and small player
+tags light up in turn. Each loop holds its last frame for a moment; when the
+tile loses hover, focus or view, its icon comes back. `home.js` fetches
+`<slug>/preview.svg` the first time, inlines it in place of the icon (an
+`<img>` couldn't reach the page's tokens or be started) and calls `play()` on
+its animations, which start paused, again after each loop. Without the file,
+or with `prefers-reduced-motion`, the icon stays. Because the SVG is inlined, its
+`<style>` applies to the whole page: selectors start with the game's class
+(`.pv-ttt`) and keyframes and ids with its name. `theme.css` gives every
+preview the same timing (each piece waits `--d`), the seat colours (`.a` to
+`.d`), the player tags and a few moves (`.pop`, `.fade`, `.gone`, `.draw`,
+`.slide`, `.fall`, `.lit`). The CSP needs no change: the fetch is same-origin
+and inline styles are already allowed; `test/server.test.js` checks each
+preview has no script and no external references.
+
+**Page column.** A game page stacks the lobby, the game
 and "How to play" (`.rules`), and they all share one centred column, as wide
 as the view on show, so their edges line up. `startGameShell()` sets
 `data-view` (`lobby` or `game`) and `data-layout` on `<main class="page">`,
@@ -347,7 +627,7 @@ the lobby cards:
 
 | View | Column at 1280 px | Games |
 |---|---|---|
-| Lobby, invite, waiting room, settings | 520 px | all |
+| Lobby, invite, waiting room | 520 px | all |
 | Game, `layout: "narrow"` | 520 px | Tic Tac Toe, Connect 4, Chess, Checkers |
 | Game, `layout: "medium"` | 640 px | Gomoku, Backgammon |
 | Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo |
@@ -357,6 +637,75 @@ game's own top-level box has no `max-width`, so it fills `#game`. The default
 is the widest, so a game that passes no `layout` is never squeezed: its own
 box keeps whatever width it sets, and its rules panel matches the column.
 `test/browser/layout.test.js` checks every ready game at 1280 and 360 px.
+
+**Player bar.** Every game shows the same bar above its board, built by
+`playerBar()` in `players.js` and styled in `theme.css`: a pill per player
+(you first, "(you)" after your name, then the others in seat order), a ring
+on whoever's turn it is, and Leave (`id="leave"`) at the top right. Under it
+the score (`#score`) shows wins per player and, for games whose score has a
+`draws` field, a Draws box (Dots and Boxes adds it with the first draw,
+since only some boards can be drawn). The game creates it once and calls
+`update({ turn, score, badges, notes })` with whatever changed, each indexed
+by seat: `turn` is a seat or -1, `score` is `{ wins, draws }`, a badge is a
+node of the game's own (a mark, disc, stone or swatch, which the game may
+keep changing), and a note is a short line under the name (pips, boxes, a
+square), as text or a node. With three or four players the pills wrap, at
+most two to a row; under 600 px they sit in a 2×2 grid beside Leave over a
+slimmer score, so four fit a 360 px phone. A pill and its score read
+`--seat` and `--seat-text`, which are `--mine` and `--theirs` unless the game
+gives each seat a class of its own that sets them (Chutes and Ladders `p0`
+to `p3`, Ludo its board colours).
+
+**Result panel.** Every game shows its result the same way, in a panel
+built by `resultPanel()` in `result.js` and pinned to the bottom of the
+screen, in the page column. It is out of the page's flow, so the board never
+moves when a match ends (Sea Battle's result used to push its boards down
+about 160 px); while it is open, the page keeps room below the game so
+everything can still be scrolled clear of it. It holds the title
+(`#result`): "You won", "You lost" or "Draw", "<name> won" when more than
+two play, or "Match stopped"; the places in order (`#result-places`, Ludo's
+standings); a reason line (`#result-reason`); an optional node of the
+game's (Sea Battle's fair-play verdict, `#verdict`); **Rematch**
+(`#rematch`); the rematch status (`#rematch-status`); and Leave. The panel
+listens to the session's rematch votes itself: Rematch becomes "Accept
+rematch" once someone else has voted, the status says who wants one or
+"Waiting for Bo…" ("Waiting for 2 players…" with more missing), and a toast
+announces another player's vote. The game creates it once and calls
+`show({ winner, stopped, reason, places, extra })` whenever something
+changes (`winner` is a seat or -1 for a draw) and `hide()` while the match
+is on. It opens once per match: focus moves to its title, and `onShow({
+winner, stopped, outcome })` runs, the hook for the result moment (below).
+Place colours read `--seat`, like the player bar, from `.mine`, `.theirs`
+or the game's `classes`.
+
+**Result moment.** When the panel opens, every game plays the same short,
+gentle moment, about 1.5 s, from `celebrate()` in `celebrate.js`. The
+panel's `onShow` passes `outcome`: `"win"`, `"loss"`, `"draw"`, `"over"`
+(someone else won and more than two play: never a loss sting), or `null`
+for a stopped match, which gets nothing. Each browser plays its own
+player's moment.
+
+| Outcome | What moves | Chime |
+|---|---|---|
+| win | the winning pieces (`highlight`) light up one after another, then three sets of the logo's four dots, coral and teal, rise from the title | three notes rising |
+| loss | the `board` dims a little and the title fades in | two notes falling, 2 dB softer |
+| draw | the player pills pulse once | one note twice, 2 dB softer |
+| over | the winner's pieces light up and the title fades in | the win's first two notes, 4 dB softer |
+
+The game passes the pieces in the order they light up: the line in Tic Tac
+Toe, Connect 4 and Gomoku, the mated king in Chess, the last capture in
+Checkers, the last checker borne off in Backgammon, the last ship sunk in
+Sea Battle (once its shell lands), the pawn on 100 in Chutes and Ladders,
+the last box in Dots and Boxes, and the winner's tokens home in Ludo. The
+chimes (`chimes.js`) are one melody, a C-major pentatonic jingle, in a
+timbre that fits the game's pieces (`flavour`): `wood` for Chess, Checkers,
+Backgammon and Ludo; `paper` for Tic Tac Toe, Gomoku and Dots and Boxes;
+`plastic` for Connect 4; `bell` for Chutes and Ladders; `water` (a bubble
+under the bell) for Sea Battle. They are synthesized, at the `fanfare`
+level, and follow the mute toggle. With `prefers-reduced-motion` only the
+colours change: the pieces glow, the board dims, the pills take their seat
+colour, and nothing moves. The colours stay while the panel is up; it calls
+`calm()` when it hides, for a rematch.
 
 **Player colours.** A player has the same colour on every screen, so "I'm the
 coral one" is true for everyone at the table. In a two-player game whoever
@@ -403,24 +752,26 @@ and above it rounds off peaks when sounds stack. A `DynamicsCompressorNode`
 can't do this job, because Chromium's turns a sound down by 1 to 2 dB even when
 it never reaches the threshold, which would undo the levels.
 
-`test/browser/sound-levels.test.js` renders every sound of every game
-offline through that output (each recording, and each synthesized stand-in),
-with random parts seeded, and fails if one lands more than 1.5 dB from its
-role, printing the trim to set. `test/sound.test.js` checks that no game opens
-its own audio context or output.
+`test/browser/sound-levels.test.js` renders every sound of every game, and
+the result chimes, offline through that output (each recording, and each
+synthesized stand-in), with random parts seeded, and fails if one lands more
+than 1.5 dB from its role, printing the trim to set. `test/sound.test.js`
+checks that no game opens its own audio context or output.
 
 ### Game (`public/<slug>/`)
 
 | File | Job |
 |---|---|
 | `index.html` | Page with `#lobby` and `#game` sections and the rules |
-| `main.js` | `startGameShell({ slug, title, tagline, layout, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; `layout` picks the page column (see **Page column**). |
+| `main.js` | `startGameShell({ slug, title, layout, settings, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; the lobby's tagline is the game's `description` there (a `tagline` option still overrides it); `layout` picks the page column (see **Page column**). |
+| `settings.js` | Optional: the game's settings, `export const settings = gameSettings({ key, prefix, groups, normalize, hint })`, passed to `startGameShell()` and read with `settings.get()` |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
 | `match.js` | Only for games with hidden information that isn't a deck of cards (Sea Battle's fleet): one player's protocol state machine. Card games use `engine/card-match.js`, the others `engine/turn-match.js`. |
 | `sounds.js` | Optional: the game's sounds, `export const sounds = defineSounds({...})` with a role for each (see **Sound levels**), and the `play` helpers `main.js` calls. The only file that imports `engine/sound.js`. |
 | `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`, card games to `startCardRobot()`; custom-protocol games (Sea Battle) also export `startRobot(session)`. |
 | `*.test.js` | `node --test` unit tests, next to the code |
 | `icon.svg` | Card art for the home page (16:10) |
+| `preview.svg` | Optional: the tile's short animated preview (see **Tile previews**) |
 
 ## Card games (`CardMatch`)
 
@@ -661,7 +1012,7 @@ its moves are easy to follow.
 
 Tic Tac Toe has no hidden information, so it runs on `TurnMatch`. What it adds
 is room settings and clocks, both of which later games (Connect 4, Gomoku)
-can copy; the settings panel itself is the engine's `settings.js`.
+can copy; the settings themselves are the engine's `settings.js`.
 
 **Room settings.** Before a game, the player picks the board (3×3 with three
 in a row, or 5×5 with four), a limit per move, a total per player, and who
@@ -717,8 +1068,8 @@ Over 200 games on 7×6, Hard beats Easy 93% of the time and Medium beats Easy
 ## Gomoku in depth
 
 Gomoku is Tic Tac Toe's settings and clocks on a 15×15 board, with no engine
-changes. `public/gomoku/` copies the Tic Tac Toe view patterns (settings panel,
-`setup {config}`, clocks, the 5 s claim) rather than sharing them, so each game
+changes. `public/gomoku/` copies the Tic Tac Toe view patterns (`setup {config}`,
+clocks, the 5 s claim) rather than sharing them, so each game
 can change on its own.
 
 - **Rules.** Five or more in a row wins (an overline counts, as on papergames),
@@ -947,8 +1298,8 @@ landing, then climbs a ladder rung by rung or rides the chute's Bézier curve,
 speeding up and tilting with it. A burst of stars marks a ladder's top, dust a
 chute's foot, and confetti the win. When spins pile up (a hidden tab, a 6
 spinning again) the queue plays faster; with the tab hidden or
-`prefers-reduced-motion` set, it applies them at once. The result box waits
-for the winning pawn to arrive. The pawn whose turn it is bobs on the spot.
+`prefers-reduced-motion` set, it applies them at once. The result panel
+waits for the winning pawn to arrive. The pawn whose turn it is bobs on the spot.
 
 **Art.** Everything is inline SVG drawn in code: pastel squares, wooden
 ladders, chutes drawn as playground slides (a rim, raised walls, a bed and a
@@ -966,7 +1317,8 @@ pointer; a hop is a pawn tap plus a marimba note that climbs a C-major
 pentatonic scale with each square (and walks back down after a bounce); a
 ladder is a xylophone run, then a shimmer; a chute is a slide whistle over
 rushing air, then a bump; overshooting with the exact rule is a two-note
-"nope", bouncing off 100 a spring; plus a turn chime and win and lose tunes.
+"nope", bouncing off 100 a spring; plus a turn chime. The end of a match
+plays the engine's result chime (see **Result moment**).
 The spin (flick and settle) is an `action`, like a hop, so spinning sounds
 as loud as moving (see **Sound levels**).
 
@@ -1078,16 +1430,16 @@ the same at the end. Your own strokes take 170 ms. A backlog plays at double
 speed; a hidden tab, or `prefers-reduced-motion` (read when each animation
 starts, so tests can switch it mid-game), applies lines at once. Animations
 belong to a match generation, so a rematch drops the old queue and its counts.
-The result waits for the last box, and fits on screen on a laptop and on a
-360 px phone (where the tally hides once the game is over).
+The result panel waits for the last box.
 
 **Sound** (`sounds.js`, synthesized like Chutes and Ladders', behind the
 header's mute toggle): a pencil scratch per line (grains of filtered noise
 shaped to the stroke's length, over a darker rub, with a tap at the end), a
 pop and a mallet note per box that climbs a pentatonic scale through a turn's
 run, a sparkle when a run of three or more ends, a soft thud for a line that
-can't be drawn, the turn chime, and tunes for a win, a loss and a draw. A
-line is an `action` and a box a `highlight` (see **Sound levels**).
+can't be drawn and the turn chime; the end of a match plays the engine's
+result chime (see **Result moment**). A line is an `action` and a box a
+`highlight` (see **Sound levels**).
 
 ## Ludo in depth
 
@@ -1191,9 +1543,9 @@ back to its socket on a high tumbling arc; a safe square sparkles, the home
 column hums, and home and the finish throw confetti. When moves pile up the
 queue plays faster; a hidden tab or `prefers-reduced-motion` (read live, so
 tests can switch it) applies them at once. Animations belong to a match
-generation, so a rematch drops the old queue. The result waits for the last
-token and sits over the board, so it is in view without scrolling on a
-laptop and on a phone. If a player leaves, the engine's notice gets a line
+generation, so a rematch drops the old queue. The result panel waits for the
+last token and lists the standings with each player's rolls and captures (or
+tokens home). If a player leaves, the engine's notice gets a line
 saying the game is over for everyone, with where each player stood.
 
 **Sound** (`sounds.js`, behind the header's mute toggle). The die plays
@@ -1202,9 +1554,10 @@ synthesized like Chutes and Ladders': a wooden tap and a marimba note per hop
 that climbs as the token goes, a cork pop for coming out, a shimmer into the
 home column, a small bell on a safe square, a bonk for a capture (a slide
 whistle down if it was yours), a fanfare home, a chirp for another roll, a
-soft "no" for a passed turn, ticks for the timer's last seconds, the turn
-chime, and tunes for a win and a loss. The die and a hop are both `action`
-sounds, so rolling and moving sound about as loud (see **Sound levels**).
+soft "no" for a passed turn, ticks for the timer's last seconds and the
+turn chime; the end of a match plays the engine's result chime (see
+**Result moment**). The die and a hop are both `action` sounds, so rolling
+and moving sound about as loud (see **Sound levels**).
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
@@ -1229,6 +1582,7 @@ the `?room=CODE` invite contract; and pinning one region.
 ## Platform constraints
 
 - **No TURN server.** Edge has no UDP, so relays can't run there. Some network pairs (symmetric NAT, strict firewalls, some mobile carriers or VPNs) can't connect. The lobby detects ICE failure or a timeout and explains this, offering a retry and the robot. A TURN service hosted elsewhere could be added to `ICE_SERVERS` in `engine/peer.js`.
+- **Players see each other's IP address.** With two players each browser sees the other's; with 3 or 4 the host's browser sees every guest's and each guest sees the host's (see **Groups**). The STUN servers in `engine/peer.js` see it too. Without a TURN relay it can't be hidden, so the lobby says under the Play buttons that games connect browsers directly and to play with people you know (`.lobby-note`), and the privacy page spells it out.
 - **Rooms live in one instance's memory.** Edge may run several instances, so `app.yaml` pins a single region. If joins ever miss rooms, move rooms to Wasmer's managed Postgres.
 - **Instances are ephemeral.** Once players are connected nothing depends on the server, so an instance going away never ends a game.
 - **No build step.** Plain ES modules are served as-is, and `node --test` imports the same files the browser runs. The one compiled file, the card deck's WebAssembly, is built ahead and committed, and CI checks it matches its source (see **Card games**).

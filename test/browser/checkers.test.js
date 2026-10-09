@@ -34,7 +34,11 @@ const pw = await loadPlaywright();
 const wait = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 20_000 });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#ck-settings label:has(input[name="ck-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#ck-settings[open]").count())) await page.click("#ck-settings > summary");
+  await page.click(`#ck-settings label:has(input[name="ck-${name}"][value="${value}"])`);
+}
 const square = (sq) => `.ck-sq[data-sq="${sq}"]`;
 
 // The path the page's player should play now: the robot's best move at
@@ -113,8 +117,8 @@ test("two friends play Checkers on the host's settings through the invite link, 
   assert.equal(guestState.moveMs, 60_000);
   assert.deepEqual(guestState.clocks, [300_000, 300_000]);
   assert.equal(guestState.first, 0, "the host starts, as the host's settings say");
-  assert.match(await host.locator(".ck-players").innerText(), /Ada[\s\S]*Bo/);
-  assert.match(await guest.locator(".ck-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   assert.equal(await bg(guest), "rgb(18, 21, 28)", "the phone follows its dark OS theme");
@@ -174,11 +178,11 @@ test("two friends play Checkers on the host's settings through the invite link, 
   assert.deepEqual(await guest.evaluate(() => window.ddp.match.state), final, "both browsers agree on every move");
   assert.equal(final.winner, 0, `the strong side wins (${final.reason})`);
   assert.ok(final.clocks.every((ms) => ms < 300_000 && ms > 0), `both clocks were spent: ${final.clocks}`);
-  assert.equal(await host.locator("#ck-result").innerText(), "Victory!");
-  assert.equal(await guest.locator("#ck-result").innerText(), "Defeat");
-  assert.match(await guest.locator("#ck-detail").innerText(), /Ada captured all your pieces|You have no legal move left/);
-  assert.match(await host.locator("#ck-score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+0/);
-  assert.match(await guest.locator("#ck-score").innerText(), /You\s+0\s+Draws\s+0\s+Ada\s+1/);
+  assert.equal(await host.locator("#result").innerText(), "You won");
+  assert.equal(await guest.locator("#result").innerText(), "You lost");
+  assert.match(await guest.locator("#result-reason").innerText(), /Ada captured all your pieces|You have no legal move left/);
+  assert.match(await host.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+0/);
+  assert.match(await guest.locator("#score").innerText(), /You\s+0\s+Draws\s+0\s+Ada\s+1/);
   await host.waitForTimeout(700); // let the last capture fade
   await host.screenshot({ path: `${ARTIFACTS}/checkers-1-win.png`, fullPage: true });
   await guest.screenshot({ path: `${ARTIFACTS}/checkers-2-over-mobile-dark.png`, fullPage: true });
@@ -208,10 +212,10 @@ test("two friends play Checkers on the host's settings through the invite link, 
   assert.deepEqual(await guest.evaluate(() => window.ddp.match.state), timedOut);
   assert.equal(timedOut.reason, "timeout");
   assert.equal(timedOut.winner, 0);
-  assert.equal(await guest.locator("#ck-result").innerText(), "Defeat");
-  assert.equal(await guest.locator("#ck-detail").innerText(), "Your clock ran out.");
-  assert.equal(await host.locator("#ck-detail").innerText(), "Bo's clock ran out.");
-  assert.match(await host.locator("#ck-score").innerText(), /You\s+2\s+Draws\s+0\s+Bo\s+0/);
+  assert.equal(await guest.locator("#result").innerText(), "You lost");
+  assert.equal(await guest.locator("#result-reason").innerText(), "Your clock ran out.");
+  assert.equal(await host.locator("#result-reason").innerText(), "Bo's clock ran out.");
+  assert.match(await host.locator("#score").innerText(), /You\s+2\s+Draws\s+0\s+Bo\s+0/);
   await guest.screenshot({ path: `${ARTIFACTS}/checkers-4-clock-loss-mobile-dark.png`, fullPage: true });
 
   // The friend closes the tab: the host is told.
@@ -243,7 +247,7 @@ test("Checkers vs the robot on a 360 px phone: a full game by touch, then a rema
   await page.screenshot({ path: `${ARTIFACTS}/checkers-5-lobby-mobile-light.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".ck-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   assert.equal(await page.locator("#ck-config").innerText(), "8 × 8 checkers · no move limit · no game clock · Easy robot");
   assert.ok(await page.locator("#ck-clocks").isHidden(), "no clocks by default");
   assert.equal(await page.evaluate(() => window.ddp.match.state.turn), 0, "the room setting says I start");
@@ -261,8 +265,8 @@ test("Checkers vs the robot on a 360 px phone: a full game by touch, then a rema
   await wait(page, () => window.ddp.match.phase === "over");
   const st = await page.evaluate(() => window.ddp.match.state);
   assert.equal(st.winner, 0, `beating the Easy robot (${st.reason})`);
-  assert.equal(await page.locator("#ck-result").innerText(), "Victory!");
-  assert.match(await page.locator("#ck-score").innerText(), /You\s+1\s+Draws\s+0\s+Robot\s+0/);
+  assert.equal(await page.locator("#result").innerText(), "You won");
+  assert.match(await page.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Robot\s+0/);
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${ARTIFACTS}/checkers-7-robot-win-light.png`, fullPage: true });
 

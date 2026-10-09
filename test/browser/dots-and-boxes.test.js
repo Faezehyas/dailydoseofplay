@@ -32,7 +32,11 @@ async function loadPlaywright() {
 const pw = await loadPlaywright();
 const wait = (page, fn, arg, timeout = 20_000) => page.waitForFunction(fn, arg, { timeout });
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#db-settings label:has(input[name="db-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#db-settings[open]").count())) await page.click("#db-settings > summary");
+  await page.click(`#db-settings label:has(input[name="db-${name}"][value="${value}"])`);
+}
 const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const state = (page) => page.evaluate(() => window.ddp.match.state);
 // The theme token a CSS property of the first match resolves to, so screens
@@ -123,8 +127,8 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   await guest.locator("#db-config").filter({ hasText: "3×3" }).waitFor();
   assert.equal(await guest.locator("#db-config").innerText(), "3×3 boxes · 30 s a line · 3 min each", "the host's settings reach the friend");
   assert.equal(await host.locator("#db-config").innerText(), await guest.locator("#db-config").innerText());
-  assert.match(await host.locator(".db-players").innerText(), /Ada[\s\S]*Bo/);
-  assert.match(await guest.locator(".db-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.equal(await host.locator("#db-board .dot").count(), 16);
   assert.equal(await guest.locator("#db-board .hit").count(), 24, "a tap target for every line");
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
@@ -178,25 +182,26 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   for (const page of [host, guest]) {
     assert.equal(await tokenOf(page, `#db-board .line[data-l="${first}"] .ink`, "stroke"), "--accent", "the host drew first, so their line is coral on both screens");
   }
-  assert.equal(await tokenOf(host, ".db-players .p0 .swatch", "backgroundColor"), "--accent", "the host's swatch is coral on their screen");
-  assert.equal(await tokenOf(guest, ".db-players .p1 .swatch", "backgroundColor"), "--accent", "and on the friend's");
-  assert.equal(await tokenOf(guest, ".db-players .p0 .swatch", "backgroundColor"), "--accent-2", "the friend is teal on both screens");
-  assert.equal(await tokenOf(host, ".db-players .p1 .swatch", "backgroundColor"), "--accent-2");
+  assert.equal(await tokenOf(host, ".pb-who.p0 .swatch", "backgroundColor"), "--accent", "the host's swatch is coral on their screen");
+  assert.equal(await tokenOf(guest, ".pb-who.p1 .swatch", "backgroundColor"), "--accent", "and on the friend's");
+  assert.equal(await tokenOf(guest, ".pb-who.p0 .swatch", "backgroundColor"), "--accent-2", "the friend is teal on both screens");
+  assert.equal(await tokenOf(host, ".pb-who.p1 .swatch", "backgroundColor"), "--accent-2");
   await wait(guest, () => !!document.querySelector("#db-board.armed"));
   await guest.screenshot({ path: `${ARTIFACTS}/db-1-friend-mobile-dark.png`, fullPage: true });
   const { st: won, extra } = await finish();
   assert.ok(extra > 0, "someone closed a box and went again");
   const [winner, loser] = won.winner === 0 ? [host, guest] : [guest, host];
-  await winner.locator("#db-result").filter({ hasText: "You win!" }).waitFor();
-  assert.match(await loser.locator("#db-result").innerText(), /wins$/);
-  assert.match(await loser.locator("#db-detail").innerText(), /took \d of 9 boxes/);
-  assert.match(await winner.locator("#db-score").innerText(), /You\s+1\s+\S+\s+0/);
-  assert.match(await loser.locator("#db-score").innerText(), /You\s+0\s+\S+\s+1/);
+  await winner.locator("#result").filter({ hasText: "You won" }).waitFor();
+  await loser.locator("#result").waitFor();
+  assert.equal(await loser.locator("#result").innerText(), "You lost");
+  assert.match(await loser.locator("#result-reason").innerText(), /took \d of 9 boxes/);
+  assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
+  assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
   assert.equal(await host.locator("#db-board .box").count(), 9);
   assert.equal(await host.locator("#db-board .box.p0").count(), won.score[0], "your boxes are marked yours on your screen");
   assert.equal(await guest.locator("#db-board .box.p0").count(), won.score[1], "and theirs on theirs");
   for (const page of [host, guest]) {
-    const r = await page.locator("#db-over").boundingBox();
+    const r = await page.locator("#result-panel").boundingBox();
     assert.ok(r && r.y >= 0 && r.y + r.height <= page.viewportSize().height + 1, "the result is on screen");
   }
   await host.screenshot({ path: `${ARTIFACTS}/db-2-friend-over-light.png` });
@@ -212,7 +217,7 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   assert.match(await host.locator("#db-note").innerText(), /Rematch #1/);
   const { st: again } = await finish();
   const wins = (p) => (won.winner === p) + (again.winner === p);
-  assert.match(await host.locator("#db-score").innerText(), new RegExp(`You\\s+${wins(0)}\\s+Bo\\s+${wins(1)}`));
+  assert.match(await host.locator("#score").innerText(), new RegExp(`You\\s+${wins(0)}\\s+Bo\\s+${wins(1)}`));
   assert.ok(await noHorizontalScroll(guest));
 
   // The friend closes the tab: the host is told.
@@ -248,11 +253,11 @@ test("Dots and Boxes vs the robot on a 360 px phone: touch, keyboard, pen stroke
   await page.screenshot({ path: `${ARTIFACTS}/db-4-settings-mobile-light.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".db-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   assert.equal(await page.locator("#db-config").innerText(), "4×4 boxes · no clocks · Hard robot");
   assert.ok(await page.locator("#db-clocks").isHidden(), "no clocks, no clock row");
   assert.ok(await noHorizontalScroll(page));
-  assert.equal(await page.locator(".db-players .p0 .swatch").innerText(), "C", "your initial");
+  assert.equal(await page.locator(".pb-who.p0 .swatch").innerText(), "C", "your initial");
 
   // Draw by touch: the line strokes itself in, then the robot's is replayed.
   await wait(page, () => !!document.querySelector("#db-board.armed"));
@@ -314,12 +319,12 @@ test("Dots and Boxes vs the robot on a 360 px phone: touch, keyboard, pen stroke
   const st = await state(page);
   assert.equal(st.score[0] + st.score[1], 16);
   assert.equal(await page.evaluate(() => window.ddp.robot.match.state.drawn), 40, "the robot saw every line");
-  await page.locator("#db-result").waitFor();
-  assert.match(await page.locator("#db-result").innerText(), /^(You win!|Robot wins|It's a draw)$/);
+  await page.locator("#result").waitFor();
+  assert.match(await page.locator("#result").innerText(), /^(You won|You lost|Draw)$/);
   sounds = await heard();
   assert.ok(sounds.includes("box"), "boxes pop with a note");
-  assert.ok(sounds.includes(st.winner === 2 ? "draw" : st.winner === 0 ? "win" : "lose"));
-  const r = await page.locator("#db-over").boundingBox();
+  assert.ok(sounds.includes(st.winner === 2 ? "draw-paper" : st.winner === 0 ? "win-paper" : "loss-paper"));
+  const r = await page.locator("#result-panel").boundingBox();
   assert.ok(r.y >= 0 && r.y + r.height <= 740, `the result is on the phone's screen (${Math.round(r.y)}–${Math.round(r.y + r.height)})`);
   await page.screenshot({ path: `${ARTIFACTS}/db-6-robot-over-mobile-light.png` });
 

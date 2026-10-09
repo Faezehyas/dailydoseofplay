@@ -36,10 +36,10 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   await page.screenshot({ path: `${ARTIFACTS}/bg-4-settings-mobile-light.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".bg-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   // On a phone the names use the full width, from the scoreboard's left edge.
   const left = (sel) => page.locator(sel).evaluate((n) => n.getBoundingClientRect().left);
-  assert.ok(Math.abs((await left(".bg-players")) - (await left("#bg-score"))) < 1, "the names start at the scoreboard's edge");
+  assert.ok(Math.abs((await left(".pb-players")) - (await left("#score"))) < 1, "the names start at the scoreboard's edge");
   assert.equal(await page.locator("#bg-config").innerText(), "30 s a turn · no game clock · Hard robot");
   assert.equal(await page.evaluate(() => window.ddp.match.state.turn), 0, "the room setting says I start");
   assert.ok(await page.locator("#bg-move-left").isVisible());
@@ -114,7 +114,8 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   assert.equal(st.reason, "off");
   assert.equal(st.pos[st.winner][0], 15);
   assert.equal(await page.evaluate(() => window.ddp.robot.match.state.ply), st.ply, "the robot saw every move");
-  assert.match(await page.locator("#bg-result").innerText(), /^(Victory!|Defeat)$/);
+  await page.locator("#result").waitFor();
+  assert.match(await page.locator("#result").innerText(), /^(You won|You lost)$/);
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${ARTIFACTS}/bg-6-robot-over-light.png`, fullPage: true });
 
@@ -165,7 +166,8 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.winner), 0);
   await page.locator("#toast").filter({ hasText: "Only one way to play" }).waitFor();
-  assert.equal(await page.locator("#bg-result").innerText(), "Victory!");
+  await page.locator("#result").waitFor();
+  assert.equal(await page.locator("#result").innerText(), "You won");
 
   // The robot accepts another rematch. This time let the 30 s turn clock run out.
   await page.locator("#rematch").click();
@@ -180,9 +182,10 @@ test("Backgammon vs the robot on a 360 px phone: a game by touch, keyboard and d
   await page.clock.fastForward(30_000);
   await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
-  assert.equal(await page.locator("#bg-result").innerText(), "Defeat");
-  assert.equal(await page.locator("#bg-detail").innerText(), "Your clock ran out.");
-  assert.match(await page.locator("#bg-score").innerText(), /Robot\s+[1-4]/);
+  await page.locator("#result").waitFor();
+  assert.equal(await page.locator("#result").innerText(), "You lost");
+  assert.equal(await page.locator("#result-reason").innerText(), "Your clock ran out.");
+  assert.match(await page.locator("#score").innerText(), /Robot\s+[1-4]/);
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
   assert.deepEqual(errors, []);

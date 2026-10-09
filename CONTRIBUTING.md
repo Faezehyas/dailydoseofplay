@@ -10,6 +10,7 @@ WebRTC. Read `ARCHITECTURE.md` once before your first change.
 - **Language:** plain JavaScript only. Node ES modules on the server; browser JS, HTML and CSS in `public/`. No TypeScript, no frameworks, no build step, no bundler.
 - **Dependencies:** `ws` is the only npm dependency. Do not add more. The card deck's cryptography, the mental-poker library, is a pinned git submodule built to WebAssembly and committed (see **Card games** in `ARCHITECTURE.md`); games don't need anything else.
 - **Originality:** use original names, art, text and sounds. Copy papergames' rules and flow only, never their logo, art, sounds or wording.
+- **License:** contributions are accepted under the repo's [MIT License](LICENSE). A third-party asset needs a license compatible with it, credited in the game's folder the way each `sounds/LICENSE.txt` credits its recordings.
 - **No accounts:** no logins, tournaments, leaderboards, ads, analytics or random matchmaking. The nickname stays in `localStorage`.
 - **No secrets:** no tokens or keys in the repo. Deploys happen through Wasmer's GitHub integration on every push to `main`.
 - **Server:** a new game must not need changes under `server/`. If it seems to, stop and explain why in the PR.
@@ -23,6 +24,9 @@ npm install
 npm start               # http://localhost:8080 (PORT to change)
 npm test                # unit + integration tests (node --test)
 npm run test:browser    # Playwright: full friend match, robot game, failure screen
+anybuild plan .                       # Anybuild: show the detected build (see README)
+anybuild . --start                    # build and serve on PORT (default 8080)
+anybuild . --start --runner=wasmer    # the same inside Wasmer's runtime; needs the Wasmer CLI
 ```
 
 Only to change the card deck's WebAssembly (Rust, `wasm-pack` and
@@ -64,18 +68,22 @@ public/<slug>/
 ├── main.js          startGameShell(...) and the view
 ├── rules.js         pure rules
 ├── robot.js         move choice (+ startRobot when not using startTurnRobot)
+├── settings.js      optional: the game's settings, shown in the lobby card (step 5)
 ├── sounds.js        optional: the game's sounds, played through the engine (step 5b)
 ├── icon.svg         original 16:10 card art (viewBox 0 0 320 200), no external refs
+├── preview.svg      optional: the home tile's animated preview (step 5c)
 ├── rules.test.js    rules unit tests
 ├── robot.test.js    robot unit tests (+ a full robot-vs-robot game)
 └── match.test.js    protocol test: two peers play a full game (optional file; may live in robot.test.js)
 ```
 
 Keep `index.html`'s `<section id="lobby">` and `<section id="game" hidden>`;
-the engine renders into them. Shared styles (`.card`, `.btn`, `.btn.small`,
-`.rules` for the "How to play" panel, `.rematch-status`, `.overlay`,
-`.spinner`) live in `/engine/theme.css`. `style.css` holds only what is
-specific to your game.
+the engine renders into them. Keep them in its `<main>` too: the header's
+"Skip to content" link jumps there. Don't make `#lobby` a live region: the
+lobby moves focus to each new screen and reads out its own progress. Shared
+styles (`.card`, `.btn`, `.btn.small`, `.rules` for the "How to play" panel,
+`.rematch-status`, `.overlay`, `.spinner`, `.sr-only`) live in
+`/engine/theme.css`. `style.css` holds only what is specific to your game.
 
 ### 3. Write `rules.js` (pure)
 
@@ -136,37 +144,48 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { rules } from "./rules.js";
 import { chooseMove } from "./robot.js";
 
 startGameShell({
   slug: "<slug>",
   title: "<Name>",
-  tagline: "<one original sentence>",
   layout: "narrow", // the page column while playing: "narrow", "medium" or "wide"
   createRobot: (session) => startTurnRobot(session, { rules, choose: chooseMove, delay: 600 }),
   onSession(session, root, shell) {
     const router = matchRouter(session);
+    const score = { wins: [0, 0], draws: 0 }; // leave out draws if the game has none
+    const bar = playerBar(session, { onLeave: () => shell.leave() });
+    const board = el("div", { class: "<slug>-board" });
+    const result = resultPanel(session, {
+      onLeave: () => shell.leave(),
+      // The result moment: the winning pieces in the order they light up, and what a loss dims.
+      onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "wood", highlight: [], board }),
+    });
+    root.append(bar.node, board, result.node);
     let match;
     let m = 0;
-    let rematch = { me: false, them: false };
     function newMatch() {
       match = new TurnMatch({ send: (msg) => session.send(msg), me: session.index, rules, m: ++m });
       window.ddp.match = match; // browser tests read this
       match.on("update", render);
       match.on("invalid", (reason) => toast(reason));
+      match.on("over", ({ winner }) => (winner === 2 ? score.draws++ : score.wins[winner]++));
       router.start(match);
       render();
     }
     function render() {
       // match.state is null until the coin toss ends (match.phase === "playing").
+      bar.update({ turn: match.phase === "playing" ? match.state.turn : -1, score });
       // Draw match.state; on input call match.play(move) when match.canMove().
-      // On "over"/"aborted" show the result, Rematch and Leave.
+      if (match.phase === "over") result.show({ winner: match.state.winner === 2 ? -1 : match.state.winner, reason: "…" });
+      else if (match.phase === "aborted") result.show({ stopped: true, reason: match.abortReason });
+      else result.hide();
     }
-    const offs = [
-      session.on("rematch", (v) => { rematch = v; render(); }),
-      session.on("rematch-start", () => { rematch = { me: false, them: false }; newMatch(); }),
-    ];
+    const offs = [session.on("rematch-start", newMatch)];
     newMatch();
     return { destroy: () => offs.forEach((off) => off()) };
   },
@@ -186,6 +205,34 @@ broke the rules or stopped the match) before the reason, and when `about` is
 set, the reason is about that player ("Ana stopped the match: Bob sent a
 shuffle that doesn't check out").
 
+**Settings (optional).** Clocks, board size, who goes first or a robot level
+go in `settings.js`, built with the engine's `gameSettings()`, and are passed
+to `startGameShell()`. The lobby shows them inside its card and their summary
+on the host's waiting screen; don't add a settings card of your own.
+
+```js
+import { gameSettings } from "../engine/settings.js";
+import { normalizeConfig } from "./rules.js";
+
+export const settings = gameSettings({
+  key: "ddp-<slug>-settings", // localStorage; never rename it, or players lose their choice
+  prefix: "<prefix>", // radio names: <prefix>-<group>; the panel is #<prefix>-settings
+  normalize: normalizeConfig, // raw (or null) -> a complete, valid config
+  hint: "In a friend game, the settings of whoever creates the room apply to both players.",
+  groups: [
+    // summary(value, label, config): the text of this group's chip in the summary ("" leaves it out).
+    { name: "moveSeconds", legend: "Time per move", options: [[10, "10 s"], [0, "No limit"]], summary: (v, l) => (v ? `${l} a move` : "No move limit") },
+    // robot: true tags the group "vs robot only", gives its chip a teal dot and keeps it off the waiting screen.
+    { name: "level", legend: "Robot level", robot: true, options: [["easy", "Easy"], ["hard", "Hard"]], summary: (v, l) => `${l} robot` },
+  ],
+});
+```
+
+Pass `settings` to `startGameShell()` and read `settings.get()` when a game
+starts: the host sends it to its guests as `setup {config}` (see **Room
+settings** under Tic Tac Toe in `ARCHITECTURE.md`), and a robot game uses it
+directly.
+
 **More than two players.** Pass `minPlayers` and `maxPlayers` to
 `startGameShell()` (and `robots`, the robot seats in a robot game: a number,
 or a function such as `() => settings.get().robots`). The host
@@ -197,10 +244,10 @@ Don't use `winner: 2` for a draw there, since 2 is a seat.
 
 The view must provide:
 
-- Both names (`session.me.name`, `session.opponent.name`) and whose turn it is.
+- The player bar from `engine/players.js` (see **Player bar** in `ARCHITECTURE.md`), first in the view: names, whose turn it is, the score and **Leave**. Don't build your own. Pass `badges` (a node per seat: a mark, disc or colour) and `notes` (a short line per seat, such as pips) to `update()` if the game has them, and `classes` to `playerBar()` if seats have colours of their own.
 - A clear status line.
-- A **Leave** button calling `shell.leave()`.
-- On game over: a result banner, a **Rematch** button (`id="rematch"`, calling `session.requestRematch()`), "Waiting for …" / "… wants a rematch!" text (`id="rematch-status"`), and Leave.
+- On game over, the result panel from `engine/result.js` (see **Result panel** in `ARCHITECTURE.md`): call `show({ winner, stopped, reason, places, extra })` when the match ends and `hide()` while it is on. Don't build your own result box or Rematch button: the panel shows who won, a reason line, **Rematch** with everyone's votes, and Leave. Pass `places` (`[{ seat, note }]` in finishing order) if the game plays on for places, and `extra` for a node of your own (Sea Battle's fair-play verdict).
+- The result moment (see **Result moment** in `ARCHITECTURE.md`): from the panel's `onShow`, call `celebrate()` from `engine/celebrate.js` with the `outcome` it passes (`null` for a stopped match: play nothing), your game's `flavour` (`wood`, `paper`, `plastic`, `bell` or `water`, whichever its pieces sound like), `highlight` (the nodes that won the game, in the order they light up: a line, a king, the last piece home) and `board` (the node a loss dims). Don't add win or lose sounds of your own.
 - A draw state if the game has one.
 
 **Width.** Pick the narrowest `layout` the game fits: `"narrow"` (520 px,
@@ -259,14 +306,26 @@ Give each sound the role that matches its job: `cue`, `ui`, `action`,
 `node --test test/browser/sound-levels.test.js`: it measures every sound and,
 for a synthesized one that is off, prints the `trim` to set.
 
+### 5c. Preview (optional)
+
+`preview.svg` is a 3–5 second animation of a few moves that the home tile loops
+on hover (see **Tile previews** in `ARCHITECTURE.md`; `public/tic-tac-toe/preview.svg`
+is the shortest to copy). Without one the tile keeps its icon.
+
+- Root: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-<short name>">`, under 10 KB, no scripts, images or external refs.
+- Colours only from tokens, in the file's `<style>`; start every selector with your `.pv-…` class, and keyframes and ids with your game's name, since the style applies to the whole home page.
+- Players: the seat classes `.a` to `.d` set `currentColor`. Draw the player tags top right and light them in turn with `.lit` (`--d` start, `--l` length; `.stay` for the last).
+- Moves: give a piece `.pop`, `.fade`, `.gone`, `.draw`, `.slide` (from `--x`, `--y`) or `.fall` (from `--y`) and its start time `--d`, or your own keyframes. Animate only transform and opacity, and put a moving piece in a `<g transform="…">` rather than giving it a `transform` of its own.
+- Check it: hover the tile in light and dark, and run `npm test` (it checks the file) and `node --test test/browser/home-previews.test.js` (it checks the length).
+
 ### 6. Register it
 
 In `public/games.json`, set the game's entry to `"status": "ready"` (add an
 entry if the game isn't listed, and copy one more placeholder tile into
 `public/index.html`'s `#games` list so the home page doesn't jump as it
 loads). Fields: `slug`, `name`, `status`, `players`,
-`maxPlayers` (2, or the same `maxPlayers` you pass to `startGameShell()` for a game with more players), and a one-sentence original `description`. The home page
-picks it up automatically. The server reads `games.json` once at startup, so
+`maxPlayers` (2, or the same `maxPlayers` you pass to `startGameShell()` for a game with more players), and a one-sentence original `description`. The home tile and
+the lobby both show it. The server reads `games.json` once at startup, so
 restart `npm start` after editing it, or creating a room will fail with `bad_game`.
 The browser test reads the "Coming soon" count from the registry, so it needs
 no change.
@@ -326,10 +385,14 @@ windows (one private).
 - [ ] No hidden information leaks over the wire. Hidden cards go through `CardMatch`; other hidden information uses commitments like Sea Battle.
 - [ ] All randomness comes from `SharedRandom`, through `TurnMatch` or a custom match
 - [ ] `layout` passed to `startGameShell()`, and the view's top-level box has no `max-width`
+- [ ] Names, turn, score and Leave come from `playerBar()`, not a bar of the game's own
+- [ ] The result, Rematch and Leave at game over come from `resultPanel()`, not a box of the game's own
+- [ ] The panel's `onShow` plays `celebrate()` with the game's `flavour`, its winning pieces and its board; no win or lose sounds of its own
 - [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
 - [ ] No fonts or timings of its own: timers carry `mono`, transitions use the `--dur-*` and `--ease-*` tokens
 - [ ] Each player has the same colour on every screen (see **Player colours** in `ARCHITECTURE.md`): style `.mine` and `.theirs` with `--mine` and `--theirs`, and set `data-you` on the game's root
+- [ ] A new `localStorage` key (such as the settings panel's `key`) is listed on `public/privacy/index.html`
 - [ ] Sounds, if any, are in `sounds.js` with a role each, and `test/browser/sound-levels.test.js` passes
 - [ ] Original name, text and art; nothing copied from papergames
 - [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
@@ -352,7 +415,11 @@ windows (one private).
 | `vendor/`, `scripts/build-mental-poker.sh` | The mental-poker library (submodule), our patches and lock file, and the script that builds it into `public/engine/vendor/mental-poker/` |
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
-| `public/engine/shell.js` | Header, theme toggle, nickname, `el()`, `toast()` |
+| `public/engine/shell.js` | Header, footer, theme toggle, nickname, `el()`, `toast()` |
+| `public/engine/settings.js` | `gameSettings()`: a game's settings, shown in the lobby card |
+| `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
+| `public/engine/result.js` | `resultPanel()`: the game-over panel with the result, Rematch and Leave, in every game |
+| `public/engine/celebrate.js` | `celebrate()`: the win, loss and draw moment as the result panel opens, with its chimes from `chimes.js` |
 | `public/engine/theme.css` | Design tokens (light and dark), fonts, motion and shared components |
 | `public/sea-battle/` | The reference game, with hidden information and a custom protocol |
 | `public/games.json` | Game registry, read by the home page and the server |

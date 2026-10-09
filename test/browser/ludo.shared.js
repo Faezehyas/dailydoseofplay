@@ -22,7 +22,11 @@ async function loadPlaywright() {
 export const pw = await loadPlaywright();
 export const wait = (page, fn, arg, timeout = 20_000) => page.waitForFunction(fn, arg, { timeout });
 export const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-export const pick = (page, name, value) => page.click(`#ld-settings label:has(input[name="ld-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+export async function pick(page, name, value) {
+  if (!(await page.locator("#ld-settings[open]").count())) await page.click("#ld-settings > summary");
+  await page.click(`#ld-settings label:has(input[name="ld-${name}"][value="${value}"])`);
+}
 export const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 export const state = (page) => page.evaluate(() => window.ddp.match.state);
 // Where this screen draws the yard of a colour: its label's place on the board.
@@ -34,7 +38,7 @@ export const yardCorner = (page, color) =>
 // The result box is in view without scrolling.
 export const resultInView = (page) =>
   page.evaluate(() => {
-    const r = document.querySelector(".ld-over-card").getBoundingClientRect();
+    const r = document.querySelector("#result-panel").getBoundingClientRect();
     return r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
   });
 

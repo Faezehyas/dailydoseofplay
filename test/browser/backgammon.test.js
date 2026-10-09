@@ -49,11 +49,11 @@ test("two friends play Backgammon on the host's settings through the invite link
   await guest.locator("#bg-config").filter({ hasText: "a turn" }).waitFor();
   assert.equal(await guest.locator("#bg-config").innerText(), "1 min a turn · 5 min each", "the host's settings reach the friend");
   assert.equal(await host.locator("#bg-config").innerText(), await guest.locator("#bg-config").innerText());
-  assert.match(await host.locator(".bg-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
   // "Ada vs Bo" stays together, centred over the scoreboard.
   const centre = (page, sel) => page.locator(sel).evaluate((n) => { const r = n.getBoundingClientRect(); return r.left + r.width / 2; });
-  assert.ok(Math.abs((await centre(host, ".bg-players")) - (await centre(host, "#bg-score"))) < 2, "the players are centred");
-  assert.match(await guest.locator(".bg-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.ok(Math.abs((await centre(host, ".pb-players")) - (await centre(host, "#score"))) < 2, "the players are centred");
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   assert.equal(await bg(guest), "rgb(18, 21, 28)", "the phone follows its dark OS theme");
   assert.notEqual(await bg(host), await bg(guest));
@@ -97,11 +97,12 @@ test("two friends play Backgammon on the host's settings through the invite link
   await guest.screenshot({ path: `${ARTIFACTS}/bg-1-friend-mobile-dark.png`, fullPage: true });
   const won = await finish();
   const [winner, loser] = won.winner === 0 ? [host, guest] : [guest, host];
-  await winner.locator("#bg-result").filter({ hasText: "Victory!" }).waitFor();
-  assert.equal(await loser.locator("#bg-result").innerText(), "Defeat");
-  assert.match(await loser.locator("#bg-detail").innerText(), /bore off all fifteen checkers/);
-  assert.match(await winner.locator("#bg-score").innerText(), /You\s+1\s+\S+\s+0/);
-  assert.match(await loser.locator("#bg-score").innerText(), /You\s+0\s+\S+\s+1/);
+  await winner.locator("#result").filter({ hasText: "You won" }).waitFor();
+  await loser.locator("#result").waitFor();
+  assert.equal(await loser.locator("#result").innerText(), "You lost");
+  assert.match(await loser.locator("#result-reason").innerText(), /bore off all fifteen checkers/);
+  assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
+  assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
   assert.ok(won.clocks.every((ms) => ms < 300_000 && ms > 0), `both clocks were spent: ${won.clocks}`);
   await host.screenshot({ path: `${ARTIFACTS}/bg-2-friend-over-light.png`, fullPage: true });
 
@@ -114,7 +115,7 @@ test("two friends play Backgammon on the host's settings through the invite link
   assert.deepEqual(await guest.evaluate(() => window.ddp.match.state.clocks), [300_000, 300_000]);
   assert.match(await host.locator("#bg-note").innerText(), /Rematch #1/);
   const again = await finish();
-  assert.match(await host.locator("#bg-score").innerText(), new RegExp(`You\\s+${(won.winner === 0) + (again.winner === 0)}\\s+Bo\\s+${(won.winner === 1) + (again.winner === 1)}`));
+  assert.match(await host.locator("#score").innerText(), new RegExp(`You\\s+${(won.winner === 0) + (again.winner === 0)}\\s+Bo\\s+${(won.winner === 1) + (again.winner === 1)}`));
   assert.ok(await noHorizontalScroll(guest));
   await guest.screenshot({ path: `${ARTIFACTS}/bg-3-rematch-mobile-dark.png`, fullPage: true });
 

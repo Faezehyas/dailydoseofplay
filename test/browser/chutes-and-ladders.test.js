@@ -57,8 +57,8 @@ test("two friends play Chutes and Ladders on the host's settings through the inv
   await guest.locator("#cl-config").filter({ hasText: "bounce" }).waitFor();
   assert.equal(await guest.locator("#cl-config").innerText(), "bounce back off 100 · a 6 spins again", "the host's settings reach the friend");
   assert.equal(await host.locator("#cl-config").innerText(), await guest.locator("#cl-config").innerText());
-  assert.match(await host.locator(".cl-players").innerText(), /Ada[\s\S]*Bo/);
-  assert.match(await guest.locator(".cl-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   assert.equal(await bg(guest), "rgb(18, 21, 28)", "the phone follows its dark OS theme");
   assert.notEqual(await bg(host), await bg(guest));
@@ -95,12 +95,13 @@ test("two friends play Chutes and Ladders on the host's settings through the inv
   await guest.screenshot({ path: `${ARTIFACTS}/cl-1-friend-mobile-dark.png`, fullPage: true });
   const won = await finish();
   const [winner, loser] = won.winner === 0 ? [host, guest] : [guest, host];
-  await winner.locator("#cl-result").filter({ hasText: "You win!" }).waitFor();
-  assert.match(await loser.locator("#cl-result").innerText(), /wins$/);
-  assert.match(await loser.locator("#cl-detail").innerText(), /reached 100 in \d+ spins?/);
-  assert.match(await winner.locator("#cl-score").innerText(), /You\s+1\s+\S+\s+0/);
-  assert.match(await loser.locator("#cl-score").innerText(), /You\s+0\s+\S+\s+1/);
-  assert.ok(await winner.locator("#cl-over").isVisible());
+  await winner.locator("#result").filter({ hasText: "You won" }).waitFor();
+  await loser.locator("#result").waitFor();
+  assert.equal(await loser.locator("#result").innerText(), "You lost");
+  assert.match(await loser.locator("#result-reason").innerText(), /reached 100 in \d+ spins?/);
+  assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
+  assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
+  assert.ok(await winner.locator("#result-panel").isVisible());
   await host.screenshot({ path: `${ARTIFACTS}/cl-2-friend-over-light.png`, fullPage: true });
 
   // Rematch: host asks, the friend accepts; same settings, everyone back on the lawn.
@@ -111,7 +112,7 @@ test("two friends play Chutes and Ladders on the host's settings through the inv
   await startedGame(2);
   assert.match(await host.locator("#cl-note").innerText(), /Rematch #1/);
   const again = await finish();
-  assert.match(await host.locator("#cl-score").innerText(), new RegExp(`You\\s+${(won.winner === 0) + (again.winner === 0)}\\s+Bo\\s+${(won.winner === 1) + (again.winner === 1)}`));
+  assert.match(await host.locator("#score").innerText(), new RegExp(`You\\s+${(won.winner === 0) + (again.winner === 0)}\\s+Bo\\s+${(won.winner === 1) + (again.winner === 1)}`));
   assert.ok(await noHorizontalScroll(guest));
 
   // The friend closes the tab: the host is told.

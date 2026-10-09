@@ -2,15 +2,19 @@
 // waiting room, and hand-off of a Session to the game. How players get
 // connected lives in room.js; this file is only the UI around it.
 //
-//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout })
+//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout, settings })
 //
 // onSession(session, root) mounts the game in `root` and returns { destroy }.
 // createRobot(session) drives one robot seat over an in-memory group; robots
 // is how many seats (a number, or a function read when a robot game starts).
 // maxPlayers must match the game's entry in games.json (the server enforces it).
+// The lobby tagline is the game's description in games.json; `tagline`
+// overrides it (older games passed their own).
 // layout is the page column while the game is on show: "narrow", "medium" or
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
-import { initShell, el, $, toast, copyText, getNickname, setNickname, setLastGame, setTabAlert } from "./shell.js";
+// settings is the game's gameSettings() (settings.js): the home screen shows
+// them inside the lobby card, and the host's waiting screen their summary.
+import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
 
@@ -50,11 +54,15 @@ const NO_TURN_HELP =
 
 const LAYOUTS = ["narrow", "medium", "wide"];
 
-export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide" }) {
+// Room codes, as server/signaling.js makes them (no I, L, O, 0 or 1).
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const CODE_LENGTH = 4;
+
+export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide", settings }) {
   initShell({ title });
   const lobbyRoot = $("#lobby");
   const gameRoot = $("#game");
-  // The lobby, settings, game and "How to play" share one column (theme.css).
+  // The lobby, game and "How to play" share one column (theme.css).
   const page = lobbyRoot.closest(".page");
   const showView = (name) => {
     if (page) page.dataset.view = name;
@@ -68,11 +76,42 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   const params = new URLSearchParams(location.search);
 
   // ---------- views ----------
+  // Progress text for screen readers ("Creating a room…", "Bo joined"), and
+  // join errors. It outlives the views, so each change is read out;
+  // connection problems use role="alert".
+  const progress = el("p", { class: "sr-only", id: "lobby-progress", role: "status" });
+  lobbyRoot.append(progress);
+  let firstView = true;
+
+  // The lobby shows at once; the description fills in when games.json arrives.
+  const taglineEl = el("p", { class: "tagline", hidden: !tagline }, tagline);
+  if (!tagline) {
+    fetch("/games.json", { cache: "no-cache" })
+      .then((res) => res.json())
+      .then(({ games }) => {
+        taglineEl.textContent = games.find((g) => g.slug === slug)?.description ?? "";
+        taglineEl.hidden = !taglineEl.textContent;
+      })
+      .catch(() => {});
+  }
+
+  // A new view takes focus to its heading, except on page load.
   function view(...children) {
-    lobbyRoot.replaceChildren(el("div", { class: "card lobby-card" }, ...children));
+    const card = el("div", { class: "card lobby-card" }, ...children);
+    const old = $(".lobby-card", lobbyRoot);
+    if (old) old.replaceWith(card);
+    else lobbyRoot.prepend(card);
+    progress.textContent = "";
     showView("lobby");
     lobbyRoot.hidden = false;
     gameRoot.hidden = true;
+    $("h1", card).tabIndex = -1;
+    if (!firstView) focusHeading();
+    firstView = false;
+  }
+
+  function focusHeading() {
+    $("h1", lobbyRoot).focus();
   }
 
   function nicknameField() {
@@ -102,38 +141,63 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     return getNickname() || fallback;
   }
 
-  function showHome(message) {
+  // error: why the last join failed, shown under the code field, which keeps `code`.
+  function showHome(error, code = "") {
     cleanupConnection();
     const codeInput = el("input", {
       id: "join-code",
       type: "text",
-      maxlength: "4",
+      value: code,
       autocapitalize: "characters",
       autocomplete: "off",
+      enterkeyhint: "go",
       spellcheck: "false",
       placeholder: "CODE",
       "aria-label": "Room code",
+      "aria-describedby": "join-error",
+    });
+    const joinError = el("p", { class: "notice error", id: "join-error", hidden: true });
+    const showError = (text) => {
+      joinError.textContent = text;
+      joinError.hidden = !text;
+      progress.textContent = text;
+    };
+    // Uppercase, drop spaces and dashes, refuse anything else; a full code joins at once.
+    codeInput.addEventListener("input", () => {
+      const typed = [...codeInput.value.toUpperCase().replace(/[\s-]/g, "")];
+      const kept = typed.filter((c) => CODE_ALPHABET.includes(c));
+      const clean = kept.join("").slice(0, CODE_LENGTH);
+      if (codeInput.value !== clean) codeInput.value = clean;
+      showError(kept.length < typed.length ? "Codes use letters and the numbers 2–9" : "");
+      if (clean.length === CODE_LENGTH) join(clean);
     });
     const joinForm = el(
       "form",
-      { class: "join-row", onsubmit: (e) => (e.preventDefault(), codeInput.value.trim() && join(codeInput.value)) },
+      { class: "join-row", onsubmit: (e) => (e.preventDefault(), codeInput.value && join(codeInput.value)) },
       codeInput,
       el("button", { class: "btn", type: "submit" }, "Join"),
     );
     view(
       el("h1", {}, title),
-      tagline && el("p", { class: "tagline" }, tagline),
-      message && el("p", { class: "notice", role: "alert" }, message),
+      taglineEl,
       nicknameField(),
+      settings?.panel(),
       el(
         "div",
         { class: "lobby-actions" },
         el("button", { class: "btn primary big", id: "play-friend", type: "button", onclick: host }, duel ? "Play with a friend" : "Play with friends"),
         el("button", { class: "btn big", id: "play-robot", type: "button", onclick: playRobot }, "Play vs robot"),
       ),
+      el("p", { class: "lobby-note", id: "direct-note" }, "Games connect your browser directly to your friends'. Play with people you know."),
       el("div", { class: "divider" }, el("span", {}, "or join with a code")),
       joinForm,
+      joinError,
     );
+    if (!error) return;
+    // The code stays in the field, focused and ready to fix; the error is read out too.
+    showError(error);
+    codeInput.focus();
+    codeInput.select();
   }
 
   // An invite link stops here first so the friend can pick a nickname before joining.
@@ -178,18 +242,29 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
           : `Send this link to up to ${maxPlayers - 1} friends. Start when everyone is in; a full room starts by itself.`,
         " Someone who types the code instead has to be let in by you.",
       ),
+      // Screen readers get the code from the label, spaced so each letter is
+      // read on its own; the big code below is for the eyes.
+      el("p", { class: "room-code-label" }, "Room code", el("span", { class: "sr-only" }, ` ${[...room.code].join(" ")}`)),
       // One span per letter, so the letters can settle in one by one (theme.css).
       el(
         "div",
-        { class: "room-code mono", id: "room-code", "aria-label": `Room code ${room.code}` },
+        { class: "room-code mono", id: "room-code", "aria-hidden": "true" },
         [...room.code].map((c, i) => el("span", { style: `--i: ${i}` }, c)),
       ),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
+      settings &&
+        el(
+          "div",
+          { class: "room-settings", id: "room-settings" },
+          el("p", { class: "room-settings-label" }, "Game settings"),
+          el("p", { class: "settings-line" }, settings.summary(false)),
+        ),
       el("ul", { class: "roster", id: "roster", "aria-label": "Players", hidden: duel }),
-      el("p", { class: "waiting", id: "lobby-status" }, el("span", { class: "spinner" }), duel ? "Waiting for your friend to join…" : "Waiting for friends to join…"),
+      el("p", { class: "waiting", id: "lobby-status" }),
       !duel && el("button", { class: "btn primary", type: "button", id: "start-game", disabled: true, onclick: () => begin(room) }, "Start game"),
       el("button", { class: "btn ghost", type: "button", onclick: () => showHome() }, "Cancel"),
     );
+    setStatus(duel ? "Waiting for your friend to join…" : "Waiting for friends to join…");
     showRoster(room);
   }
 
@@ -201,6 +276,8 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     const knocks = room.knocking;
     list.hidden = duel && knocks.length === 0;
     setTabAlert(knocks.length ? `${knocks[0].name} wants to join` : null);
+    // Accept and Decline go with their row, so focus moves back to the heading.
+    const hadFocus = list.contains(document.activeElement);
     list.replaceChildren(
       ...(duel ? [] : players).map((p, i) =>
         el("li", { class: p.ready ? "ready" : "" }, el("span", {}, p.name), el("small", {}, i === 0 ? "host" : p.ready ? "in" : "connecting…")),
@@ -219,6 +296,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
         ),
       ),
     );
+    if (hadFocus) focusHeading();
     if (duel) return;
     const ready = players.filter((p) => p.ready).length;
     const start = $("#start-game");
@@ -229,14 +307,17 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   function showBusy(text) {
     view(
       el("h1", {}, title),
-      el("p", { class: "waiting", id: "lobby-status" }, el("span", { class: "spinner" }), text),
+      el("p", { class: "waiting", id: "lobby-status" }),
       el("button", { class: "btn ghost", type: "button", onclick: () => showHome() }, "Cancel"),
     );
+    setStatus(text);
   }
 
   function setStatus(...text) {
     const node = $("#lobby-status");
-    if (node) node.replaceChildren(el("span", { class: "spinner" }), ...text);
+    if (!node) return;
+    node.replaceChildren(el("span", { class: "spinner" }), ...text);
+    progress.textContent = node.textContent;
   }
 
   function showFailure(text, retry = host) {
@@ -291,12 +372,24 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     if (!current()) return;
     showWaiting(room);
     room.on("lost", (reason) => current() && showFailure(ERRORS[reason] || ERRORS.closed));
-    room.on("knocks", () => current() && showRoster(room));
+    let knockCount = 0;
+    room.on("knocks", (knocks) => {
+      if (!current()) return;
+      if (knocks.length > knockCount) progress.textContent = `${knocks.at(-1).name} wants to join`;
+      knockCount = knocks.length;
+      showRoster(room);
+    });
+    let seated = [name]; // who is in, in join order, to say who just joined
     room.on("players", (players) => {
       if (!current()) return;
       const ready = players.filter((p) => p.ready).length;
       if (ready >= maxPlayers) return begin(room);
-      if (!duel) return showRoster(room);
+      if (!duel) {
+        const inRoom = players.filter((p) => p.ready).map((p) => p.name);
+        if (inRoom.length > seated.length) progress.textContent = `${inRoom.find((n, i) => n !== seated[i])} joined`;
+        seated = inRoom;
+        return showRoster(room);
+      }
       const joining = players.find((p, i) => i > 0 && !p.ready);
       setStatus(joining ? `${joining.name} joined. Connecting directly…` : "Waiting for your friend to join…");
     });
@@ -335,7 +428,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     room.on("status", ({ step, host: hostName, players }) => {
       if (!current()) return;
       if (step === "knocking") {
-        setStatus("Asking the room's host to let you in…");
+        setStatus("Waiting for the host to let you in…");
       } else if (step === "connecting") {
         host = hostName || host;
         setStatus(`Connecting to ${host}…`);
@@ -351,7 +444,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       session = await room.join();
     } catch (err) {
       if (!current()) return;
-      if (!(err instanceof RoomError)) return showHome(ERRORS[err.code] || ERRORS.connect_failed);
+      if (!(err instanceof RoomError)) return showHome(ERRORS[err.code] || ERRORS.connect_failed, code);
       return showFailure(ERRORS[err.code] || NO_TURN_HELP, () => join(code, key));
     }
     if (!current()) return session.leave();
@@ -376,7 +469,6 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // ---------- game hand-off ----------
   function startSession(session) {
     state.session = session;
-    setLastGame(slug);
     clearRoomParam();
     showView("game");
     lobbyRoot.hidden = true;
@@ -398,11 +490,13 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       el(
         "div",
         { class: "card" },
-        el("p", { class: "notice", role: "alert" }, text),
+        el("h2", { tabindex: "-1", "aria-describedby": "ended-why" }, "Game ended"),
+        el("p", { class: "notice", id: "ended-why" }, text),
         el("button", { class: "btn primary", type: "button", onclick: () => leaveGame() }, "Back to lobby"),
       ),
     );
     gameRoot.append(overlay);
+    $("h2", overlay).focus();
   }
 
   function leaveGame(message) {

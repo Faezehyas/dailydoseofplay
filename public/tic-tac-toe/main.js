@@ -4,9 +4,12 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, markOf, isTimed, timeLeft, EMPTY, DRAW, IN_A_ROW } from "./rules.js";
 import { chooseMove } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 
 const MARK_SVG = {
   X: '<svg viewBox="0 0 100 100" class="mark x" aria-hidden="true"><path d="M24 24 76 76"/><path d="M76 24 24 76"/></svg>',
@@ -16,13 +19,11 @@ const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const IN_A_ROW_WORD = { 3: "three", 4: "four" };
 
-const settings = mountSettings(document.getElementById("ttt-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "tic-tac-toe",
   title: "Tic Tac Toe",
-  tagline: "Line them up before your friend does. Quick to learn, sneaky to master.",
   layout: "narrow",
+  settings,
   createRobot: (session) =>
     startTurnRobot(session, {
       rules: makeRules(settings.get()),
@@ -48,13 +49,11 @@ function mountTicTacToe(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0], draws: 0 };
   let config = null;
   let rules = null;
   let match = null;
   let m = 0;
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let turnStart = 0;
   let forfeited = false;
@@ -68,13 +67,11 @@ function mountTicTacToe(session, root, shell) {
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
     const mark = el("span", { class: "pill-mark" }, "?");
-    const node = el("span", { class: `who ${player === me ? "me" : ""}` }, mark, el("span", { class: "name" }, player === me ? myName : oppName));
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, mark, clock };
+    return { mark, clock };
   });
-  const players = el("div", { class: "ttt-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "ttt-score", id: "ttt-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: { [me]: pills[0].mark, [opp]: pills[1].mark } });
   const status = el("p", { class: "ttt-status", id: "ttt-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "ttt-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -83,21 +80,23 @@ function mountTicTacToe(session, root, shell) {
   const board = el("div", { class: "ttt-board", id: "ttt-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "ttt-config", id: "ttt-config" });
   const note = el("p", { class: "ttt-note", id: "ttt-note" });
-  const overBox = el("div", { class: "ttt-over", id: "ttt-over", hidden: true });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "paper", highlight: (match.state.line || []).map((i) => cells[i]), board }),
+  });
   let cells = [];
 
   root.append(
     el(
       "div",
       { class: "tic-tac-toe" },
-      el("div", { class: "ttt-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "ttt-board-wrap" }, board),
       configLine,
       note,
-      overBox,
+      result.node,
     ),
   );
 
@@ -180,21 +179,16 @@ function mountTicTacToe(session, root, shell) {
   // ---------- render ----------
   function renderPills() {
     const st = match?.state;
+    bar.update({ turn: match?.phase === "playing" ? st.turn : -1 });
     for (const [k, player] of [me, opp].entries()) {
-      const { node, mark } = pills[k];
+      const { mark } = pills[k];
       const symbol = st ? markOf(st, player) : null;
-      node.classList.toggle("active", match?.phase === "playing" && st.turn === player);
       mark.setAttribute("aria-label", symbol ? `plays ${symbol}` : "mark not decided");
       if (mark.dataset.v !== (symbol || "")) {
         mark.dataset.v = symbol || "";
         mark.innerHTML = symbol ? MARK_SVG[symbol] : "?";
       }
     }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item("Draws", score.draws, "draws"), item(oppName, score.them, "theirs"));
   }
 
   function statusText() {
@@ -222,7 +216,7 @@ function mountTicTacToe(session, root, shell) {
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".tic-tac-toe").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills();
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -249,46 +243,23 @@ function mountTicTacToe(session, root, shell) {
 
   function renderOver() {
     const phase = match?.phase;
-    if (phase !== "over" && phase !== "aborted") {
-      overBox.hidden = true;
-      return;
-    }
-    overBox.hidden = false;
+    if (phase !== "over" && phase !== "aborted") return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === DRAW ? "Draw" : winner === me ? "Victory!" : "Defeat";
-    let detail;
-    if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
-    else if (winner === DRAW) detail = "A full board and no line. Well defended, both of you.";
-    else if (st.reason === "timeout") detail = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (winner === DRAW) reason = "A full board and no line. Well defended, both of you.";
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
     else {
       const who = winner === me ? "You" : oppName;
-      detail = `${who} lined up ${IN_A_ROW_WORD[st.k]} ${markOf(st, winner)}s.`;
+      reason = `${who} lined up ${IN_A_ROW_WORD[st.k]} ${markOf(st, winner)}s.`;
     }
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : "", id: "ttt-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "ttt-detail" }, detail),
-      el(
-        "div",
-        { class: "ttt-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    result.show({ winner: winner === DRAW ? -1 : winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
-    rematch = { me: false, them: false };
     forfeited = false;
     claimed = false;
     note.textContent = m === 1 ? `Playing against ${oppName}. Good luck!` : `Rematch #${m - 1}. Same settings, fresh board.`;
@@ -306,8 +277,7 @@ function mountTicTacToe(session, root, shell) {
     match.on("events", () => (turnStart = performance.now()));
     match.on("over", ({ winner }) => {
       if (winner === DRAW) score.draws++;
-      else if (winner === me) score.me++;
-      else score.them++;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();
@@ -328,11 +298,6 @@ function mountTicTacToe(session, root, shell) {
 
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") begin(settings.get());

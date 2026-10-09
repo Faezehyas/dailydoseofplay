@@ -7,9 +7,12 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, geometry, lineEnds, DRAW } from "./rules.js";
 import { startRobot } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 
 const U = 100; // one box, in board units
@@ -22,15 +25,14 @@ const PACE = { mine: 170, theirs: 330, first: 300, gap: 200, after: 240, pop: 42
 const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const NS = "http://www.w3.org/2000/svg";
 
-const settings = mountSettings(document.getElementById("db-settings"), document.getElementById("lobby"));
 // Read live, so a browser test can switch it mid-game.
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 startGameShell({
   slug: "dots-and-boxes",
   title: "Dots and Boxes",
-  tagline: "Join the dots, close a box, go again. Whoever ends with the most boxes wins.",
   layout: "wide",
+  settings,
   createRobot: (session) => {
     const config = settings.get();
     return startRobot(session, { rules: makeRules(config), level: config.level });
@@ -201,10 +203,9 @@ function mountGame(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
   const initial = (name) => (String(name).trim()[0] || "?").toUpperCase();
   const initials = { [me]: initial(session.me.name), [opp]: initial(oppName) };
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0] }; // draws once there is one
   const cls = (player) => (player === me ? "p0" : "p1"); // yours --mine, theirs --theirs (see data-you)
   let config = null;
   let rules = null;
@@ -213,7 +214,6 @@ function mountGame(session, root, shell) {
   let match = null;
   let m = 0;
   let gen = 0; // bumps on every new match, so the old match's animations stop
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let shownLines = [];
   let shownBoxes = [];
@@ -242,19 +242,13 @@ function mountGame(session, root, shell) {
 
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
-    const count = el("small", { class: "count" });
-    const node = el(
-      "span",
-      { class: `who ${cls(player)}` },
-      el("span", { class: "swatch", "aria-hidden": "true" }, initials[player]),
-      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : oppName), count),
-    );
+    const count = el("span", { class: "count" });
+    const swatch = el("span", { class: "swatch", "aria-hidden": "true" }, initials[player]);
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, count, clock, last: 0 };
+    return { swatch, count, clock, last: 0 };
   });
-  const players = el("div", { class: "db-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "db-score", id: "db-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave(), classes: cls });
+  bar.update({ badges: { [me]: pills[0].swatch, [opp]: pills[1].swatch }, notes: { [me]: pills[0].count, [opp]: pills[1].count } });
   const status = el("p", { class: "db-status", id: "db-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "db-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -265,7 +259,10 @@ function mountGame(session, root, shell) {
   const tallyTheirs = el("span", { class: "fill theirs" });
   const tallyText = el("p", { class: "db-tally-text", id: "db-tally" });
   const tally = el("div", { class: "db-tally" }, el("div", { class: "db-tally-bar", "aria-hidden": "true" }, tallyMine, tallyTheirs), tallyText);
-  const overBox = el("div", { class: "db-over", id: "db-over", hidden: true });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "paper", highlight: match.state.reason === "timeout" ? [] : match.state.last.boxes.map((b) => board.boxes.querySelector(`[data-box="${b}"]`)), board: board.svg }),
+  });
   const configLine = el("p", { class: "db-config", id: "db-config" });
   const note = el("p", { class: "db-note", id: "db-note" });
   const cursorText = el("p", { class: "db-sr", id: "db-cursor", "aria-live": "polite" });
@@ -274,14 +271,14 @@ function mountGame(session, root, shell) {
     el(
       "div",
       { class: "dots-boxes" },
-      el("div", { class: "db-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
-      el("div", { class: "db-main" }, boardWrap, el("div", { class: "db-side" }, tally, overBox)),
+      el("div", { class: "db-main" }, boardWrap, el("div", { class: "db-side" }, tally)),
       configLine,
       note,
       cursorText,
+      result.node,
     ),
   );
 
@@ -495,7 +492,6 @@ function mountGame(session, root, shell) {
     if (match.phase === "over" && !announced) {
       announced = true;
       const w = match.state.winner;
-      play(w === DRAW ? "draw" : w === me ? "win" : "lose");
       if (w !== DRAW) {
         const mine = [];
         match.state.boxes.forEach((owner, b) => owner === w && mine.push(b));
@@ -623,10 +619,10 @@ function mountGame(session, root, shell) {
   }
 
   function renderPills(counts) {
+    const st = match?.state;
+    bar.update({ turn: match?.phase !== "playing" ? -1 : current ? current.player : pendingOpp ? -1 : st.turn });
     for (const [k, player] of [me, opp].entries()) {
       const pill = pills[k];
-      const playing = match?.phase === "playing";
-      pill.node.classList.toggle("active", playing && (current ? current.player === player : match.state.turn === player && !pendingOpp));
       const n = counts[player];
       pill.count.textContent = `${n} box${n === 1 ? "" : "es"}`;
       if (n > pill.last && !fast()) {
@@ -648,12 +644,6 @@ function mountGame(session, root, shell) {
       el("span", {}, left ? ` · ${left} left · ` : " · all taken · "),
       el("b", { class: "theirs" }, `${counts[opp]} ${oppName}`),
     );
-  }
-
-  function renderScore() {
-    const item = (label, n, c) => el("div", { class: c }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), ...(score.draws ? [item("Draws", score.draws, "draws")] : []), item(oppName, score.them, "theirs"));
-    scoreBox.classList.toggle("three", score.draws > 0);
   }
 
   function statusText() {
@@ -713,7 +703,7 @@ function mountGame(session, root, shell) {
     root.querySelector(".dots-boxes").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     const counts = shownScore();
     renderPills(counts);
-    renderScore();
+    bar.update({ score });
     renderTally(counts);
     renderClocks();
     status.textContent = statusText();
@@ -733,48 +723,17 @@ function mountGame(session, root, shell) {
   function renderOver() {
     const phase = match?.phase;
     // Let the last line and its boxes play out first.
-    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && pendingAll)) {
-      overBox.hidden = true;
-      if (overBox.firstChild) overBox.replaceChildren();
-      return;
-    }
-    if (overBox.hidden) {
-      overBox.hidden = false;
-      requestAnimationFrame(() => overBox.scrollIntoView?.({ block: "nearest", behavior: still() ? "auto" : "smooth" }));
-    }
+    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && pendingAll)) return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    let title;
-    let detail;
-    if (phase === "aborted") {
-      title = "Match stopped";
-      detail = match.abortReason || "The match was stopped.";
-    } else if (st.reason === "timeout") {
-      title = winner === me ? "You win!" : `${oppName} wins`;
-      detail = winner === me ? `${oppName}'s clock ran out, with the boxes at ${st.score[me]}–${st.score[opp]}.` : `Your clock ran out, with the boxes at ${st.score[me]}–${st.score[opp]}.`;
-    } else {
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out, with the boxes at ${st.score[me]}–${st.score[opp]}.` : `Your clock ran out, with the boxes at ${st.score[me]}–${st.score[opp]}.`;
+    else {
       const [a, b] = [st.score[me], st.score[opp]];
-      title = winner === DRAW ? "It's a draw" : winner === me ? "You win!" : `${oppName} wins`;
-      detail = winner === DRAW ? `${a} boxes each: an even split.` : winner === me ? `You took ${a} of ${a + b} boxes; ${oppName} took ${b}.` : `${oppName} took ${b} of ${a + b} boxes; you took ${a}.`;
+      reason = winner === DRAW ? `${a} boxes each: an even split.` : winner === me ? `You took ${a} of ${a + b} boxes; ${oppName} took ${b}.` : `${oppName} took ${b} of ${a + b} boxes; you took ${a}.`;
     }
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : winner === DRAW ? "draw" : "", id: "db-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "db-detail" }, detail),
-      el(
-        "div",
-        { class: "db-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    result.show({ winner: winner === DRAW ? -1 : winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- clocks ----------
@@ -802,7 +761,6 @@ function mountGame(session, root, shell) {
   function newMatch() {
     m += 1;
     gen += 1;
-    rematch = { me: false, them: false };
     shownLines = Array(geo.lines).fill(-1);
     shownBoxes = Array(geo.boxes).fill(-1);
     lineNodes = new Map();
@@ -857,9 +815,8 @@ function mountGame(session, root, shell) {
       else turnStart = pendingOpp ? null : now;
     });
     match.on("over", ({ winner }) => {
-      if (winner === me) score.me++;
-      else if (winner === DRAW) score.draws++;
-      else score.them++;
+      if (winner === DRAW) score.draws = (score.draws ?? 0) + 1;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();
@@ -902,11 +859,6 @@ function mountGame(session, root, shell) {
   document.addEventListener("visibilitychange", onVisible);
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") begin(settings.get());

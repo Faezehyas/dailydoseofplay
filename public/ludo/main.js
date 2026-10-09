@@ -6,11 +6,14 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, distinctMoves, legalMoves, colorsFor, COLORS, MAX_PLAYERS, YARD, HOME, LAST_LOOP, TOKENS } from "./rules.js";
 import { chooseMove, startRobot } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
-import { s, r1, U, SIZE, rotator, spotOf, pawnArt, pawnDefs, boardArt, markSvg, markPath, starPath, dieFace, yardCentre } from "./art.js";
+import { s, r1, U, SIZE, rotator, spotOf, pawnArt, pawnDefs, boardArt, markSvg, markPath, starPath, dieFace } from "./art.js";
 
 const ROBOT_PACE = { roll: 500, pick: 600, forced: 350, hurry: 90 };
 const FORCED_DELAY = 650; // before a move you have no choice about is played for you
@@ -22,7 +25,6 @@ const COLOR_NAME = { red: "Red", green: "Green", yellow: "Yellow", blue: "Blue" 
 const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const PLACE = ["", "1st", "2nd", "3rd", "4th"];
 
-const settings = mountSettings(document.getElementById("ld-settings"), document.getElementById("lobby"));
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const still = () => reduced.matches;
 
@@ -34,8 +36,8 @@ let hurry = 0; // 0 normal, 1 quick, 2 skip to the end
 startGameShell({
   slug: "ludo",
   title: "Ludo",
-  tagline: "Roll a 6 to come out, knock rivals back to their yard, and race all four tokens home.",
   layout: "wide",
+  settings,
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,
   robots: () => settings.get().robots,
@@ -72,16 +74,14 @@ function mountGame(session, root, shell) {
   const k = (3 - colorOf(me) + 4) % 4;
   const rot = rotator(k);
   const order = [me, ...session.others.map((p) => p.seat)];
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
   const nameOf = (p) => (p === me ? "You" : session.players[p].name);
   const robotGame = session.mode === "robot";
-  const score = Array(count).fill(0);
+  const score = { wins: Array(count).fill(0) };
   let config = null;
   let rules = null;
   let match = null;
   let m = 0;
   let gen = 0; // bumps on every new match, so old animations stop
-  let rematch = { me: false, them: false, seats: [] };
   let destroyed = false;
   let ended = false;
   let shown = []; // tokens as drawn, by seat
@@ -98,7 +98,6 @@ function mountGame(session, root, shell) {
   let deadlineKey = "";
   let autoKey = "";
   let lastTick = 0;
-  let celebrated = false;
 
   // One session handler: "setup" is for this view (and only from the room's creator), the rest goes to the matches.
   let route = () => {};
@@ -106,19 +105,9 @@ function mountGame(session, root, shell) {
   const offMsg = session.onMessage((msg, from) => (msg.t === "setup" ? from === 0 && onSetup(msg) : route(msg, from)));
 
   // ---------- layout ----------
-  const pills = order.map((player) => {
-    const where = el("small", { class: "where" });
-    const node = el(
-      "span",
-      { class: `who c-${cname(player)}`, dataset: { seat: player } },
-      el("span", { class: "swatch", "aria-hidden": "true" }, markSvg(colorOf(player), 10)),
-      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : session.players[player].name), where),
-    );
-    return { node, where };
-  });
-  const players = el("div", { class: `ld-players ${count > 2 ? "many" : ""}` }, count === 2 ? [pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node] : pills.map((p) => p.node));
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "ld-score", id: "ld-score", "aria-label": "Wins" });
+  const wheres = seats.map(() => el("span", { class: "where" }));
+  const bar = playerBar(session, { onLeave: () => shell.leave(), classes: (p) => `c-${cname(p)}` });
+  bar.update({ badges: seats.map((p) => el("span", { class: "swatch", "aria-hidden": "true" }, markSvg(colorOf(p), 10))), notes: wheres });
   const status = el("p", { class: "ld-status", id: "ld-status", role: "status", "aria-live": "polite" });
 
   const svg = s("svg", { class: "ld-board", id: "ld-board", viewBox: `-10 -10 ${SIZE + 20} ${SIZE + 20}`, role: "group" });
@@ -145,15 +134,18 @@ function mountGame(session, root, shell) {
   const logList = el("ol", { class: "ld-log", id: "ld-log", "aria-label": "Recent moves" });
   const configLine = el("p", { class: "ld-config", id: "ld-config" });
   const note = el("p", { class: "ld-note", id: "ld-note" });
-  const overBox = el("div", { class: "ld-over", id: "ld-over", hidden: true, role: "dialog", "aria-labelledby": "ld-result" });
-  const boardWrap = el("div", { class: "ld-board-wrap" }, svg, overBox);
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    classes: (p) => `c-${cname(p)}`,
+    onShow: ({ winner, outcome }) => outcome && celebrate({ outcome, flavour: "wood", highlight: pawns[winner].map((p) => p.g), board: svg }),
+  });
+  const boardWrap = el("div", { class: "ld-board-wrap" }, svg);
 
   root.append(
     el(
       "div",
       { class: "ludo" },
-      el("div", { class: "ld-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       el(
         "div",
@@ -163,6 +155,7 @@ function mountGame(session, root, shell) {
       ),
       configLine,
       note,
+      result.node,
     ),
   );
   dieFace(face, 0);
@@ -612,11 +605,6 @@ function mountGame(session, root, shell) {
   }
 
   // ---------- render ----------
-  function renderScore() {
-    const item = (p) => el("div", { class: `c-${cname(p)} ${p === me ? "mine" : ""}` }, el("dt", {}, p === me ? "You" : nameOf(p)), el("dd", {}, String(score[p])));
-    scoreBox.replaceChildren(...order.map(item));
-  }
-
   function statusText() {
     if (ended) return "The game has ended.";
     if (!match) return "Getting the room's settings…";
@@ -790,14 +778,11 @@ function mountGame(session, root, shell) {
     const phase = ended ? "ended" : match?.phase || "setup";
     root.querySelector(".ludo").dataset.phase = phase;
     const d = decision();
-    for (const [i, player] of order.entries()) {
-      const { node, where: w } = pills[i];
-      const active = phase === "playing" && (current ? current.player === player : st.turn === player);
-      node.classList.toggle("active", active);
-      node.classList.toggle("done", !!st?.order.includes(player));
-      w.textContent = st ? where(player) : "";
+    bar.update({ turn: phase !== "playing" ? -1 : current ? current.player : st.turn, score });
+    for (const p of seats) {
+      wheres[p].classList.toggle("done", !!st?.order.includes(p));
+      wheres[p].textContent = st ? where(p) : "";
     }
-    renderScore();
     status.textContent = statusText();
     status.dataset.color = current ? cname(current.player) : d ? cname(d.player) : "";
     const mine = myDecision();
@@ -839,86 +824,22 @@ function mountGame(session, root, shell) {
   function renderOver() {
     const phase = match?.phase;
     // Let the last token finish its trip first.
-    if (ended || (phase !== "over" && phase !== "aborted") || (phase === "over" && pending)) {
-      overBox.hidden = true;
-      if (overBox.firstChild) overBox.replaceChildren();
-      return;
-    }
+    if (ended || (phase !== "over" && phase !== "aborted") || (phase === "over" && pending)) return result.hide();
+    if (phase === "aborted") return result.show({ stopped: true, reason: match.abortReason || "The match was stopped." });
     const st = match.state;
-    if (overBox.hidden) {
-      overBox.hidden = false;
-      boardWrap.scrollIntoView?.({ block: "nearest", behavior: still() ? "auto" : "smooth" });
-      if (phase === "over" && !celebrated) {
-        celebrated = true;
-        play(st.winner === me ? "win" : "lose");
-        burst(rot(yardCentre(colorOf(st.winner))), "big", cname(st.winner), gen);
-      }
-    }
-    let title;
-    let detail;
-    if (phase === "aborted") {
-      title = "Match stopped";
-      detail = match.abortReason || "The match was stopped.";
-    } else {
-      const w = st.winner;
-      const myPlace = st.order.indexOf(me) + 1;
-      title = w === me ? "You win!" : count > 2 && myPlace ? `${nameOf(w)} wins · you're ${PLACE[myPlace]}` : `${nameOf(w)} wins`;
-      detail = `${w === me ? "You" : nameOf(w)} brought all four home in ${plural(st.rolls[w], "roll")}, with ${plural(st.captures[w], "capture")}.`;
-    }
-    const standings =
-      phase === "over"
-        ? el(
-            "ol",
-            { class: "ld-standings", id: "ld-standings" },
-            st.order.map((p, i) => {
-              const home = st.tokens[p].filter((r) => r === HOME).length;
-              const finishedAll = home === TOKENS;
-              return el(
-                "li",
-                { class: `c-${cname(p)} ${p === me ? "mine" : ""}` },
-                el("span", { class: "place" }, PLACE[i + 1]),
-                el("span", { class: "swatch", "aria-hidden": "true" }, markSvg(colorOf(p), 10)),
-                el("span", { class: "who" }, p === me ? "You" : session.players[p].name),
-                el("small", {}, finishedAll ? `${plural(st.rolls[p], "roll")} · ${plural(st.captures[p], "capture")}` : `${home}/4 home`),
-              );
-            }),
-          )
-        : null;
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${listOf(seats.filter((p) => !rematch.seats?.includes(p)).map(nameOf))}…`;
-    else if (rematch.them) rematchText = wantsRematch();
-    overBox.replaceChildren(
-      el(
-        "div",
-        { class: "ld-over-card" },
-        el("h2", { class: st.winner === me && phase === "over" ? "win" : "", id: "ld-result" }, title),
-        standings,
-        el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "ld-detail" }, detail),
-        el(
-          "div",
-          { class: "ld-actions" },
-          el(
-            "button",
-            { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-            rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-          ),
-          el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-        ),
-        rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-      ),
-    );
-  }
-
-  function wantsRematch() {
-    const voters = (rematch.seats || []).filter((p) => p !== me);
-    return `${listOf(voters.map(nameOf))} ${voters.length === 1 ? "wants" : "want"} a rematch!`;
+    const w = st.winner;
+    const places = st.order.map((p) => {
+      const home = st.tokens[p].filter((r) => r === HOME).length;
+      return { seat: p, note: home === TOKENS ? `${plural(st.rolls[p], "roll")} · ${plural(st.captures[p], "capture")}` : `${home}/4 home` };
+    });
+    const reason = `${w === me ? "You" : nameOf(w)} brought all four home in ${plural(st.rolls[w], "roll")}, with ${plural(st.captures[w], "capture")}.`;
+    result.show({ winner: w, reason, places });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
     gen += 1;
-    rematch = { me: false, them: false, seats: [] };
     clearTimeout(forcedTimer);
     stopTumble();
     shown = seats.map(() => Array(TOKENS).fill(YARD));
@@ -932,7 +853,6 @@ function mountGame(session, root, shell) {
     focusToken = null;
     deadlineKey = "";
     autoKey = "";
-    celebrated = false;
     if (hurry === 2 || hurry === 1) hurry = 0;
     logList.replaceChildren();
     fx.replaceChildren();
@@ -959,7 +879,7 @@ function mountGame(session, root, shell) {
     match.on("events", ({ events }) => {
       for (const ev of events) enqueue(ev);
     });
-    match.on("over", ({ winner }) => score[winner]++);
+    match.on("over", ({ winner }) => score.wins[winner]++);
     router.start(match);
     render();
   }
@@ -1037,11 +957,6 @@ function mountGame(session, root, shell) {
   const offs = [
     offMsg,
     session.on("end", onEnd),
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(wantsRematch().replace("!", ""));
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   shown = seats.map(() => Array(TOKENS).fill(YARD));

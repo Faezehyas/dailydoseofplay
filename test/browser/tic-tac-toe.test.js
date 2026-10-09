@@ -32,7 +32,11 @@ const pw = await loadPlaywright();
 const wait = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 20_000 });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#ttt-settings label:has(input[name="ttt-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#ttt-settings[open]").count())) await page.click("#ttt-settings > summary");
+  await page.click(`#ttt-settings label:has(input[name="ttt-${name}"][value="${value}"])`);
+}
 
 test("two friends play Tic Tac Toe on the host's settings through the invite link, then a rematch", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
@@ -58,9 +62,12 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   await host.goto(`${srv.base}/tic-tac-toe/`);
   await pick(host, "size", 5);
   await pick(host, "first", "host");
+  const chosen = ["5 × 5", "30 s a move", "2 min each", "You go first"];
+  assert.deepEqual(await host.locator("#ttt-settings .settings-line .chip").allInnerTexts(), chosen, "the summary follows the choice");
   await host.click("#play-friend");
   assert.ok(await host.locator("#ttt-settings").isHidden(), "settings are only on the home screen");
   await host.locator("#room-code").waitFor();
+  assert.deepEqual(await host.locator("#room-settings .chip").allInnerTexts(), chosen, "the waiting screen shows the room's settings");
   const invite = await host.locator("#invite-link").inputValue();
   const code = (await host.locator("#room-code").innerText()).trim();
   assert.match(invite, new RegExp(`/tic-tac-toe/\\?room=${code}&key=[\\w-]{22}$`));
@@ -73,11 +80,11 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   assert.equal(await guest.locator(".ttt-cell").count(), 25, "the host's board size reaches the friend");
   assert.equal(await guest.locator("#ttt-config").innerText(), "5 × 5, four in a row · 30 s a move · 2 min each");
   assert.equal(await host.locator("#ttt-config").innerText(), await guest.locator("#ttt-config").innerText());
-  assert.match(await host.locator(".ttt-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
   // "Ada vs Bo" stays together, centred over the scoreboard.
   const centre = (page, sel) => page.locator(sel).evaluate((n) => { const r = n.getBoundingClientRect(); return r.left + r.width / 2; });
-  assert.ok(Math.abs((await centre(host, ".ttt-players")) - (await centre(host, "#ttt-score"))) < 2, "the players are centred");
-  assert.match(await guest.locator(".ttt-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.ok(Math.abs((await centre(host, ".pb-players")) - (await centre(host, "#score"))) < 2, "the players are centred");
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   assert.equal(await bg(guest), "rgb(18, 21, 28)", "the phone follows its dark OS theme");
@@ -133,11 +140,11 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   await playOut([o, x], [5, 1, 6, 2, 7, 3], { keyboardAt: 1 });
   assert.deepEqual(await host.evaluate(() => window.ddp.match.state.line), [0, 1, 2, 3]);
   assert.equal(await x.locator(".ttt-cell.win").count(), 4);
-  assert.equal(await x.locator("#ttt-result").innerText(), "Victory!");
-  assert.equal(await o.locator("#ttt-result").innerText(), "Defeat");
-  assert.match(await o.locator("#ttt-detail").innerText(), /Ada lined up four Xs/);
-  assert.match(await x.locator("#ttt-score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
-  assert.match(await o.locator("#ttt-score").innerText(), /You\s+0\s+Draws\s+0\s+\S+\s+1/);
+  assert.equal(await x.locator("#result").innerText(), "You won");
+  assert.equal(await o.locator("#result").innerText(), "You lost");
+  assert.match(await o.locator("#result-reason").innerText(), /Ada lined up four Xs/);
+  assert.match(await x.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
+  assert.match(await o.locator("#score").innerText(), /You\s+0\s+Draws\s+0\s+\S+\s+1/);
   const clocks = await host.evaluate(() => window.ddp.match.state.clocks);
   assert.ok(clocks.every((ms) => ms < 120_000 && ms > 60_000), `both clocks were spent: ${clocks}`);
   await host.waitForTimeout(500); // let the last mark finish drawing
@@ -156,9 +163,9 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   // Game 2: the friend lines up four along the bottom row.
   await playOut([x, o], [0, 20, 6, 21, 12, 22, 4, 23]);
   assert.deepEqual(await host.evaluate(() => window.ddp.match.state.line), [20, 21, 22, 23]);
-  assert.equal(await guest.locator("#ttt-result").innerText(), "Victory!");
-  assert.equal(await host.locator("#ttt-result").innerText(), "Defeat");
-  assert.match(await host.locator("#ttt-score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
+  assert.equal(await guest.locator("#result").innerText(), "You won");
+  assert.equal(await host.locator("#result").innerText(), "You lost");
+  assert.match(await host.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
   assert.ok(await noHorizontalScroll(guest));
   await guest.waitForTimeout(500);
   await guest.screenshot({ path: `${ARTIFACTS}/ttt-3-rematch-mobile-dark.png`, fullPage: true });
@@ -194,10 +201,10 @@ test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on th
   assert.ok(await noHorizontalScroll(page), "settings fit at 360 px");
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".ttt-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   // On a phone the names use the full width, from the scoreboard's left edge.
   const left = (sel) => page.locator(sel).evaluate((n) => n.getBoundingClientRect().left);
-  assert.ok(Math.abs((await left(".ttt-players")) - (await left("#ttt-score"))) < 1, "the names start at the scoreboard's edge");
+  assert.ok(Math.abs((await left(".pb-players")) - (await left("#score"))) < 1, "the names start at the scoreboard's edge");
   assert.match(await page.locator("#ttt-config").innerText(), /3 × 3, three in a row · 5 s a move · no game clock/);
   assert.equal(await page.evaluate(() => window.ddp.match.state.turn), 0, "the room setting says I start");
   assert.ok(await page.locator("#ttt-move-left").isVisible());
@@ -224,7 +231,7 @@ test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on th
   const counts = [0, 1].map((p) => st.board.filter((v) => v === p).length);
   assert.ok(Math.abs(counts[0] - counts[1]) <= 1, "the robot made one legal move per turn");
   assert.equal(new Set(st.moves).size, st.moves.length);
-  assert.match(await page.locator("#ttt-result").innerText(), /^(Victory!|Defeat|Draw)$/);
+  assert.match(await page.locator("#result").innerText(), /^(You won|You lost|Draw)$/);
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${ARTIFACTS}/ttt-4-robot-light.png`, fullPage: true });
 
@@ -239,9 +246,9 @@ test("Tic Tac Toe vs the robot on a 360 px phone: a full game, then a loss on th
   await page.clock.fastForward(3000);
   await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
-  assert.equal(await page.locator("#ttt-result").innerText(), "Defeat");
-  assert.equal(await page.locator("#ttt-detail").innerText(), "Your clock ran out.");
-  assert.match(await page.locator("#ttt-score").innerText(), /Robot\s+[1-2]/);
+  assert.equal(await page.locator("#result").innerText(), "You lost");
+  assert.equal(await page.locator("#result-reason").innerText(), "Your clock ran out.");
+  assert.match(await page.locator("#score").innerText(), /Robot\s+[1-2]/);
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
   assert.deepEqual(errors, []);

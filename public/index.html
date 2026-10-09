@@ -20,6 +20,65 @@
           <li>Send the link to 1–3 friends, or play the robot.</li>
           <li>Play in your browser. No sign-up.</li>
         </ol>
+        <!-- A game table seen from slightly above. Each piece loops on its own (theme.css) and pauses off screen (home.js). -->
+        <svg class="hero-scene" viewBox="0 0 320 110" aria-hidden="true">
+          <defs>
+            <radialGradient id="hero-glow"><stop offset="0" stop-opacity="0.5" /><stop offset="1" stop-opacity="0" /></radialGradient>
+          </defs>
+          <ellipse class="glow" cx="160" cy="58" rx="156" ry="54" fill="url(#hero-glow)" />
+          <path class="cord" d="M160 0v7" />
+          <path class="lamp" d="M148 17h24l-5-10h-14z" />
+          <ellipse class="bulb" cx="160" cy="18" rx="4" ry="1.6" />
+          <rect class="table-edge" x="8" y="38" width="304" height="66" rx="33" />
+          <rect class="table" x="8" y="32" width="304" height="66" rx="33" />
+          <g class="piece">
+            <rect class="hit" x="26" y="38" width="62" height="54" />
+            <g transform="translate(36 46) rotate(-10)">
+              <g class="card-a"><rect class="card-back" width="22" height="30" rx="3" /><rect class="card-trim" x="3" y="3" width="16" height="24" rx="2" /></g>
+            </g>
+            <g transform="translate(52 48) rotate(8)">
+              <g class="card-b"><rect class="card-face" width="22" height="30" rx="3" /><path class="heart" d="M11 19c-4-3-6-5-6-7.5a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 2.5-2 4.5-6 7.5z" /></g>
+            </g>
+          </g>
+          <g class="piece">
+            <rect class="hit" x="90" y="52" width="58" height="32" />
+            <rect class="square" x="92" y="54" width="54" height="28" />
+            <path class="square dark" d="M110 54h18v14h-18zM92 68h18v14h-18zM128 68h18v14h-18z" />
+            <g transform="translate(101 75)">
+              <g class="checker"><ellipse class="checker-side" cy="2" rx="7" ry="5" /><ellipse class="checker-top" rx="7" ry="5" /></g>
+            </g>
+          </g>
+          <g class="piece">
+            <rect class="hit" x="150" y="36" width="34" height="42" />
+            <ellipse class="shade" cx="167" cy="76" rx="9" ry="2.5" />
+            <g transform="translate(158 56)">
+              <g class="die">
+                <rect class="die-face" width="18" height="18" rx="4" />
+                <path class="pip" d="M5 3.3a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4zM9 7.3a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4zM13 11.3a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4z" />
+                <g class="die-b">
+                  <rect class="die-face" x="1" y="1" width="16" height="16" rx="3" />
+                  <path class="pip" d="M5 3.3a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4zM13 3.3a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4zM9 7.3a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4zM5 11.3a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4zM13 11.3a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 1 0 0-3.4z" />
+                </g>
+              </g>
+            </g>
+          </g>
+          <g class="piece">
+            <rect class="hit" x="192" y="52" width="50" height="28" />
+            <path class="square" d="M196 66h14v12h-14zM210 66h14v12h-14zM224 66h14v12h-14z" />
+            <g transform="translate(203 76)">
+              <g class="pawn"><ellipse rx="6" ry="2.2" /><path d="M-5 0c0-4 3-5 3-9h4c0 4 3 5 3 9z" /><circle cy="-11" r="3.6" /></g>
+            </g>
+          </g>
+          <g class="piece">
+            <rect class="hit" x="248" y="30" width="56" height="50" />
+            <ellipse class="shade" cx="276" cy="78" rx="27" ry="3" />
+            <circle class="disc" cx="262" cy="68" r="5" />
+            <circle class="disc" cx="276" cy="55" r="5" />
+            <circle class="disc teal" cx="276" cy="68" r="5" />
+            <circle class="disc teal drop" cx="290" cy="68" r="5" />
+            <path class="rack" fill-rule="evenodd" d="M256 47h40a4 4 0 0 1 4 4v21a4 4 0 0 1-4 4h-40a4 4 0 0 1-4-4v-21a4 4 0 0 1 4-4zM257 55a5 5 0 0 0 10 0a5 5 0 0 0-10 0zM271 55a5 5 0 0 0 10 0a5 5 0 0 0-10 0zM285 55a5 5 0 0 0 10 0a5 5 0 0 0-10 0zM257 68a5 5 0 0 0 10 0a5 5 0 0 0-10 0zM271 68a5 5 0 0 0 10 0a5 5 0 0 0-10 0zM285 68a5 5 0 0 0 10 0a5 5 0 0 0-10 0z" />
+          </g>
+        </svg>
       </section>
       <!-- One placeholder per games.json entry, the same size as a real tile, so nothing moves when the list loads. -->
       <ul class="game-grid" id="games" aria-label="Games" aria-busy="true">
@@ -35,6 +94,5 @@
         <li aria-hidden="true"><div class="card game-card placeholder"><div class="game-icon"></div><h2>&nbsp;</h2><p>&nbsp;<br />&nbsp;</p><div class="game-meta"><span class="chip">&nbsp;</span></div><div class="quick-play"><span class="btn small">&nbsp;</span><span class="btn small">&nbsp;</span></div></div></li>
       </ul>
     </main>
-    <footer class="site-footer">Games run directly between your browsers. Nothing to install, nothing stored but your nickname.</footer>
   </body>
 </html>

@@ -5,68 +5,6 @@
   gap: 12px;
 }
 
-/* "You vs Robot" stays together, centred over the scoreboard, with Leave on
-   the right; the empty first column balances Leave. No grid gap, so on a
-   phone that empty column takes no room from the names. */
-.ttt-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
-  align-items: center;
-}
-
-.ttt-top > .ttt-players {
-  grid-column: 2;
-}
-
-.ttt-top > .btn {
-  grid-column: 3;
-  justify-self: end;
-  margin-left: 8px;
-}
-
-/* Each name keeps its full width when it fits; long names share what's left. */
-.ttt-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.ttt-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.ttt-players .who.active {
-  border-color: var(--theirs);
-  box-shadow: 0 0 0 2px var(--theirs) inset;
-}
-
-.ttt-players .who.me.active {
-  border-color: var(--mine);
-  box-shadow: 0 0 0 2px var(--mine) inset;
-}
-
-.ttt-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ttt-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 .pill-mark {
   display: inline-grid;
   place-items: center;
@@ -83,49 +21,6 @@
   width: 20px;
   height: 20px;
   stroke-width: 14;
-}
-
-/* ---------- score ---------- */
-.ttt-score {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.ttt-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  min-width: 0;
-}
-
-.ttt-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ttt-score dd {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.ttt-score .mine dd {
-  color: var(--mine-text);
-}
-
-.ttt-score .theirs dd {
-  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */
@@ -335,39 +230,4 @@
   from {
     stroke-dashoffset: 180;
   }
-}
-
-/* ---------- game over ---------- */
-.ttt-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-.ttt-over h2 {
-  font-size: 1.6rem;
-}
-
-.ttt-over h2.win {
-  color: var(--accent-text);
-}
-
-.ttt-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.ttt-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.ttt-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
 }

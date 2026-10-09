@@ -2,11 +2,14 @@
 // All game logic lives in rules.js / match.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
 import * as R from "./rules.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 
 const ICON = {
@@ -76,13 +79,11 @@ const BOOM_STEP = 0.17;
 const LAUNCH_SOUND = { shot: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke", carpet: "launch-rain" };
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their shot
 
-const settings = mountSettings(document.getElementById("sb-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "sea-battle",
   title: "Sea Battle",
-  tagline: "Hide your fleet, find theirs. Grab gifts for heavy weapons.",
   layout: "wide",
+  settings,
   createRobot: (session) => startRobot(session, { delay: AI_DELAY, config: settings.get() }),
   onSession: (session, root, shell) => mountSeaBattle(session, root, shell),
 });
@@ -125,8 +126,7 @@ function mountSeaBattle(session, root, shell) {
   let lastAgain = false;
   let selectedShip = -1;
   let dragging = false;
-  let rematchVotes = { me: false, them: false };
-  const score = [0, 0]; // wins per player across rematches
+  const score = { wins: [0, 0] }; // across rematches
   let lastShots = [new Set(), new Set()]; // board -> squares of the latest volley at it
   let lastTurnSeen = -1;
   const landsAt = [0, 0]; // per board: when the shell in flight lands (ms)
@@ -137,9 +137,7 @@ function mountSeaBattle(session, root, shell) {
 
   // ---------- layout ----------
   const status = el("p", { class: "sb-status", id: "sb-status", role: "status", "aria-live": "polite" });
-  const players = el("div", { class: "sb-players" });
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: confirmLeave }, "Leave");
-  const top = el("div", { class: "sb-top" }, players, leaveBtn);
+  const bar = playerBar(session, { onLeave: confirmLeave });
   const clock = el("span", { class: "sb-clock mono", id: "sb-clock", role: "timer", hidden: true, "aria-live": "off" });
   const myClock = el("span", { class: "game-clock mine mono", id: "clock-me", role: "timer", "aria-label": "Your clock", hidden: true });
   const oppClock = el("span", { class: "game-clock mono", id: "clock-opp", role: "timer", "aria-label": `${oppName}'s clock`, hidden: true });
@@ -161,21 +159,21 @@ function mountSeaBattle(session, root, shell) {
   );
   const weaponsBar = el("div", { class: "sb-weapons", role: "toolbar", "aria-label": "Weapons" });
   const log = el("ol", { class: "sb-log", id: "sb-log", "aria-label": "Battle log" });
-  const overBox = el("div", { class: "sb-over", id: "sb-over", hidden: true });
+  const result = resultPanel(session, { onLeave: () => shell.leave(), onShow: celebrateOnLanding });
 
   root.append(
     el(
       "div",
       { class: "sea-battle" },
-      top,
+      bar.node,
       el("div", { class: "sb-statusrow" }, status),
       el("div", { class: "sb-clocks" }, myClock, clock, oppClock),
       configLine,
       placeBar,
-      overBox,
       el("div", { class: "sb-boards" }, enemyBoard.wrap, ownBoard.wrap),
       weaponsBar,
       log,
+      result.node,
     ),
   );
 
@@ -276,21 +274,7 @@ function mountSeaBattle(session, root, shell) {
     // Coral is whoever shoots first this match, on every screen.
     root.querySelector(".sea-battle").dataset.you = st ? (st.first === me ? "a" : "b") : "";
 
-    players.replaceChildren(
-      el(
-        "span",
-        { class: `who me ${st && st.turn === me && phase === "playing" ? "active" : ""}` },
-        el("span", { class: "name", title: session.me.name }, session.me.name === "You" ? "You" : `${session.me.name} (you)`),
-        el("b", { class: "score", id: "score-me", title: "Wins" }, String(score[me])),
-      ),
-      el("span", { class: "vs" }, "vs"),
-      el(
-        "span",
-        { class: `who ${st && st.turn === opp && phase === "playing" ? "active" : ""}` },
-        el("b", { class: "score", id: "score-opp", title: "Wins" }, String(score[opp])),
-        el("span", { class: "name", title: oppName }, oppName),
-      ),
-    );
+    bar.update({ turn: st && phase === "playing" ? st.turn : -1, score });
 
     // Status line
     let text = "";
@@ -517,35 +501,33 @@ function mountSeaBattle(session, root, shell) {
 
   function renderOver() {
     const phase = match.phase;
-    if (phase !== "over" && phase !== "aborted") {
-      overBox.hidden = true;
-      return;
-    }
-    overBox.hidden = false;
-    const won = phase === "over" && match.state.winner === me;
+    if (phase !== "over" && phase !== "aborted") return result.hide();
+    if (phase === "aborted") return result.show({ stopped: true, reason: match.abortReason || "The match was stopped." });
+    const { winner, reason } = match.state;
+    const won = winner === me;
     let verdict;
-    if (phase === "aborted") verdict = el("p", { class: "verdict bad" }, match.abortReason || "The match was stopped.");
-    else if (!match.verdict) verdict = el("p", { class: "verdict" }, el("span", { class: "spinner" }), `Checking ${oppName}'s fleet against their locked-in commitment…`);
+    if (!match.verdict) verdict = el("p", { class: "verdict" }, el("span", { class: "spinner" }), `Checking ${oppName}'s fleet against their locked-in commitment…`);
     else if (match.verdict.ok) verdict = el("p", { class: "verdict ok", id: "verdict" }, `✓ Fair play verified: every answer from ${oppName} matched the fleet they locked in.`);
     else verdict = el("p", { class: "verdict bad", id: "verdict" }, `⚠ ${oppName}'s answers don't add up: ${match.verdict.reason}.`);
+    let why;
+    if (reason === "timeout") why = won ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    else why = won ? `You sank ${oppName}'s whole fleet.` : `${oppName} sank your whole fleet.`;
+    result.show({ winner, reason: why, extra: verdict });
+  }
 
-    let rematchText = "";
-    if (rematchVotes.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematchVotes.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: won ? "win" : "" }, phase === "aborted" ? "Match stopped" : won ? "Victory!" : "Defeat"),
-      ...(phase === "over" && match.state.reason === "timeout"
-        ? [el("p", { class: "detail", id: "sb-detail" }, won ? `${oppName}'s clock ran out.` : "Your clock ran out.")]
-        : []),
-      verdict,
-      el(
-        "div",
-        { class: "sb-actions" },
-        el("button", { class: "btn primary", type: "button", id: "rematch", disabled: rematchVotes.me, onclick: () => session.requestRematch() }, rematchVotes.them && !rematchVotes.me ? "Accept rematch" : "Rematch"),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+  // The result shows at once; its moment waits for the last shell to land.
+  function celebrateOnLanding({ winner, outcome }) {
+    if (!outcome) return;
+    const current = match;
+    const wait = Math.max(0, ...landsAt.map((t) => t - performance.now()));
+    setTimeout(() => {
+      if (destroyed || match !== current) return;
+      const { reason, boards } = match.state;
+      const loser = 1 - winner;
+      const view = loser === me ? ownBoard : enemyBoard;
+      const highlight = reason === "timeout" ? [] : boards[loser].sunk.at(-1).cells.map((i) => view.cells[i]);
+      celebrate({ outcome, flavour: "water", highlight, board: enemyBoard.wrap.parentElement });
+    }, wait + 600);
   }
 
   function addLog(text, cls = "") {
@@ -811,7 +793,6 @@ function mountSeaBattle(session, root, shell) {
     selectedShip = -1;
     lastShots = [new Set(), new Set()];
     lastTurnSeen = -1;
-    rematchVotes = { me: false, them: false };
     timedOut = false;
     claimed = false;
     match = new SeaBattleMatch({ send: (msg) => session.send(msg), me, fleet, m, config });
@@ -855,14 +836,13 @@ function mountSeaBattle(session, root, shell) {
       if (spawned.some((g) => g.board === opp)) addLog(`A mystery gift popped up in ${oppName}'s waters. Hit it to win a weapon!`, "gift");
     });
     match.on("over", ({ winner, reason }) => {
-      score[winner] += 1;
+      score.wins[winner] += 1;
       const wait = Math.max(0, ...landsAt.map((t) => t - performance.now()));
       const current = match;
       setTimeout(() => {
         if (destroyed || match !== current) return;
         if (reason === "timeout") addLog(winner === me ? `${oppName}'s clock ran out. You win!` : "Your clock ran out.", "big");
         else addLog(winner === me ? "You sank the whole fleet!" : `${oppName} sank your whole fleet.`, "big");
-        play(winner === me ? "win" : "lose");
       }, wait + 600);
     });
     match.on("verified", () => render());
@@ -877,14 +857,7 @@ function mountSeaBattle(session, root, shell) {
     render();
   }
 
-  offs.push(
-    session.on("rematch", (votes) => {
-      rematchVotes = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
-    session.on("rematch-start", () => config && newMatch()),
-  );
+  offs.push(session.on("rematch-start", () => config && newMatch()));
   // The room's settings come from whoever created it (the robot uses ours).
   function begin(c) {
     if (config) return;

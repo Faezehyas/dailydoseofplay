@@ -93,164 +93,36 @@
   --cl-pawn-edge: #12151c;
 }
 
-.cl-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+/* ---------- players: colours by seat ---------- */
+.player-bar .p0 {
+  --seat: var(--accent);
+  --seat-text: var(--accent-text);
 }
 
-.cl-top > .btn {
-  flex: none;
+.player-bar .p1 {
+  --seat: var(--accent-2);
+  --seat-text: var(--accent-2-text);
 }
 
-/* ---------- players ---------- */
-.cl-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  flex: 1 1 auto;
-  min-width: 0;
-  font-weight: 700;
+.player-bar .p2 {
+  --seat: var(--cl-p2);
+  --seat-text: var(--cl-p2);
 }
 
-.cl-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+.player-bar .p3 {
+  --seat: var(--cl-p3);
+  --seat-text: var(--cl-p3);
 }
 
-.cl-players .who.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent) inset;
-}
-
-.cl-players .who.p1.active {
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 2px var(--accent-2) inset;
-}
-
-.cl-players .who.p2.active {
-  border-color: var(--cl-p2);
-  box-shadow: 0 0 0 2px var(--cl-p2) inset;
-}
-
-.cl-players .who.p3.active {
-  border-color: var(--cl-p3);
-  box-shadow: 0 0 0 2px var(--cl-p3) inset;
-}
-
-/* Three or four players: the pills wrap instead of facing off. */
-.cl-players.many {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.cl-players .swatch {
+.player-bar .swatch {
   flex: none;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--seat);
 }
 
-.cl-players .p1 .swatch {
-  background: var(--accent-2);
-}
-
-.cl-players .p2 .swatch {
-  background: var(--cl-p2);
-}
-
-.cl-players .p3 .swatch {
-  background: var(--cl-p3);
-}
-
-.cl-players .label {
-  display: grid;
-  min-width: 0;
-  line-height: 1.1;
-}
-
-.cl-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.cl-players .where {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.cl-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-/* ---------- score and status ---------- */
-.cl-score {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 8px;
-  margin: 0;
-}
-
-.cl-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  min-width: 0;
-}
-
-.cl-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.cl-score dd {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.cl-score .p0 dd {
-  color: var(--accent-text);
-}
-
-.cl-score .p1 dd {
-  color: var(--accent-2-text);
-}
-
-.cl-score .p2 dd {
-  color: var(--cl-p2);
-}
-
-.cl-score .p3 dd {
-  color: var(--cl-p3);
-}
-
+/* ---------- status ---------- */
 .cl-status {
   margin: 0;
   text-align: center;
@@ -957,40 +829,4 @@
   .cl-log li:nth-child(n + 3) {
     display: none;
   }
-}
-
-/* ---------- game over ---------- */
-.cl-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-  animation: cl-in 0.3s ease-out;
-}
-
-.cl-over h2 {
-  font-size: 1.6rem;
-}
-
-.cl-over h2.win {
-  color: var(--accent-text);
-}
-
-.cl-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.cl-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.cl-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
 }

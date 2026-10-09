@@ -1,12 +1,17 @@
-// UI shell shared by the home page and every game: header, theme and sound
-// toggles, nickname and last-game storage, toasts, tab-title alerts and tiny
-// DOM helpers.
+// UI shell shared by the home page and every game: header, footer, theme and
+// sound toggles, nickname storage, toasts, tab-title alerts and tiny DOM helpers.
 import { soundOn, setSound } from "./sound.js";
 import { cleanName } from "./names.js";
 
 const THEME_KEY = "ddp-theme";
 const NAME_KEY = "ddp-name";
-const LAST_GAME_KEY = "ddp-last-game";
+const REPO = "https://github.com/Faezehyas/dailydoseofplay";
+// The footer's links, in order.
+const FOOTER_LINKS = [
+  ["How it works", `${REPO}/blob/main/ARCHITECTURE.md`],
+  ["GitHub", REPO],
+  ["Privacy", "/privacy/"],
+];
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -49,10 +54,6 @@ export function setNickname(name) {
 }
 export const displayName = (fallback = "Player") => getNickname() || fallback;
 
-// The slug of the last game started on this device; the home page shows it first.
-export const getLastGame = () => load(LAST_GAME_KEY);
-export const setLastGame = (slug) => store(LAST_GAME_KEY, slug);
-
 // Theme: "system" (default), "light" or "dark", applied as <html data-theme>.
 function applyTheme(theme) {
   if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
@@ -84,12 +85,12 @@ export function initShell({ title } = {}) {
   const header = el("header", { class: "site-header" });
   const brand = el("a", { class: "brand", href: "/" });
   brand.innerHTML = `${logoSvg()}<span>Daily Dose <em>of</em> Play</span>`;
-  const themeBtn = el("button", { class: "icon-btn", type: "button", id: "theme-toggle" });
+  // Both toggles keep one label and give their state through aria-pressed.
+  const themeBtn = el("button", { class: "icon-btn", type: "button", id: "theme-toggle", title: "Dark mode", "aria-label": "Dark mode" });
   const renderThemeBtn = () => {
     const dark = effectiveDark();
     themeBtn.innerHTML = dark ? ICONS.sun : ICONS.moon;
-    themeBtn.title = dark ? "Switch to light mode" : "Switch to dark mode";
-    themeBtn.setAttribute("aria-label", themeBtn.title);
+    themeBtn.setAttribute("aria-pressed", String(dark));
   };
   themeBtn.addEventListener("click", () => {
     const next = effectiveDark() ? "light" : "dark";
@@ -103,12 +104,10 @@ export function initShell({ title } = {}) {
   renderThemeBtn();
   const right = el("div", { class: "header-right" });
   if (title) {
-    const soundBtn = el("button", { class: "icon-btn", type: "button", id: "sound-toggle" });
+    const soundBtn = el("button", { class: "icon-btn", type: "button", id: "sound-toggle", title: "Mute sounds", "aria-label": "Mute sounds" });
     const renderSoundBtn = () => {
       const on = soundOn();
       soundBtn.innerHTML = on ? ICONS.soundOn : ICONS.soundOff;
-      soundBtn.title = on ? "Mute sounds" : "Turn sounds on";
-      soundBtn.setAttribute("aria-label", soundBtn.title);
       soundBtn.setAttribute("aria-pressed", on ? "false" : "true");
     };
     soundBtn.addEventListener("click", () => {
@@ -119,8 +118,22 @@ export function initShell({ title } = {}) {
     right.append(el("span", { class: "header-game" }, title), soundBtn);
   }
   right.append(themeBtn);
-  header.append(brand, right);
+  header.append(el("nav", { "aria-label": "Site" }, brand), right);
   document.body.prepend(header);
+  // A skip link, shown when focused, jumps past the header to the page's <main>.
+  const main = $("main");
+  if (main) {
+    main.id ||= "main";
+    document.body.prepend(el("a", { class: "skip-link", href: `#${main.id}` }, "Skip to content"));
+  }
+  document.body.append(
+    el(
+      "footer",
+      { class: "site-footer" },
+      el("p", {}, "Games run directly between your browsers. Nothing to install, no account: your nickname and settings are kept only on your device."),
+      el("ul", { class: "footer-links" }, FOOTER_LINKS.map(([text, href]) => el("li", {}, el("a", { href }, text)))),
+    ),
+  );
   return header;
 }
 
@@ -138,10 +151,17 @@ export function toast(message, ms = 2600) {
     node = el("div", { id: "toast", class: "toast", role: "status", "aria-live": "polite" });
     document.body.append(node);
   }
-  node.textContent = message;
-  node.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => node.classList.remove("show"), ms);
+  const show = () => {
+    node.textContent = message;
+    node.classList.add("show");
+    toastTimer = setTimeout(() => node.classList.remove("show"), ms);
+  };
+  // A screen reader skips text that is already there, so a repeat empties the
+  // toast first and fills it again a moment later.
+  if (node.textContent !== message) return show();
+  node.textContent = "";
+  toastTimer = setTimeout(show, 100);
 }
 
 export async function copyText(text) {

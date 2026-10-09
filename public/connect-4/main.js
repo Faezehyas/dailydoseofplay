@@ -4,21 +4,22 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, dimensions, colorOf, isTimed, timeLeft, landing, EMPTY, DRAW } from "./rules.js";
 import { chooseMove } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 
 const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 
-const settings = mountSettings(document.getElementById("c4-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "connect-4",
   title: "Connect 4",
-  tagline: "Drop, stack and line up four before your rival does.",
   layout: "narrow",
+  settings,
   createRobot: (session) => {
     const config = settings.get();
     return startTurnRobot(session, {
@@ -48,13 +49,11 @@ function mountConnect4(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0], draws: 0 };
   let config = null;
   let rules = null;
   let match = null;
   let m = 0;
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let turnStart = 0;
   let forfeited = false;
@@ -68,13 +67,11 @@ function mountConnect4(session, root, shell) {
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
     const disc = el("span", { class: "pill-disc" });
-    const node = el("span", { class: `who ${player === me ? "me" : ""}` }, disc, el("span", { class: "name" }, player === me ? myName : oppName));
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, disc, clock };
+    return { disc, clock };
   });
-  const players = el("div", { class: "c4-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "c4-score", id: "c4-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: { [me]: pills[0].disc, [opp]: pills[1].disc } });
   const status = el("p", { class: "c4-status", id: "c4-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "c4-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -83,7 +80,10 @@ function mountConnect4(session, root, shell) {
   const board = el("div", { class: "c4-board", id: "c4-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "c4-config", id: "c4-config" });
   const note = el("p", { class: "c4-note", id: "c4-note" });
-  const overBox = el("div", { class: "c4-over", id: "c4-over", hidden: true });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "plastic", highlight: (match.state.line || []).map((i) => cells[i]), board }),
+  });
   let columns = [];
   let cells = [];
 
@@ -91,14 +91,13 @@ function mountConnect4(session, root, shell) {
     el(
       "div",
       { class: "connect-4" },
-      el("div", { class: "c4-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "c4-board-wrap" }, el("div", { class: "c4-frame" }, board)),
       configLine,
       note,
-      overBox,
+      result.node,
     ),
   );
 
@@ -186,18 +185,13 @@ function mountConnect4(session, root, shell) {
   // ---------- render ----------
   function renderPills() {
     const st = match?.state;
+    bar.update({ turn: match?.phase === "playing" ? st.turn : -1 });
     for (const [k, player] of [me, opp].entries()) {
-      const { node, disc } = pills[k];
+      const { disc } = pills[k];
       const color = st ? colorOf(st, player) : "";
-      node.classList.toggle("active", match?.phase === "playing" && st.turn === player);
       disc.dataset.c = color;
       disc.setAttribute("aria-label", color ? `plays ${color}` : "colour not decided");
     }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item("Draws", score.draws, "draws"), item(oppName, score.them, "theirs"));
   }
 
   function statusText() {
@@ -225,7 +219,7 @@ function mountConnect4(session, root, shell) {
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".connect-4").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills();
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -266,43 +260,20 @@ function mountConnect4(session, root, shell) {
 
   function renderOver() {
     const phase = match?.phase;
-    if (phase !== "over" && phase !== "aborted") {
-      overBox.hidden = true;
-      return;
-    }
-    overBox.hidden = false;
+    if (phase !== "over" && phase !== "aborted") return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === DRAW ? "Draw" : winner === me ? "Victory!" : "Defeat";
-    let detail;
-    if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
-    else if (winner === DRAW) detail = "Every column is full and nobody lined up four.";
-    else if (st.reason === "timeout") detail = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
-    else detail = `${winner === me ? "You" : oppName} connected four ${colorOf(st, winner)} discs.`;
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : "", id: "c4-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "c4-detail" }, detail),
-      el(
-        "div",
-        { class: "c4-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (winner === DRAW) reason = "Every column is full and nobody lined up four.";
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    else reason = `${winner === me ? "You" : oppName} connected four ${colorOf(st, winner)} discs.`;
+    result.show({ winner: winner === DRAW ? -1 : winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
-    rematch = { me: false, them: false };
     forfeited = false;
     claimed = false;
     note.textContent = m === 1 ? `Playing against ${oppName}. Good luck!` : `Rematch #${m - 1}. Same settings, empty board.`;
@@ -320,8 +291,7 @@ function mountConnect4(session, root, shell) {
     match.on("events", () => (turnStart = performance.now()));
     match.on("over", ({ winner }) => {
       if (winner === DRAW) score.draws++;
-      else if (winner === me) score.me++;
-      else score.them++;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();
@@ -342,11 +312,6 @@ function mountConnect4(session, root, shell) {
 
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") begin(settings.get());

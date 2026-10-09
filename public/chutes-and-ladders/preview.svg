@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-cl">
+<style>.pv-cl .bg{fill:var(--surface-2)}
+.pv-cl .sq{fill:var(--surface);stroke:var(--border)}
+.pv-cl .sq2{fill:var(--water)}
+.pv-cl .ladder{fill:none;stroke:var(--ok);stroke-width:2.5;stroke-linecap:round}
+.pv-cl .chute{fill:none;stroke:var(--gift);stroke-width:9;stroke-linecap:round;opacity:.75}
+.pv-cl .rim{fill:var(--control-border)}
+.pv-cl .s1{fill:var(--surface)}
+.pv-cl .s2{fill:var(--surface-2)}
+.pv-cl .num{fill:var(--text);font:600 13px var(--font-display);text-anchor:middle}
+.pv-cl .arrow,.pv-cl .hub{fill:var(--text)}
+.pv-cl .slide{animation-duration:.5s}
+.pv-cl .hop{animation-name:pv-cl-hop;animation-duration:.4s}
+.pv-cl .chute-slide{animation-name:pv-slide;animation-duration:.55s;animation-timing-function:ease-in}
+.pv-cl .spin{transform-box:view-box;transform-origin:250px 112px;animation-name:pv-cl-spin;animation-duration:.9s}
+.pv-cl .spin .spin{animation-name:pv-cl-spin2}
+@keyframes pv-cl-hop{from{transform:translateX(var(--x))}50%{transform:translate(calc(var(--x)/2),-8px)}}
+@keyframes pv-cl-spin{from{transform:rotate(-720deg)}}
+@keyframes pv-cl-spin2{from{transform:rotate(-780deg)}}</style>
+<rect class="bg" width="320" height="200"/>
+<rect class="sq" x="20" y="40" width="160" height="140" rx="4"/>
+<path class="sq2" d="M40 40h20v20h-20zM80 40h20v20h-20zM120 40h20v20h-20zM160 40h20v20h-20zM20 60h20v20h-20zM60 60h20v20h-20zM100 60h20v20h-20zM140 60h20v20h-20zM40 80h20v20h-20zM80 80h20v20h-20zM120 80h20v20h-20zM160 80h20v20h-20zM20 100h20v20h-20zM60 100h20v20h-20zM100 100h20v20h-20zM140 100h20v20h-20zM40 120h20v20h-20zM80 120h20v20h-20zM120 120h20v20h-20zM160 120h20v20h-20zM20 140h20v20h-20zM60 140h20v20h-20zM100 140h20v20h-20zM140 140h20v20h-20zM40 160h20v20h-20zM80 160h20v20h-20zM120 160h20v20h-20zM160 160h20v20h-20z"/>
+<g transform="translate(110 170) rotate(-116.6)"><path class="ladder" d="M0 -5h89.4M0 5h89.4M8 -5v10M18 -5v10M28 -5v10M38 -5v10M48 -5v10M58 -5v10M68 -5v10M78 -5v10M88 -5v10"/></g>
+<path class="chute" d="M130 70C170 74 130 136 170 150"/>
+<g class="c"><g transform="translate(30 170)"><path d="M-5 0a5 2 0 0 0 10 0c0-4-3-5-3-8a3.2 3.2 0 1 0-4 0c0 3-3 4-3 8z" fill="currentColor"/></g></g>
+<g class="d"><g transform="translate(50 130)"><path d="M-5 0a5 2 0 0 0 10 0c0-4-3-5-3-8a3.2 3.2 0 1 0-4 0c0 3-3 4-3 8z" fill="currentColor"/></g></g>
+<g class="a"><g transform="translate(70 94)"><g class="slide" style="--d:1.55s;--x:40px;--y:80px"><g class="hop" style="--d:1.1s;--x:-40px"><path d="M-5 0a5 2 0 0 0 10 0c0-4-3-5-3-8a3.2 3.2 0 1 0-4 0c0 3-3 4-3 8z" fill="currentColor"/></g></g></g></g>
+<g class="b"><g transform="translate(170 154)"><g class="chute-slide" style="--d:3.55s;--x:-40px;--y:-80px"><g class="hop" style="--d:3.1s;--x:-60px"><path d="M-5 0a5 2 0 0 0 10 0c0-4-3-5-3-8a3.2 3.2 0 1 0-4 0c0 3-3 4-3 8z" fill="currentColor"/></g></g></g></g>
+<circle class="rim" cx="250" cy="112" r="49"/>
+<path class="s1" d="M250 112L227 72.2A46 46 0 0 1 273 72.2zM250 112L296 112A46 46 0 0 1 273 151.8zM250 112L227 151.8A46 46 0 0 1 204 112z"/>
+<path class="s2" d="M250 112L273 72.2A46 46 0 0 1 296 112zM250 112L273 151.8A46 46 0 0 1 227 151.8zM250 112L204 112A46 46 0 0 1 227 72.2z"/>
+<g class="num"><text x="250" y="84.5">1</text><text x="277.7" y="100.5">2</text><text x="277.7" y="132.5">3</text><text x="250" y="148.5">4</text><text x="222.3" y="132.5">5</text><text x="222.3" y="100.5">6</text></g>
+<g class="spin" style="--d:0.2s"><g class="spin" style="--d:2.2s"><path class="arrow" d="M250 82l-6 14h4v20h4v-20h4z" transform="rotate(120 250 112)"/><circle class="hub" cx="250" cy="112" r="5"/></g></g>
+<g class="a"><rect class="tag" x="182" y="6" width="30" height="14" rx="7"/><circle cx="190" cy="13" r="4" fill="currentColor"/><rect class="name" x="197" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="216" y="6" width="30" height="14" rx="7"/><circle cx="224" cy="13" r="4" fill="currentColor"/><rect class="name" x="231" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="c"><rect class="tag" x="250" y="6" width="30" height="14" rx="7"/><circle cx="258" cy="13" r="4" fill="currentColor"/><rect class="name" x="265" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="d"><rect class="tag" x="284" y="6" width="30" height="14" rx="7"/><circle cx="292" cy="13" r="4" fill="currentColor"/><rect class="name" x="299" y="11.5" width="10" height="3" rx="1.5"/></g>
+<rect class="lit a" x="180" y="4" width="34" height="18" rx="9" style="--d:0s;--l:2s"/>
+<rect class="lit b" x="214" y="4" width="34" height="18" rx="9" style="--d:2s;--l:2s"/>
+<rect class="lit c stay" x="248" y="4" width="34" height="18" rx="9" style="--d:4s"/>
+</svg>

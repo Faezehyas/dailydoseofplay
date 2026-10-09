@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import net from "node:net";
+import os from "node:os";
+import path from "node:path";
 import WebSocket from "ws";
 import { createApp, wsOriginAllowed } from "../server/app.js";
 import { startServer } from "./helpers.js";
@@ -59,6 +61,54 @@ test("HTTP routes: home, games, healthz, ws, 404s", async (t) => {
   assert.doesNotMatch((await fetch(`${srv.base}/engine/deck-crypto.js`)).headers.get("content-security-policy"), /eval/);
 });
 
+test("static files: ETag, 304 when it matches, a new ETag after an edit", async (t) => {
+  const publicDir = fs.mkdtempSync(path.join(os.tmpdir(), "ddp-public-"));
+  t.after(() => fs.rmSync(publicDir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(publicDir, "games.json"), JSON.stringify({ games: [] }));
+  fs.writeFileSync(path.join(publicDir, "app.js"), "export const v = 1;\n");
+  const srv = await startServer({ publicDir });
+  t.after(() => srv.close());
+  const url = `${srv.base}/app.js`;
+
+  const first = await fetch(url);
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get("cache-control"), "no-cache");
+  const etag = first.headers.get("etag");
+  assert.match(etag, /^"[0-9a-f]{16}"$/);
+  assert.equal(await first.text(), "export const v = 1;\n");
+
+  for (const method of ["GET", "HEAD"]) {
+    const again = await fetch(url, { method, headers: { "If-None-Match": etag } });
+    assert.equal(again.status, 304, method);
+    assert.equal(again.headers.get("etag"), etag);
+    assert.equal(await again.text(), "");
+  }
+  assert.equal((await fetch(url, { headers: { "If-None-Match": `"other", W/${etag}` } })).status, 304, "list with a weak tag");
+  assert.equal((await fetch(url, { headers: { "If-None-Match": '"0000000000000000"' } })).status, 200);
+
+  fs.writeFileSync(path.join(publicDir, "app.js"), "export const v = 2;\n");
+  const edited = await fetch(url, { headers: { "If-None-Match": etag } });
+  assert.equal(edited.status, 200);
+  assert.notEqual(edited.headers.get("etag"), etag);
+  assert.equal(await edited.text(), "export const v = 2;\n");
+});
+
+test("privacy page: served, and it names every localStorage key in public/", async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
+  const res = await fetch(`${srv.base}/privacy/`);
+  assert.equal(res.status, 200);
+  const page = await res.text();
+  const publicDir = new URL("../public/", import.meta.url);
+  const keys = new Set();
+  for (const file of fs.readdirSync(publicDir, { recursive: true })) {
+    if (!file.endsWith(".js") || file.endsWith(".test.js")) continue;
+    for (const [, key] of fs.readFileSync(new URL(file, publicDir), "utf8").matchAll(/["'`](ddp-[\w-]+)["'`]/g)) keys.add(key);
+  }
+  assert.ok(keys.has("ddp-name"), "found the keys");
+  for (const key of keys) assert.ok(page.includes(`<code>${key}</code>`), `public/privacy/index.html lists ${key}`);
+});
+
 test("sea battle: every recorded sound exists and is credited", () => {
   const main = fs.readFileSync(new URL("../public/sea-battle/sounds.js", import.meta.url), "utf8");
   const credits = fs.readFileSync(new URL("../public/sea-battle/sounds/LICENSE.txt", import.meta.url), "utf8");
@@ -70,7 +120,9 @@ test("sea battle: every recorded sound exists and is credited", () => {
   }
 });
 
-test("registry: every entry is well formed and every ready game has a folder", () => {
+test("registry: every entry is well formed and every ready game has a folder", async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
   const slugs = new Set();
   for (const g of registry.games) {
     assert.match(g.slug, /^[a-z0-9]+(-[a-z0-9]+)*$/);
@@ -82,6 +134,13 @@ test("registry: every entry is well formed and every ready game has a folder", (
     if (g.status === "ready") {
       assert.ok(fs.existsSync(new URL(`../public/${g.slug}/index.html`, import.meta.url)), `${g.slug}/index.html`);
       assert.ok(fs.existsSync(new URL(`../public/${g.slug}/icon.svg`, import.meta.url)), `${g.slug}/icon.svg`);
+      // The optional preview is inlined in the home page: same-origin and script-free.
+      if (fs.existsSync(new URL(`../public/${g.slug}/preview.svg`, import.meta.url))) {
+        const res = await fetch(`${srv.base}/${g.slug}/preview.svg`);
+        assert.equal(res.headers.get("content-type"), "image/svg+xml", `${g.slug}/preview.svg`);
+        const svg = await res.text();
+        assert.doesNotMatch(svg, /<script|\son\w+=|@import|(href|src)="(?!#)|url\((?!#)/i, `${g.slug}/preview.svg has no external references`);
+      }
     }
   }
 });
@@ -174,4 +233,59 @@ test("wsOriginAllowed: whole-host match, rewritten Host plus X-Forwarded-Host", 
   assert.equal(wsOriginAllowed({ host: "games.example", origin: "http://games.example:8080" }), false, "port differs");
   assert.equal(wsOriginAllowed({ host: "games.example", origin: "null" }), false);
   assert.equal(wsOriginAllowed({ host: "games.example" }), true, "no Origin");
+});
+
+test("security headers on every response: pages, files, 304, 301, 404, 400, 405, 426, healthz and the /ws refusal", async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
+  const expected = {
+    "content-security-policy":
+      "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+    "strict-transport-security": "max-age=31536000",
+    "cross-origin-opener-policy": "same-origin",
+    "permissions-policy": "camera=(), microphone=(), geolocation=()",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "same-origin",
+  };
+  const check = (get, label) => {
+    for (const [name, value] of Object.entries(expected)) assert.equal(get(name), value, `${label}: ${name}`);
+  };
+  const checkRaw = (reply, status, label) => {
+    assert.match(reply, new RegExp(`^HTTP/1\\.1 ${status}`), label);
+    const head = reply.split("\r\n\r\n")[0].split("\r\n").slice(1);
+    const headers = new Map(head.map((line) => [line.slice(0, line.indexOf(":")).toLowerCase(), line.slice(line.indexOf(":") + 1).trim()]));
+    check((name) => headers.get(name), label);
+  };
+
+  const etag = (await fetch(`${srv.base}/engine/lobby.js`)).headers.get("etag");
+  const cases = [
+    ["/", {}, 200],
+    ["/engine/lobby.js", {}, 200],
+    ["/engine/lobby.js", { headers: { "If-None-Match": etag } }, 304],
+    ["/tic-tac-toe", { redirect: "manual" }, 301],
+    ["/nope/", {}, 404],
+    ["/", { method: "POST" }, 405],
+    ["/ws", {}, 426],
+  ];
+  for (const [url, opts, status] of cases) {
+    const res = await fetch(`${srv.base}${url}`, opts);
+    assert.equal(res.status, status, url);
+    check((name) => res.headers.get(name), `${status} ${url}`);
+  }
+
+  const health = await fetch(`${srv.base}/healthz`);
+  check((name) => health.headers.get(name), "/healthz");
+  assert.equal(health.headers.get("access-control-allow-origin"), "*");
+  assert.equal(health.headers.get("content-type"), "application/json");
+  assert.equal((await health.json()).ok, true);
+
+  checkRaw(await rawRequest(srv.base, "GET //[ HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), 400, "bad target");
+  checkRaw(
+    await rawRequest(
+      srv.base,
+      "GET /ws HTTP/1.1\r\nHost: x\r\nOrigin: https://evil.example\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
+    ),
+    403,
+    "/ws refusal",
+  );
 });

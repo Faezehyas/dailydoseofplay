@@ -1,6 +1,7 @@
 // Headless-browser test: every game page uses one column. In the lobby and
 // during a robot game, the view on show and "How to play" (.rules) share
-// their left and right edges, at 1280 and 360 px, with no sideways scroll.
+// their left and right edges, at 1280 and 360 px, with no sideways scroll,
+// and Leave sits at the top right of the player bar.
 // Skips if Playwright is missing.
 //
 //   npm run test:browser
@@ -31,7 +32,7 @@ const GAMES = JSON.parse(readFileSync(new URL("../../public/games.json", import.
 // The column at 1280 px: the lobby is always narrow.
 const WIDTHS = { narrow: 520, medium: 640, wide: 980 };
 
-// Edges of every visible view (lobby card, settings, the game's own box) and of the rules panel.
+// Edges of every visible view (lobby card, the game's own box) and of the rules panel.
 const measure = (page) =>
   page.evaluate(() => {
     const box = (node) => {
@@ -39,7 +40,7 @@ const measure = (page) =>
       return { name: node.id || node.className, left: r.left, right: r.right, width: r.width };
     };
     const shown = (node) => node.getClientRects().length > 0;
-    const views = [...document.querySelectorAll("#lobby > .card, .page > section.card, #game > :not(.overlay)")].filter(shown);
+    const views = [...document.querySelectorAll("#lobby > .card, #game > :not(.overlay)")].filter(shown);
     const { view, layout } = document.querySelector(".page").dataset;
     return { view, layout, views: views.map(box), rules: box(document.querySelector(".rules")), scroll: document.documentElement.scrollWidth, inner: innerWidth };
   });
@@ -73,7 +74,7 @@ for (const width of [1280, 360]) {
       const lobby = await measure(page);
       assert.equal(lobby.view, "lobby");
       assert.ok(Object.hasOwn(WIDTHS, lobby.layout), `${game.slug}: unknown layout "${lobby.layout}"`);
-      assert.ok(lobby.views.length >= 2, `${game.slug}: the lobby and its settings show`);
+      assert.ok(await page.locator(".lobby-card .settings").isVisible(), `${game.slug}: the settings show inside the lobby card`);
       assertColumn(lobby, `${game.slug} lobby`, column("narrow"));
 
       await page.click("#play-robot");
@@ -81,6 +82,13 @@ for (const width of [1280, 360]) {
       const playing = await measure(page);
       assert.equal(playing.view, "game");
       assertColumn(playing, `${game.slug} robot game`, column(lobby.layout));
+      // Every game's player bar spans the column, with Leave at its top right.
+      const bar = await page.evaluate(() => {
+        const box = (s) => document.querySelector(s).getBoundingClientRect();
+        const [b, l, g] = [box(".player-bar"), box("#leave"), box("#game")];
+        return { width: b.width - g.width, right: b.right - l.right, top: l.top - b.top };
+      });
+      assert.ok(Object.values(bar).every((d) => Math.abs(d) <= 1), `${game.slug}: Leave is at the player bar's top right (${JSON.stringify(bar)})`);
       await page.close();
     }
     assert.deepEqual(errors, []);

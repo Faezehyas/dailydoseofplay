@@ -81,49 +81,15 @@
 .c-yellow { --c: var(--ld-yellow); --c-ink: var(--ld-yellow-ink); }
 .c-blue { --c: var(--ld-blue); --c-ink: var(--ld-blue-ink); }
 
-.ld-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.ld-top > .btn {
-  flex: none;
-}
-
 /* ---------- players ---------- */
-.ld-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  flex: 1 1 auto;
-  min-width: 0;
-  font-weight: 700;
+.ludo .player-bar :is(.pb-who, .pb-score > div),
+.ludo .result-places li {
+  --seat: var(--c);
+  --seat-text: var(--c-ink);
 }
 
-.ld-players.many {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.ld-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 5px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.ld-players .who.active {
-  border-color: var(--c);
-  box-shadow: 0 0 0 2px var(--c) inset;
+.player-bar .where.done {
+  color: var(--c-ink);
 }
 
 .ludo .swatch {
@@ -143,74 +109,7 @@
   fill: #fff;
 }
 
-.ld-players .label {
-  display: grid;
-  min-width: 0;
-  line-height: 1.1;
-}
-
-.ld-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ld-players .where {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.ld-players .who.done .where {
-  color: var(--c-ink);
-}
-
-.ld-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-/* ---------- score and status ---------- */
-.ld-score {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: 8px;
-  margin: 0;
-}
-
-.ld-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--c);
-  min-width: 0;
-}
-
-.ld-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ld-score dd {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.2;
-  color: var(--c-ink);
-}
-
+/* ---------- status ---------- */
 .ld-status {
   margin: 0;
   text-align: center;
@@ -841,40 +740,8 @@
   background: color-mix(in srgb, var(--ld-gold) 14%, var(--surface));
 }
 
-/* Phones: the pills in a 2×2 grid beside Leave, a slimmer score. */
+/* Phones: a smaller status line. */
 @media (max-width: 600px) {
-  .ld-top {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .ld-players.many {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
-  }
-
-  .ld-players.many .who {
-    padding: 3px 8px 3px 4px;
-    font-size: 0.9rem;
-  }
-
-  .ld-score > div {
-    grid-auto-flow: column;
-    justify-content: center;
-    align-items: baseline;
-    gap: 6px;
-    padding: 3px 6px;
-  }
-
-  .ld-score dt {
-    font-size: 0.72rem;
-  }
-
-  .ld-score dd {
-    font-size: 1.05rem;
-  }
-
   .ld-status {
     font-size: 1rem;
   }
@@ -896,148 +763,6 @@
 
   .ld-log li:nth-child(n + 3) {
     display: none;
-  }
-}
-
-/* ---------- game over: over the board, so it's in view ---------- */
-.ld-over {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 10px;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--bg) 40%, transparent);
-  backdrop-filter: blur(1.5px);
-  animation: ld-fade 0.3s ease-out;
-}
-
-.ld-over[hidden] {
-  display: none;
-}
-
-@keyframes ld-fade {
-  from {
-    opacity: 0;
-  }
-}
-
-.ld-over-card {
-  width: min(100%, 360px);
-  max-height: 100%;
-  overflow: auto;
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 14px 16px;
-  animation: ld-pop 0.4s cubic-bezier(0.3, 1.4, 0.5, 1);
-}
-
-@keyframes ld-pop {
-  from {
-    transform: scale(0.85);
-    opacity: 0;
-  }
-}
-
-.ld-over h2 {
-  margin: 0 0 8px;
-  font-size: 1.45rem;
-}
-
-.ld-over h2.win {
-  color: var(--accent-text);
-}
-
-.ld-standings {
-  list-style: none;
-  margin: 0 0 8px;
-  padding: 0;
-  display: grid;
-  gap: 4px;
-  text-align: left;
-}
-
-.ld-standings li {
-  display: grid;
-  grid-template-columns: 2.4em auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-radius: 10px;
-  background: var(--surface-2);
-  font-size: 0.92rem;
-}
-
-.ld-standings li.mine {
-  box-shadow: 0 0 0 2px var(--c) inset;
-  font-weight: 800;
-}
-
-.ld-standings .place {
-  font-weight: 900;
-  color: var(--c-ink);
-}
-
-.ld-standings .who {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ld-standings small {
-  color: var(--muted);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.ld-over .detail {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.ld-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.ld-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ld-over .rematch-status {
-  margin-top: 8px;
-}
-
-@media (max-width: 420px) {
-  .ld-over-card {
-    padding: 10px 12px;
-  }
-
-  .ld-over h2 {
-    font-size: 1.2rem;
-    margin-bottom: 6px;
-  }
-
-  .ld-standings li {
-    font-size: 0.85rem;
-    padding: 3px 6px;
-  }
-
-  .ld-standings small {
-    font-size: 0.72rem;
-  }
-
-  .ld-over .detail {
-    font-size: 0.8rem;
-    margin-bottom: 8px;
   }
 }
 

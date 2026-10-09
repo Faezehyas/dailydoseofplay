@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-ttt">
+<style>.pv-ttt .bg{fill:var(--surface-2)}
+.pv-ttt .grid{fill:none;stroke:var(--control-border);stroke-width:4;stroke-linecap:round}
+.pv-ttt .x,.pv-ttt .o{fill:none;stroke:currentColor;stroke-width:6;stroke-linecap:round}
+.pv-ttt .draw{animation-duration:.5s}</style>
+<rect class="bg" width="320" height="200"/>
+<path class="grid" d="M140 44v112M180 44v112M104 80h112M104 120h112"/>
+<g class="a"><g transform="translate(160 100)"><path class="x pop" d="M-10-10l20 20m0-20l-20 20" style="--d:0.3s"/></g></g>
+<g class="b"><g transform="translate(160 60)"><circle class="o pop" r="11" style="--d:0.8s"/></g></g>
+<g class="a"><g transform="translate(120 60)"><path class="x pop" d="M-10-10l20 20m0-20l-20 20" style="--d:1.3s"/></g></g>
+<g class="b"><g transform="translate(200 140)"><circle class="o pop" r="11" style="--d:1.8s"/></g></g>
+<g class="a"><g transform="translate(120 140)"><path class="x pop" d="M-10-10l20 20m0-20l-20 20" style="--d:2.3s"/></g></g>
+<g class="b"><g transform="translate(120 100)"><circle class="o pop" r="11" style="--d:2.8s"/></g></g>
+<g class="a"><g transform="translate(200 60)"><path class="x pop" d="M-10-10l20 20m0-20l-20 20" style="--d:3.3s"/></g></g>
+<g class="a"><g transform="translate(212 48) rotate(135)"><path class="x draw" d="M0 0h147" style="--d:3.65s"/></g></g>
+<g class="a"><rect class="tag" x="250" y="6" width="30" height="14" rx="7"/><circle cx="258" cy="13" r="4" fill="currentColor"/><rect class="name" x="265" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="284" y="6" width="30" height="14" rx="7"/><circle cx="292" cy="13" r="4" fill="currentColor"/><rect class="name" x="299" y="11.5" width="10" height="3" rx="1.5"/></g>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:0s;--l:0.5s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:0.5s;--l:0.5s"/>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:1s;--l:0.5s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:1.5s;--l:0.5s"/>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:2s;--l:0.5s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:2.5s;--l:0.5s"/>
+<rect class="lit a stay" x="248" y="4" width="34" height="18" rx="9" style="--d:3s"/>
+</svg>

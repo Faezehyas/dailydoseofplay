@@ -30,11 +30,15 @@ const MIME = {
   ".wasm": "application/wasm",
 };
 
-const CSP = "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'";
+const CSP = "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'";
+// On every response, including redirects, errors and the /ws refusal.
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "same-origin",
   "Content-Security-Policy": CSP,
+  "Strict-Transport-Security": "max-age=31536000",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 };
 // Only the card deck's worker compiles WebAssembly (see ARCHITECTURE.md).
 const DECK_WORKER = path.join("engine", "deck-worker.js");
@@ -51,6 +55,28 @@ export function parseRegistry(text) {
 // Callback fs.readFile only: it is on EdgeJS's proven API list.
 function readText(file) {
   return new Promise((resolve, reject) => fs.readFile(file, "utf8", (err, text) => (err ? reject(err) : resolve(text))));
+}
+
+// Strong ETag from the bytes: FNV-1a 64-bit as two 32-bit halves, so no node:crypto.
+function etagOf(data) {
+  let hi = 0xcbf29ce4;
+  let lo = 0x84222325;
+  for (const byte of data) {
+    lo = (lo ^ byte) >>> 0;
+    // h * 0x100000001b3 = h * 0x1b3 + (h << 40), mod 2^64.
+    const low = lo * 0x1b3;
+    hi = (Math.imul(hi, 0x1b3) + Math.floor(low / 0x100000000) + (lo << 8)) >>> 0;
+    lo = low >>> 0;
+  }
+  return `"${hi.toString(16).padStart(8, "0")}${lo.toString(16).padStart(8, "0")}"`;
+}
+
+// If-None-Match is "*" or a list of tags; it compares weakly, so a proxy's W/ prefix still matches.
+function etagMatches(header, etag) {
+  return String(header || "").split(",").some((tag) => {
+    tag = tag.trim();
+    return tag === "*" || tag.replace(/^W\//, "") === etag;
+  });
 }
 
 // Path of a request target, or null when it can't be parsed (e.g. "//[").
@@ -119,15 +145,24 @@ export async function createApp({
   const notFoundPage = path.join(publicDir, "404.html");
 
   // Plain fs.readFile: EdgeJS is not upstream Node, so stay on proven APIs.
+  // The ETag is hashed on every request, so an edited file is never served stale.
   function sendFile(req, res, file) {
     fs.readFile(file, (err, data) => {
       if (err) return notFound(req, res);
+      const security = path.relative(publicDir, file) === DECK_WORKER
+        ? { ...SECURITY_HEADERS, "Content-Security-Policy": DECK_WORKER_CSP }
+        : SECURITY_HEADERS;
+      const etag = etagOf(data);
+      if (etagMatches(req.headers["if-none-match"], etag)) {
+        res.writeHead(304, { ...security, ETag: etag, "Cache-Control": "no-cache" });
+        return res.end();
+      }
       res.writeHead(200, {
-        ...SECURITY_HEADERS,
-        ...(path.relative(publicDir, file) === DECK_WORKER && { "Content-Security-Policy": DECK_WORKER_CSP }),
+        ...security,
         "Content-Type": MIME[path.extname(file)] || "application/octet-stream",
         "Content-Length": data.length,
         "Cache-Control": "no-cache",
+        ETag: etag,
       });
       res.end(req.method === "HEAD" ? undefined : data);
     });
@@ -157,7 +192,7 @@ export async function createApp({
     else if (segments.length === 1 && games.has(segments[0])) {
       // /sea-battle -> /sea-battle/ so relative URLs resolve inside the game folder.
       const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-      res.writeHead(301, { Location: `/${segments[0]}/${query}` });
+      res.writeHead(301, { ...SECURITY_HEADERS, Location: `/${segments[0]}/${query}` });
       return res.end();
     }
     sendFile(req, res, file);
@@ -166,11 +201,12 @@ export async function createApp({
   const server = http.createServer((req, res) => {
     const pathname = pathOf(req.url);
     if (pathname === null) {
-      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.writeHead(400, { ...SECURITY_HEADERS, "Content-Type": "text/plain" });
       return res.end("Bad Request");
     }
     if (pathname === "/healthz") {
       res.writeHead(200, {
+        ...SECURITY_HEADERS,
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "no-store",
@@ -178,11 +214,11 @@ export async function createApp({
       return res.end(JSON.stringify({ ok: true, ...signaling.stats() }));
     }
     if (pathname === "/ws") {
-      res.writeHead(426, { "Content-Type": "text/plain" });
+      res.writeHead(426, { ...SECURITY_HEADERS, "Content-Type": "text/plain" });
       return res.end("Upgrade Required");
     }
     if (req.method !== "GET" && req.method !== "HEAD") {
-      res.writeHead(405, { Allow: "GET, HEAD" });
+      res.writeHead(405, { ...SECURITY_HEADERS, Allow: "GET, HEAD" });
       return res.end();
     }
     serveStatic(req, res, pathname);
@@ -194,7 +230,8 @@ export async function createApp({
     if (pathOf(req.url) !== "/ws") return socket.destroy();
     if (!wsOriginAllowed(req.headers, extraOrigins)) {
       socket.once("finish", () => socket.destroy());
-      return socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+      const headers = Object.entries(SECURITY_HEADERS).map(([name, value]) => `${name}: ${value}\r\n`).join("");
+      return socket.end(`HTTP/1.1 403 Forbidden\r\n${headers}Connection: close\r\nContent-Length: 0\r\n\r\n`);
     }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });

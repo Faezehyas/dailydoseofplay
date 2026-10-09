@@ -5,68 +5,6 @@
   gap: 12px;
 }
 
-/* "You vs Robot" stays together, centred over the scoreboard, with Leave on
-   the right; the empty first column balances Leave. No grid gap, so on a
-   phone that empty column takes no room from the names. */
-.gmk-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
-  align-items: center;
-}
-
-.gmk-top > .gmk-players {
-  grid-column: 2;
-}
-
-.gmk-top > .btn {
-  grid-column: 3;
-  justify-self: end;
-  margin-left: 8px;
-}
-
-/* Each name keeps its full width when it fits; long names share what's left. */
-.gmk-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.gmk-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.gmk-players .who.active {
-  border-color: var(--theirs);
-  box-shadow: 0 0 0 2px var(--theirs) inset;
-}
-
-.gmk-players .who.me.active {
-  border-color: var(--mine);
-  box-shadow: 0 0 0 2px var(--mine) inset;
-}
-
-.gmk-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gmk-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 /* A small stone showing which colour each player has. */
 .pill-stone {
   flex: none;
@@ -85,49 +23,6 @@
 .pill-stone[data-v="second"] {
   background: radial-gradient(circle, var(--surface) 0 28%, var(--accent-2) 31%);
   border-color: transparent;
-}
-
-/* ---------- score ---------- */
-.gmk-score {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.gmk-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  min-width: 0;
-}
-
-.gmk-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gmk-score dd {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.gmk-score .mine dd {
-  color: var(--mine-text);
-}
-
-.gmk-score .theirs dd {
-  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */
@@ -231,81 +126,6 @@
   font-size: 0.85rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-/* ---------- settings (lobby) ---------- */
-.gmk-settings {
-  text-align: left;
-}
-
-.gmk-settings h2 {
-  font-size: 1.1rem;
-}
-
-.gmk-settings .hint.board {
-  margin: 0 0 12px;
-}
-
-.gmk-seg {
-  border: 0;
-  margin: 0 0 12px;
-  padding: 0;
-  min-width: 0;
-}
-
-.gmk-seg legend {
-  padding: 0;
-  margin-bottom: 6px;
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.seg-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.seg-opt {
-  position: relative;
-}
-
-.seg-opt input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-}
-
-.seg-opt span {
-  display: inline-grid;
-  align-content: center;
-  min-height: 40px;
-  padding: 4px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--control-border);
-  background: var(--surface-2);
-  font-weight: 700;
-  font-size: 0.9rem;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.seg-opt input:checked + span {
-  background: var(--accent);
-  border-color: var(--accent-text);
-  color: var(--accent-ink);
-}
-
-.seg-opt input:focus-visible + span {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.gmk-settings .hint {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 0.85rem;
 }
 
 /* ---------- board ---------- */
@@ -420,39 +240,4 @@
 
 .gmk-board.done.lined .gmk-cell:not(.win)::after {
   opacity: 0.45;
-}
-
-/* ---------- game over ---------- */
-.gmk-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-.gmk-over h2 {
-  font-size: 1.6rem;
-}
-
-.gmk-over h2.win {
-  color: var(--accent-text);
-}
-
-.gmk-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.gmk-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.gmk-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
 }

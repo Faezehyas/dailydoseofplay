@@ -4,9 +4,12 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, legalPlays, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
 import { chooseMove, inContact, startRobot } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 
 const ROBOT_DELAY = 800;
@@ -28,7 +31,6 @@ const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const TOP = [13, 14, 15, 16, 17, 18, "bar-top", 19, 20, 21, 22, 23, 24, "off-top"];
 const BOTTOM = [12, 11, 10, 9, 8, 7, BAR, 6, 5, 4, 3, 2, 1, OFF];
 
-const settings = mountSettings(document.getElementById("bg-settings"), document.getElementById("lobby"));
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function robotChoice(level) {
@@ -44,8 +46,8 @@ let racingForYou = false;
 startGameShell({
   slug: "backgammon",
   title: "Backgammon",
-  tagline: "Roll, run and hit. Bring all fifteen checkers home and off the board first.",
   layout: "medium",
+  settings,
   createRobot: (session) => {
     const config = settings.get();
     const delay = (state, me) => (racingForYou && !inContact(state.pos, me) ? ROBOT_RACING : ROBOT_DELAY);
@@ -78,13 +80,11 @@ function mountBackgammon(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0 };
+  const score = { wins: [0, 0] };
   let config = null;
   let rules = null;
   let match = null;
   let m = 0;
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let turnStart = 0;
   let forfeited = false;
@@ -110,19 +110,11 @@ function mountBackgammon(session, root, shell) {
 
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
-    const pips = el("small", { class: "pips" });
-    const node = el(
-      "span",
-      { class: `who ${player === me ? "me" : "them"}` },
-      el("span", { class: "swatch", "aria-hidden": "true" }),
-      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : oppName), pips),
-    );
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, pips, clock };
+    return { clock };
   });
-  const players = el("div", { class: "bg-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "bg-score", id: "bg-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: [0, 1].map(() => el("span", { class: "swatch", "aria-hidden": "true" })) });
   const status = el("p", { class: "bg-status", id: "bg-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "bg-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -147,7 +139,10 @@ function mountBackgammon(session, root, shell) {
   );
   const configLine = el("p", { class: "bg-config", id: "bg-config" });
   const note = el("p", { class: "bg-note", id: "bg-note" });
-  const overBox = el("div", { class: "bg-over", id: "bg-over", hidden: true });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ winner, outcome }) => outcome && celebrate({ outcome, flavour: "wood", highlight: match.state.reason === "off" ? [...cells.get(winner === me ? OFF : "off-top").querySelectorAll(".slab")].slice(-1) : [], board }),
+  });
 
   // Every cell of the board, keyed by your point number (BAR, OFF) or "bar-top"/"off-top" for the opponent's.
   const cells = new Map();
@@ -167,8 +162,7 @@ function mountBackgammon(session, root, shell) {
     el(
       "div",
       { class: "backgammon" },
-      el("div", { class: "bg-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "bg-board-wrap" }, board),
@@ -176,7 +170,7 @@ function mountBackgammon(session, root, shell) {
       turnBar,
       configLine,
       note,
-      overBox,
+      result.node,
     ),
   );
 
@@ -723,16 +717,10 @@ function mountBackgammon(session, root, shell) {
   }
 
   function renderPills(pos) {
-    for (const [k, player] of [me, opp].entries()) {
-      const { node, pips } = pills[k];
-      node.classList.toggle("active", match?.phase === "playing" && match.state.turn === player);
-      pips.textContent = pos ? `${pipCount(pos[player])} pips` : "";
-    }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item(oppName, score.them, "theirs"));
+    bar.update({
+      turn: match?.phase === "playing" ? match.state.turn : -1,
+      notes: [0, 1].map((player) => (pos ? `${pipCount(pos[player])} pips` : "")),
+    });
   }
 
   function statusText() {
@@ -767,7 +755,7 @@ function mountBackgammon(session, root, shell) {
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".backgammon").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills(pos);
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -795,46 +783,22 @@ function mountBackgammon(session, root, shell) {
   function renderOver() {
     const phase = match?.phase;
     // Let the winning checkers finish moving first.
-    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && (anim || flying))) {
-      overBox.hidden = true;
-      if (overBox.firstChild) overBox.replaceChildren();
-      return;
-    }
-    overBox.hidden = false;
+    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && (anim || flying))) return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === me ? "Victory!" : "Defeat";
-    let detail;
-    if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
-    else if (st.reason === "timeout") detail = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
     else {
       const left = CHECKERS - st.pos[1 - winner][OFF];
-      detail = `${winner === me ? "You" : oppName} bore off all fifteen checkers, with ${left} of ${winner === me ? `${oppName}'s` : "yours"} still on the board.`;
+      reason = `${winner === me ? "You" : oppName} bore off all fifteen checkers, with ${left} of ${winner === me ? `${oppName}'s` : "yours"} still on the board.`;
     }
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : "", id: "bg-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "bg-detail" }, detail),
-      el(
-        "div",
-        { class: "bg-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    result.show({ winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
-    rematch = { me: false, them: false };
     forfeited = false;
     claimed = false;
     rolling = false;
@@ -883,8 +847,7 @@ function mountBackgammon(session, root, shell) {
       resetStage();
     });
     match.on("over", ({ winner }) => {
-      if (winner === me) score.me++;
-      else score.them++;
+      score.wins[winner]++;
     });
     router.start(match);
     render();
@@ -904,11 +867,6 @@ function mountBackgammon(session, root, shell) {
 
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") begin(settings.get());

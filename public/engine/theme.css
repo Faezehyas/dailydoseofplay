@@ -187,6 +187,22 @@ a {
   display: none !important;
 }
 
+/* Read out by screen readers, not shown. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The lobby moves focus to a view's heading (lobby.js); it isn't a control, so no ring. */
+h1[tabindex="-1"]:focus,
+h2[tabindex="-1"]:focus {
+  outline: none;
+}
+
 h1,
 h2,
 h3 {
@@ -197,6 +213,27 @@ h3 {
 }
 
 /* ---------- header ---------- */
+/* Above the page until a keyboard user tabs to it. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  z-index: 70;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transform: translateY(calc(-100% - 16px));
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
 .site-header {
   display: flex;
   align-items: center;
@@ -295,6 +332,21 @@ h3 {
   padding: 20px;
 }
 
+/* A page of reading, such as /privacy/. */
+.text-page {
+  max-width: 680px;
+  margin: 16px auto;
+  overflow-wrap: break-word;
+}
+
+.text-page h2 {
+  margin-top: 1.5em;
+}
+
+.text-page li {
+  margin: 6px 0;
+}
+
 .site-footer {
   max-width: 1100px;
   margin: 0 auto;
@@ -302,6 +354,37 @@ h3 {
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 16px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+}
+
+/* An open result panel is fixed to the bottom of the screen. The footer, which
+   ends every page, makes room for it, so nothing scrolls under the panel. */
+body:has(.result-panel:not([hidden])) .page {
+  padding-bottom: 48px;
+}
+
+body:has(.result-panel:not([hidden])) .site-footer {
+  padding-bottom: calc(var(--result-h, 0px) + 32px);
 }
 
 /* ---------- buttons and fields ---------- */
@@ -408,7 +491,7 @@ input::placeholder {
 }
 
 /* ---------- game page column ---------- */
-/* The lobby, the settings, the game and "How to play" share one column, as
+/* The lobby, the game and "How to play" share one column, as
    wide as the view on show. lobby.js sets data-view ("lobby" or "game") and
    the game's data-layout on .page; the lobby is always narrow. */
 .page[data-view] {
@@ -456,6 +539,12 @@ input::placeholder {
   grid-template-columns: 1fr;
 }
 
+.lobby-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 8px;
+}
+
 .divider {
   display: flex;
   align-items: center;
@@ -494,6 +583,12 @@ input::placeholder {
 .invite-row input {
   flex: 1 1 220px;
   font-size: 0.9rem;
+}
+
+.room-code-label {
+  color: var(--muted);
+  font-weight: 600;
+  margin: 16px 0 0;
 }
 
 .room-code {
@@ -603,14 +698,15 @@ input::placeholder {
   text-align: center;
 }
 
-/* Top of the screen, so it never covers a game board on a phone. Centred with
-   auto margins rather than left: 50%, so it can use the full width between the
-   16px gutters, and a 20-letter nickname wraps instead of running off screen. */
+/* Just below the 60px header (and the notch), clear of the sound and theme
+   buttons and above a game board on a phone. Centred with auto margins rather
+   than left: 50%, so it can use the full width between the 16px gutters, and a
+   20-letter nickname wraps instead of running off screen. */
 .toast {
   position: fixed;
   left: 16px;
   right: 16px;
-  top: 12px;
+  top: calc(env(safe-area-inset-top, 0px) + 64px);
   width: fit-content;
   margin-inline: auto;
   transform: translateY(-30px);
@@ -653,6 +749,405 @@ input::placeholder {
   margin: 10px 0 0;
   color: var(--muted);
   font-weight: 700;
+}
+
+/* ---------- player bar (engine/players.js) ---------- */
+/* A player's pill and score read --seat (ring) and --seat-text (wins): the
+   player colours by default, or a game's own class per seat, which wins
+   over these zero-specificity defaults. */
+:where(.player-bar .mine) {
+  --seat: var(--mine);
+  --seat-text: var(--mine-text);
+}
+
+:where(.player-bar .theirs) {
+  --seat: var(--theirs);
+  --seat-text: var(--theirs-text);
+}
+
+.player-bar {
+  display: grid;
+  gap: 8px;
+}
+
+/* The players stay together, centred over the score, with Leave at the top
+   right; the empty first column balances Leave. No grid gap, so on a phone
+   that empty column takes no room from the names. */
+.pb-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
+  align-items: start;
+}
+
+.pb-top > .pb-players {
+  grid-column: 2;
+}
+
+.pb-top > .btn {
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 8px;
+}
+
+/* Each name keeps its full width when it fits; long names share what's left. */
+.pb-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 700;
+}
+
+/* Three or four players wrap, at most two to a row. */
+.player-bar.many .pb-players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.player-bar.many .pb-who {
+  max-width: calc(50% - 3px);
+}
+
+.pb-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.pb-who:has(> .pb-badge:not(:empty)) {
+  padding-left: 6px;
+}
+
+.pb-who.active {
+  border-color: var(--seat);
+  box-shadow: 0 0 0 2px var(--seat) inset;
+}
+
+.pb-badge {
+  display: contents;
+}
+
+.pb-label {
+  display: grid;
+  min-width: 0;
+}
+
+.pb-label:has(> .pb-note:not(:empty)) {
+  line-height: 1.1;
+}
+
+.pb-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-note {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pb-note:empty {
+  display: none;
+}
+
+.pb-vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.pb-score {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.pb-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.pb-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--seat-text, var(--text));
+}
+
+/* Phones, three or four players: the pills in a 2×2 grid beside Leave, a
+   slimmer score. */
+@media (max-width: 600px) {
+  .player-bar.many .pb-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .player-bar.many .pb-top > * {
+    grid-column: auto;
+  }
+
+  .player-bar.many .pb-players {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .player-bar.many .pb-who {
+    max-width: none;
+    padding: 3px 8px 3px 4px;
+    font-size: 0.9rem;
+  }
+
+  .player-bar.many .pb-score > div {
+    grid-auto-flow: column;
+    justify-content: center;
+    align-items: baseline;
+    gap: 6px;
+    padding: 3px 6px;
+  }
+
+  .player-bar.many .pb-score dt {
+    font-size: 0.72rem;
+  }
+
+  .player-bar.many .pb-score dd {
+    font-size: 1.05rem;
+  }
+}
+
+/* ---------- result panel (engine/result.js) ---------- */
+/* Pinned to the bottom of the screen in the page column, so the board never
+   moves; the page keeps room below the game so nothing stays behind it. */
+.page:has(.result-panel:not([hidden])) {
+  padding-bottom: calc(var(--result-h, 0px) + 24px);
+}
+
+.result-panel {
+  position: fixed;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: min(var(--column, 520px), 100% - 32px);
+  max-height: calc(100% - 64px);
+  overflow-y: auto;
+  margin: 0 auto;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.result-panel h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.result-panel h2.win {
+  color: var(--accent-text);
+}
+
+.result-places {
+  display: grid;
+  gap: 4px;
+  margin: 8px auto 0;
+  padding: 0;
+  max-width: 360px;
+  list-style: none;
+  text-align: left;
+}
+
+:where(.result-places .mine) {
+  --seat: var(--mine);
+}
+
+:where(.result-places .theirs) {
+  --seat: var(--theirs);
+}
+
+.result-places li {
+  display: grid;
+  grid-template-columns: 2.6em minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 10px;
+  border-left: 4px solid var(--seat);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.result-places li.mine {
+  font-weight: 800;
+}
+
+.result-places .place {
+  font-weight: 800;
+}
+
+.result-places .who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-places small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.result-reason {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.result-reason:empty {
+  display: none;
+}
+
+.result-reason.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.result-panel .rematch-status:empty {
+  display: none;
+}
+
+/* ---------- result moment (engine/celebrate.js) ---------- */
+/* The colours hold while the result is up; the motion plays once, about
+   1.5 s, and not at all with reduced motion. */
+.celebrate-lit {
+  filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 8px var(--accent));
+}
+
+.celebrate-dim {
+  opacity: 0.7;
+}
+
+.celebrate-pulse {
+  border-color: var(--seat);
+}
+
+.celebrate-burst {
+  position: fixed;
+  z-index: 41;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* The logo's four dots: one diagonal coral, the other teal. */
+.celebrate-dot {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+}
+
+.celebrate-dot.b {
+  background: var(--accent-2);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .celebrate-lit {
+    animation: celebrate-light var(--dur-slow) var(--ease-out) calc(var(--i) * var(--dur-fast)) backwards;
+  }
+  .celebrate-dim {
+    animation: celebrate-dim calc(var(--dur-slow) * 2) var(--ease-out) backwards;
+  }
+  .celebrate-loss h2,
+  .celebrate-over h2 {
+    animation: celebrate-fade calc(var(--dur-slow) * 2) var(--ease-out) backwards;
+  }
+  .celebrate-pulse {
+    animation: celebrate-pulse calc(var(--dur-slow) * 2) var(--ease-out);
+  }
+  .celebrate-dot {
+    animation: celebrate-rise calc(var(--dur-slow) * 3) var(--ease-out) calc(var(--after) * var(--dur-fast) + var(--dur-med));
+  }
+}
+
+@keyframes celebrate-light {
+  from {
+    opacity: 0.4;
+  }
+}
+
+@keyframes celebrate-dim {
+  from {
+    opacity: 1;
+  }
+}
+
+@keyframes celebrate-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes celebrate-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+/* Each set of four rises and spreads a little: the middle one straight up,
+   the others out to the sides. */
+@keyframes celebrate-rise {
+  from {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 10px - 5px), calc(var(--dy) * 10px - 5px)) scale(0.5);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(var(--q) * 64px + var(--dx) * 14px - 7px), calc(var(--dy) * 14px - 84px + var(--q) * var(--q) * 24px));
+  }
 }
 
 /* ---------- home ---------- */
@@ -709,6 +1204,394 @@ input::placeholder {
   color: var(--accent-ink);
   font-weight: 800;
   font-size: 0.85rem;
+}
+
+/* The hero's game table (index.html). Each piece loops on its own period, so
+   the scene never repeats exactly, and plays its move once on hover or tap.
+   home.js adds .paused when the scene is off screen or the tab is hidden. */
+.hero-scene {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
+  margin: 10px auto 0;
+}
+
+.hero-scene stop {
+  stop-color: var(--hit-2);
+}
+
+.hero-scene .cord {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+
+.hero-scene .lamp,
+.hero-scene .card-back,
+.hero-scene .disc.teal {
+  fill: var(--accent-2);
+}
+
+.hero-scene .bulb {
+  fill: var(--hit-2);
+}
+
+.hero-scene .table-edge {
+  fill: var(--border);
+}
+
+.hero-scene .table {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.hero-scene .hit {
+  fill: transparent;
+}
+
+.hero-scene .shade {
+  fill: var(--text);
+  opacity: 0.1;
+}
+
+.hero-scene .card-trim {
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 1.2;
+}
+
+.hero-scene .card-face,
+.hero-scene .die-face {
+  fill: var(--surface);
+  stroke: var(--control-border);
+}
+
+.hero-scene .die-b .die-face {
+  stroke: none;
+}
+
+.hero-scene .heart {
+  fill: var(--danger);
+}
+
+.hero-scene .square {
+  fill: var(--surface-2);
+  stroke: var(--border);
+}
+
+.hero-scene .square.dark {
+  fill: var(--control-border);
+  stroke: none;
+}
+
+.hero-scene .checker-side {
+  fill: var(--accent-text);
+}
+
+.hero-scene .checker-top,
+.hero-scene .disc {
+  fill: var(--accent);
+}
+
+.hero-scene .pip {
+  fill: var(--text);
+}
+
+.hero-scene .pawn {
+  fill: var(--ok);
+}
+
+.hero-scene .rack {
+  fill: var(--ship);
+}
+
+/* Face 5 shows only between the die's rolls. */
+.hero-scene .die-b {
+  opacity: 0;
+}
+
+.hero-scene .glow,
+.hero-scene .die,
+.hero-scene .card-a,
+.hero-scene .card-b,
+.hero-scene .pawn {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The pawn squashes on its base. */
+.hero-scene .pawn {
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-scene .piece {
+    cursor: pointer;
+  }
+  .hero-scene * {
+    animation-timing-function: var(--ease-out);
+    animation-iteration-count: infinite;
+  }
+  .hero-scene .glow {
+    animation: scene-glow 17s ease-in-out infinite alternate;
+  }
+  .hero-scene .card-a {
+    animation-name: scene-card-a-loop;
+    animation-duration: 13s;
+    animation-delay: -5s;
+  }
+  .hero-scene .card-b {
+    animation-name: scene-card-b-loop;
+    animation-duration: 13s;
+    animation-delay: -5s;
+  }
+  .hero-scene .checker {
+    animation-name: scene-checker-loop;
+    animation-duration: 11s;
+    animation-delay: -7s;
+  }
+  .hero-scene .die {
+    animation-name: scene-die-loop;
+    animation-duration: 7s;
+    animation-delay: -2s;
+  }
+  .hero-scene .die-b {
+    animation-name: scene-die-face;
+    animation-duration: 14s;
+    animation-delay: -2s;
+  }
+  .hero-scene .pawn {
+    animation-name: scene-pawn-loop;
+    animation-duration: 6.1s;
+    animation-delay: -1s;
+  }
+  .hero-scene .drop {
+    animation-name: scene-drop-loop;
+    animation-duration: 9.7s;
+    animation-delay: -3s;
+  }
+  /* Hover swaps a loop for its move once; the loop restarts at rest after. */
+  .hero-scene .piece:hover .card-a {
+    animation: scene-card-a 1.4s var(--ease-out);
+  }
+  .hero-scene .piece:hover .card-b {
+    animation: scene-card-b 1.4s var(--ease-out);
+  }
+  .hero-scene .piece:hover .checker {
+    animation: scene-checker 1.6s var(--ease-out);
+  }
+  .hero-scene .piece:hover .die {
+    animation: scene-die 1.2s var(--ease-out);
+  }
+  .hero-scene .piece:hover .die-b {
+    animation: none;
+  }
+  .hero-scene .piece:hover .pawn {
+    animation: scene-pawn 1.3s var(--ease-out);
+  }
+  .hero-scene .piece:hover .drop {
+    animation: scene-drop 1.4s var(--ease-out);
+  }
+}
+
+.hero-scene.paused * {
+  animation-play-state: paused;
+}
+
+@keyframes scene-glow {
+  from {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes scene-card-a {
+  50% {
+    transform: translate(15px, -3px) rotate(14deg);
+  }
+}
+
+@keyframes scene-card-a-loop {
+  89% {
+    transform: none;
+  }
+  94.5% {
+    transform: translate(15px, -3px) rotate(14deg);
+  }
+}
+
+@keyframes scene-card-b {
+  50% {
+    transform: translate(-15px, 3px) rotate(-12deg);
+  }
+}
+
+@keyframes scene-card-b-loop {
+  89% {
+    transform: none;
+  }
+  94.5% {
+    transform: translate(-15px, 3px) rotate(-12deg);
+  }
+}
+
+/* One square diagonally and back. */
+@keyframes scene-checker {
+  35%,
+  65% {
+    transform: translate(18px, -14px);
+  }
+}
+
+@keyframes scene-checker-loop {
+  85.5% {
+    transform: none;
+  }
+  90.6%,
+  95% {
+    transform: translate(18px, -14px);
+  }
+}
+
+@keyframes scene-die {
+  45% {
+    transform: translateY(-16px) rotate(200deg);
+  }
+  80% {
+    transform: rotate(360deg);
+  }
+  90% {
+    transform: translateY(-2px) rotate(360deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes scene-die-loop {
+  83% {
+    transform: none;
+  }
+  90.7% {
+    transform: translateY(-16px) rotate(200deg);
+  }
+  96.6% {
+    transform: rotate(360deg);
+  }
+  98.3% {
+    transform: translateY(-2px) rotate(360deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Twice the die's period: the face changes in the air on every other roll. */
+@keyframes scene-die-face {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  46%,
+  95% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0;
+  }
+}
+
+/* A hop to the next square and back, squashing on each landing. */
+@keyframes scene-pawn {
+  12% {
+    transform: scale(1.12, 0.84);
+  }
+  30% {
+    transform: translate(7px, -12px);
+  }
+  46% {
+    transform: translate(14px, 0) scale(1.1, 0.88);
+  }
+  54% {
+    transform: translate(14px, 0);
+  }
+  70% {
+    transform: translate(7px, -10px);
+  }
+  88% {
+    transform: scale(1.08, 0.9);
+  }
+}
+
+@keyframes scene-pawn-loop {
+  78.7% {
+    transform: none;
+  }
+  81.3% {
+    transform: scale(1.12, 0.84);
+  }
+  85.1% {
+    transform: translate(7px, -12px);
+  }
+  88.5% {
+    transform: translate(14px, 0) scale(1.1, 0.88);
+  }
+  90.2% {
+    transform: translate(14px, 0);
+  }
+  93.6% {
+    transform: translate(7px, -10px);
+  }
+  97.4% {
+    transform: scale(1.08, 0.9);
+  }
+}
+
+/* The Connect 4 disc falls into its hole; the loop then fades it out. */
+@keyframes scene-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-30px);
+    animation-timing-function: ease-in;
+  }
+  60% {
+    transform: none;
+  }
+  75% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes scene-drop-loop {
+  0%,
+  70% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(-30px);
+    animation-timing-function: ease-in;
+  }
+  80% {
+    transform: none;
+  }
+  83% {
+    transform: translateY(-4px);
+  }
+  86%,
+  96% {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: none;
+  }
 }
 
 .game-grid {
@@ -791,7 +1674,6 @@ input::placeholder {
 }
 
 .game-icon {
-  position: relative;
   width: 100%;
   aspect-ratio: 16 / 10;
   border-radius: 10px;
@@ -807,18 +1689,163 @@ input::placeholder {
   object-fit: cover;
 }
 
-/* Over the picture, so the tile stays the size of the others. */
-.last-played {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.78rem;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow);
+/* A tile's preview (<slug>/preview.svg, 320 x 200), which home.js swaps in for
+   the icon. Its animations start paused and home.js plays them in a loop; each
+   piece waits --d, and a player tag stays lit for --l. The
+   classes below are the moves a preview can use; it adds its own keyframes,
+   named after its game, for anything else. */
+.game-icon .tile-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.tile-preview * {
+  animation-delay: var(--d, 0s);
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+  animation-play-state: paused;
+}
+
+/* Seat colours: the first player is coral and the second teal, as in a game
+   (see "Player colours"); four-player games add gold and violet. */
+.tile-preview .a {
+  color: var(--accent);
+}
+
+.tile-preview .b {
+  color: var(--accent-2);
+}
+
+.tile-preview .c {
+  color: var(--hit-2);
+}
+
+.tile-preview .d {
+  color: var(--gift);
+}
+
+.tile-preview .tag {
+  fill: var(--surface);
+  stroke: var(--border);
+}
+
+.tile-preview .name {
+  fill: var(--muted);
+}
+
+/* Lights a player tag while it is their turn; .stay keeps it lit. */
+.tile-preview .lit {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  animation-name: pv-lit;
+  animation-duration: var(--l, 0.5s);
+}
+
+.tile-preview .lit.stay {
+  animation-name: pv-fade;
+}
+
+/* Transforms on the moves below turn around the piece itself, not the view. */
+.tile-preview .pop,
+.tile-preview .gone,
+.tile-preview .draw {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.tile-preview .pop {
+  animation-name: pv-pop;
+  animation-timing-function: var(--ease-spring);
+}
+
+.tile-preview .fade {
+  animation-name: pv-fade;
+}
+
+.tile-preview .gone {
+  animation-name: pv-gone;
+}
+
+/* Grows a line from its start; draw it left to right and rotate its group. */
+.tile-preview .draw {
+  transform-origin: left center;
+  animation-name: pv-draw;
+}
+
+/* Moves a piece to where it is drawn from --x, --y away. */
+.tile-preview .slide {
+  animation-name: pv-slide;
+  animation-duration: 0.45s;
+}
+
+/* Drops a piece in from --y above, with a small bounce. */
+.tile-preview .fall {
+  animation-name: pv-fall;
+  animation-duration: 0.5s;
+}
+
+@keyframes pv-lit {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+}
+
+@keyframes pv-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes pv-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pv-gone {
+  to {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes pv-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes pv-slide {
+  from {
+    transform: translate(var(--x, 0), var(--y, 0));
+  }
+}
+
+@keyframes pv-fall {
+  from {
+    opacity: 0;
+    transform: translateY(var(--y));
+    animation-timing-function: ease-in;
+  }
+  10% {
+    opacity: 1;
+  }
+  65% {
+    transform: none;
+    animation-timing-function: ease-out;
+  }
+  82% {
+    transform: translateY(-4px);
+    animation-timing-function: ease-in;
+  }
 }
 
 .monogram {
@@ -966,9 +1993,13 @@ input.mono {
 /* ---------- motion ---------- */
 /* Rules for all motion on the site:
    - animate only transform and opacity;
-   - nothing loops forever except a hero scene;
+   - nothing loops forever except the home hero's scene, which pauses off
+     screen and in a hidden tab, and a tile's preview while it is hovered,
+     focused or, on a touch screen, in view;
    - everything stops under prefers-reduced-motion;
-   - no motion starts without a user action, except the room code settling.
+   - no motion starts without a user action, except the room code settling,
+     the result moment when a match ends, the hero's scene and, on a touch
+     screen, a tile's preview.
    Loading indicators (.spinner, the home page's loading tiles) are the one
    exception: they run only while something loads.
    Timings come from --dur-fast, --dur-med and --dur-slow, easing from
@@ -1001,13 +2032,87 @@ input.mono {
   }
 }
 
-/* ---------- game settings (lobby, engine/settings.js) ---------- */
-.settings-card {
+/* ---------- game settings (lobby card, engine/settings.js) ---------- */
+/* Folded to a summary (its choices as chips); it opens to the options. */
+.settings {
+  margin: 12px 0 0;
   text-align: left;
 }
 
-.settings-card h2 {
-  font-size: 1.1rem;
+.settings > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings > summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.settings-title {
+  font-weight: 700;
+}
+
+.settings-change {
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.settings-line {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.settings-line .chip {
+  padding: 3px 10px;
+  background: var(--surface-2);
+}
+
+/* Only choices that apply against robots carry a dot, a teal one. */
+.settings-line .chip:not(.robot)::before {
+  display: none;
+}
+
+.chip.robot {
+  --dot: var(--accent-2);
+}
+
+.settings-body {
+  padding: 12px 0 0;
+}
+
+.robot-only {
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+
+.room-settings {
+  margin: 16px 0 12px;
+}
+
+.room-settings-label {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.room-settings .settings-line {
+  justify-content: center;
 }
 
 .settings-group {
@@ -1076,7 +2181,7 @@ input.mono {
   outline-offset: 2px;
 }
 
-.settings-card .hint {
+.settings .hint {
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 0.85rem;

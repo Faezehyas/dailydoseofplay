@@ -33,7 +33,11 @@ const pw = await loadPlaywright();
 const wait = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 20_000 });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#c4-settings label:has(input[name="c4-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#c4-settings[open]").count())) await page.click("#c4-settings > summary");
+  await page.click(`#c4-settings label:has(input[name="c4-${name}"][value="${value}"])`);
+}
 
 test("two friends play Connect 4 on the host's settings through the invite link, then a rematch", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
@@ -77,8 +81,8 @@ test("two friends play Connect 4 on the host's settings through the invite link,
   assert.equal(await guest.locator(".c4-cell").count(), 56);
   assert.equal(await guest.locator("#c4-config").innerText(), "8 × 7, four in a row · 20 s a move · 3 min each");
   assert.equal(await host.locator("#c4-config").innerText(), await guest.locator("#c4-config").innerText());
-  assert.match(await host.locator(".c4-players").innerText(), /Ada[\s\S]*Bo/);
-  assert.match(await guest.locator(".c4-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   assert.equal(await bg(guest), "rgb(18, 21, 28)", "the phone follows its dark OS theme");
@@ -132,11 +136,11 @@ test("two friends play Connect 4 on the host's settings through the invite link,
   const col0 = await host.evaluate(() => window.ddp.match.state.line);
   assert.deepEqual(col0, [24, 32, 40, 48], "four up column 0 of an 8×7 board");
   assert.equal(await coral.locator(".c4-cell.win").count(), 4);
-  assert.equal(await coral.locator("#c4-result").innerText(), "Victory!");
-  assert.equal(await teal.locator("#c4-result").innerText(), "Defeat");
-  assert.match(await teal.locator("#c4-detail").innerText(), /Bo connected four coral discs/);
-  assert.match(await coral.locator("#c4-score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
-  assert.match(await teal.locator("#c4-score").innerText(), /You\s+0\s+Draws\s+0\s+\S+\s+1/);
+  assert.equal(await coral.locator("#result").innerText(), "You won");
+  assert.equal(await teal.locator("#result").innerText(), "You lost");
+  assert.match(await teal.locator("#result-reason").innerText(), /Bo connected four coral discs/);
+  assert.match(await coral.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
+  assert.match(await teal.locator("#score").innerText(), /You\s+0\s+Draws\s+0\s+\S+\s+1/);
   const clocks = await host.evaluate(() => window.ddp.match.state.clocks);
   assert.ok(clocks.every((ms) => ms < 180_000 && ms > 120_000), `both clocks were spent: ${clocks}`);
   await host.waitForTimeout(600); // let the last disc land
@@ -155,9 +159,9 @@ test("two friends play Connect 4 on the host's settings through the invite link,
   // Game 2: the host lines up four along the bottom row, one drop by keyboard.
   await playOut([coral, teal], [0, 3, 0, 4, 7, 5, 7, 2], { keyboardAt: 3 });
   assert.deepEqual(await host.evaluate(() => window.ddp.match.state.line), [50, 51, 52, 53]);
-  assert.equal(await host.locator("#c4-result").innerText(), "Victory!");
-  assert.equal(await guest.locator("#c4-result").innerText(), "Defeat");
-  assert.match(await guest.locator("#c4-score").innerText(), /You\s+1\s+Draws\s+0\s+Ada\s+1/);
+  assert.equal(await host.locator("#result").innerText(), "You won");
+  assert.equal(await guest.locator("#result").innerText(), "You lost");
+  assert.match(await guest.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Ada\s+1/);
   assert.ok(await noHorizontalScroll(guest));
   await guest.waitForTimeout(600);
   await guest.screenshot({ path: `${ARTIFACTS}/c4-3-rematch-mobile-dark.png`, fullPage: true });
@@ -200,7 +204,7 @@ test("Connect 4 vs the robot on a 360 px phone: a full game, a loss on the move 
   await page.screenshot({ path: `${ARTIFACTS}/c4-4-settings-mobile.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".c4-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   assert.equal(await page.locator("#c4-config").innerText(), "7 × 6, four in a row · 10 s a move · 1 min each · Hard robot");
   assert.equal(await page.evaluate(() => window.ddp.match.state.turn), 0, "the room setting says I start");
   assert.ok(await page.locator("#c4-move-left").isVisible());
@@ -242,7 +246,7 @@ test("Connect 4 vs the robot on a 360 px phone: a full game, a loss on the move 
   }
   const first = await playRobotGame();
   assert.ok(["line", "draw"].includes(first.reason), first.reason);
-  assert.match(await page.locator("#c4-result").innerText(), /^(Victory!|Defeat|Draw)$/);
+  assert.match(await page.locator("#result").innerText(), /^(You won|You lost|Draw)$/);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${ARTIFACTS}/c4-5-robot-light.png`, fullPage: true });
 
@@ -257,9 +261,9 @@ test("Connect 4 vs the robot on a 360 px phone: a full game, a loss on the move 
   await page.clock.fastForward(8000);
   await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
-  assert.equal(await page.locator("#c4-result").innerText(), "Defeat");
-  assert.equal(await page.locator("#c4-detail").innerText(), "Your clock ran out.");
-  assert.match(await page.locator("#c4-score").innerText(), /Robot\s+[1-2]/);
+  assert.equal(await page.locator("#result").innerText(), "You lost");
+  assert.equal(await page.locator("#result-reason").innerText(), "Your clock ran out.");
+  assert.match(await page.locator("#score").innerText(), /Robot\s+[1-2]/);
 
   // Back in the lobby: the biggest board still fits a phone, by touch and keyboard.
   await page.click("#leave");

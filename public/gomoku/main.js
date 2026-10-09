@@ -4,9 +4,12 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, stoneOf, isTimed, timeLeft, EMPTY, DRAW, SIZE } from "./rules.js";
 import { chooseMove } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 
 const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
@@ -14,13 +17,11 @@ const COLUMNS = "ABCDEFGHJKLMNOP"; // board coordinates skip I, as on Go boards
 const STARS = [[3, 3], [3, 11], [7, 7], [11, 3], [11, 11]];
 const COUNT_WORD = { 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine" };
 
-const settings = mountSettings(document.getElementById("gmk-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "gomoku",
   title: "Gomoku",
-  tagline: "Fifteen lines each way, five stones to win. Build two threats, block every one of theirs.",
   layout: "medium",
+  settings,
   createRobot: (session) =>
     startTurnRobot(session, {
       rules: makeRules(settings.get()),
@@ -57,13 +58,11 @@ function mountGomoku(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0], draws: 0 };
   let config = null;
   let rules = null;
   let match = null;
   let m = 0;
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let turnStart = 0;
   let forfeited = false;
@@ -78,13 +77,11 @@ function mountGomoku(session, root, shell) {
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
     const stone = el("span", { class: "pill-stone", dataset: { v: "" } });
-    const node = el("span", { class: `who ${player === me ? "me" : ""}` }, stone, el("span", { class: "name" }, player === me ? myName : oppName));
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, stone, clock };
+    return { stone, clock };
   });
-  const players = el("div", { class: "gmk-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "gmk-score", id: "gmk-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: { [me]: pills[0].stone, [opp]: pills[1].stone } });
   const status = el("p", { class: "gmk-status", id: "gmk-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "gmk-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -97,20 +94,22 @@ function mountGomoku(session, root, shell) {
   board.insertAdjacentHTML("afterbegin", gridSvg());
   const configLine = el("p", { class: "gmk-config", id: "gmk-config" });
   const note = el("p", { class: "gmk-note", id: "gmk-note" });
-  const overBox = el("div", { class: "gmk-over", id: "gmk-over", hidden: true });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "paper", highlight: (match.state.line || []).map((i) => cells[i]), board }),
+  });
 
   root.append(
     el(
       "div",
       { class: "gomoku" },
-      el("div", { class: "gmk-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "gmk-board-wrap" }, board),
       configLine,
       note,
-      overBox,
+      result.node,
     ),
   );
 
@@ -189,18 +188,13 @@ function mountGomoku(session, root, shell) {
   // ---------- render ----------
   function renderPills() {
     const st = match?.state;
+    bar.update({ turn: match?.phase === "playing" ? st.turn : -1 });
     for (const [k, player] of [me, opp].entries()) {
-      const { node, stone } = pills[k];
+      const { stone } = pills[k];
       const v = st ? stoneOf(st, player) : "";
-      node.classList.toggle("active", match?.phase === "playing" && st.turn === player);
       stone.dataset.v = v;
       stone.setAttribute("aria-label", v ? (v === "first" ? "solid stones, moves first" : "ringed stones") : "stones not decided");
     }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item("Draws", score.draws, "draws"), item(oppName, score.them, "theirs"));
   }
 
   const runWord = (st) => COUNT_WORD[st.line?.length] || "five";
@@ -230,7 +224,7 @@ function mountGomoku(session, root, shell) {
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".gomoku").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills();
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -258,46 +252,20 @@ function mountGomoku(session, root, shell) {
 
   function renderOver() {
     const phase = match?.phase;
-    if (phase !== "over" && phase !== "aborted") {
-      overBox.hidden = true;
-      return;
-    }
-    const wasHidden = overBox.hidden;
-    overBox.hidden = false;
+    if (phase !== "over" && phase !== "aborted") return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === DRAW ? "Draw" : winner === me ? "Victory!" : "Defeat";
-    let detail;
-    if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
-    else if (winner === DRAW) detail = "Every point is filled and nobody made five. Well defended, both of you.";
-    else if (st.reason === "timeout") detail = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
-    else detail = `${winner === me ? "You" : oppName} lined up ${runWord(st)} stones.`;
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : "", id: "gmk-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "gmk-detail" }, detail),
-      el(
-        "div",
-        { class: "gmk-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
-    // The big board can push the result below the fold on a phone.
-    if (wasHidden) overBox.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (winner === DRAW) reason = "Every point is filled and nobody made five. Well defended, both of you.";
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    else reason = `${winner === me ? "You" : oppName} lined up ${runWord(st)} stones.`;
+    result.show({ winner: winner === DRAW ? -1 : winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
-    rematch = { me: false, them: false };
     forfeited = false;
     claimed = false;
     note.textContent = m === 1 ? `Playing against ${oppName}. Good luck!` : `Rematch #${m - 1}. Same settings, fresh board.`;
@@ -315,8 +283,7 @@ function mountGomoku(session, root, shell) {
     match.on("events", () => (turnStart = performance.now()));
     match.on("over", ({ winner }) => {
       if (winner === DRAW) score.draws++;
-      else if (winner === me) score.me++;
-      else score.them++;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();
@@ -336,11 +303,6 @@ function mountGomoku(session, root, shell) {
 
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") begin(settings.get());
