@@ -6,6 +6,7 @@ import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, legalMoves, capturedBy, countPieces, isTimed, timeLeft, owner, isKing, isJump, isDark, EMPTY, DRAW, QUIET_LIMIT } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings, normalizeLevel } from "./settings.js";
@@ -90,7 +91,10 @@ function mountCheckers(session, root, shell) {
   const board = el("div", { class: "ck-board", id: "ck-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "ck-config", id: "ck-config" });
   const note = el("p", { class: "ck-note", id: "ck-note" });
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "wood", highlight: match.state.reason === "timeout" ? [] : [...capturedBy(match.state.moves.at(-1)), match.state.moves.at(-1).at(-1)].map((sq) => cells.get(sq)), board }),
+  });
 
   // Visual position v (row-major, from this player's side) <-> board square.
   const toSq = (v) => (flip ? 63 - v : v);

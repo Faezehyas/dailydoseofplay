@@ -9,6 +9,7 @@ import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, geometry, lineEnds, DRAW } from "./rules.js";
 import { startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -258,7 +259,10 @@ function mountGame(session, root, shell) {
   const tallyTheirs = el("span", { class: "fill theirs" });
   const tallyText = el("p", { class: "db-tally-text", id: "db-tally" });
   const tally = el("div", { class: "db-tally" }, el("div", { class: "db-tally-bar", "aria-hidden": "true" }, tallyMine, tallyTheirs), tallyText);
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "paper", highlight: match.state.reason === "timeout" ? [] : match.state.last.boxes.map((b) => board.boxes.querySelector(`[data-box="${b}"]`)), board: board.svg }),
+  });
   const configLine = el("p", { class: "db-config", id: "db-config" });
   const note = el("p", { class: "db-note", id: "db-note" });
   const cursorText = el("p", { class: "db-sr", id: "db-cursor", "aria-live": "polite" });
@@ -488,7 +492,6 @@ function mountGame(session, root, shell) {
     if (match.phase === "over" && !announced) {
       announced = true;
       const w = match.state.winner;
-      play(w === DRAW ? "draw" : w === me ? "win" : "lose");
       if (w !== DRAW) {
         const mine = [];
         match.state.boxes.forEach((owner, b) => owner === w && mine.push(b));

@@ -8,11 +8,12 @@ import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, distinctMoves, legalMoves, colorsFor, COLORS, MAX_PLAYERS, YARD, HOME, LAST_LOOP, TOKENS } from "./rules.js";
 import { chooseMove, startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
 import { play } from "./sounds.js";
-import { s, r1, U, SIZE, rotator, spotOf, pawnArt, pawnDefs, boardArt, markSvg, markPath, starPath, dieFace, yardCentre } from "./art.js";
+import { s, r1, U, SIZE, rotator, spotOf, pawnArt, pawnDefs, boardArt, markSvg, markPath, starPath, dieFace } from "./art.js";
 
 const ROBOT_PACE = { roll: 500, pick: 600, forced: 350, hurry: 90 };
 const FORCED_DELAY = 650; // before a move you have no choice about is played for you
@@ -133,7 +134,11 @@ function mountGame(session, root, shell) {
   const logList = el("ol", { class: "ld-log", id: "ld-log", "aria-label": "Recent moves" });
   const configLine = el("p", { class: "ld-config", id: "ld-config" });
   const note = el("p", { class: "ld-note", id: "ld-note" });
-  const result = resultPanel(session, { onLeave: () => shell.leave(), classes: (p) => `c-${cname(p)}`, onShow: celebrate });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    classes: (p) => `c-${cname(p)}`,
+    onShow: ({ winner, outcome }) => outcome && celebrate({ outcome, flavour: "wood", highlight: pawns[winner].map((p) => p.g), board: svg }),
+  });
   const boardWrap = el("div", { class: "ld-board-wrap" }, svg);
 
   root.append(
@@ -829,12 +834,6 @@ function mountGame(session, root, shell) {
     });
     const reason = `${w === me ? "You" : nameOf(w)} brought all four home in ${plural(st.rolls[w], "roll")}, with ${plural(st.captures[w], "capture")}.`;
     result.show({ winner: w, reason, places });
-  }
-
-  function celebrate({ winner, stopped }) {
-    if (stopped) return;
-    play(winner === me ? "win" : "lose");
-    burst(rot(yardCentre(colorOf(winner))), "big", cname(winner), gen);
   }
 
   // ---------- match lifecycle ----------

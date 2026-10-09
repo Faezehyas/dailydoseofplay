@@ -6,6 +6,7 @@ import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, markOf, isTimed, timeLeft, EMPTY, DRAW, IN_A_ROW } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -80,7 +81,10 @@ function mountTicTacToe(session, root, shell) {
   const board = el("div", { class: "ttt-board", id: "ttt-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "ttt-config", id: "ttt-config" });
   const note = el("p", { class: "ttt-note", id: "ttt-note" });
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "paper", highlight: (match.state.line || []).map((i) => cells[i]), board }),
+  });
   let cells = [];
 
   root.append(

@@ -319,7 +319,7 @@ test("Dots and Boxes vs the robot on a 360 px phone: touch, keyboard, pen stroke
   assert.match(await page.locator("#result").innerText(), /^(You won|You lost|Draw)$/);
   sounds = await heard();
   assert.ok(sounds.includes("box"), "boxes pop with a note");
-  assert.ok(sounds.includes(st.winner === 2 ? "draw" : st.winner === 0 ? "win" : "lose"));
+  assert.ok(sounds.includes(st.winner === 2 ? "draw-paper" : st.winner === 0 ? "win-paper" : "loss-paper"));
   const r = await page.locator("#result-panel").boundingBox();
   assert.ok(r.y >= 0 && r.y + r.height <= 740, `the result is on the phone's screen (${Math.round(r.y)}–${Math.round(r.y + r.height)})`);
   await page.screenshot({ path: `${ARTIFACTS}/db-6-robot-over-mobile-light.png` });

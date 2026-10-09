@@ -6,6 +6,7 @@ import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, legalPlays, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
 import { chooseMove, inContact, startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -138,7 +139,10 @@ function mountBackgammon(session, root, shell) {
   );
   const configLine = el("p", { class: "bg-config", id: "bg-config" });
   const note = el("p", { class: "bg-note", id: "bg-note" });
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ winner, outcome }) => outcome && celebrate({ outcome, flavour: "wood", highlight: match.state.reason === "off" ? [...cells.get(winner === me ? OFF : "off-top").querySelectorAll(".slab")].slice(-1) : [], board }),
+  });
 
   // Every cell of the board, keyed by your point number (BAR, OFF) or "bar-top"/"off-top" for the opponent's.
   const cells = new Map();

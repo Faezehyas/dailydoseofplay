@@ -8,6 +8,7 @@ import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, cellOf, LADDERS, CHUTES, LAST, SIZE, SPINNER, MAX_PLAYERS } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -458,7 +459,10 @@ function mountGame(session, root, shell) {
   const logList = el("ol", { class: "cl-log", id: "cl-log", "aria-label": "Recent spins" });
   const configLine = el("p", { class: "cl-config", id: "cl-config" });
   const note = el("p", { class: "cl-note", id: "cl-note" });
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ winner, outcome }) => outcome && celebrate({ outcome, flavour: "bell", highlight: [pawnOf(winner).fig], board: board.svg }),
+  });
 
   root.append(
     el(
@@ -697,10 +701,8 @@ function mountGame(session, root, shell) {
     await settle(g);
     mark(ev.to, `last-p${colorOf(p)}`);
     addLog(ev);
-    if (ev.win) {
-      burst({ ...center(LAST), y: center(LAST).y + FOOT }, "confetti", g);
-      play(p === me ? "win" : "lose");
-    } else if (ev.again) toast(p === me ? "A 6! Spin again." : `${nameOf(p)} spun a 6 and goes again`);
+    if (ev.win) burst({ ...center(LAST), y: center(LAST).y + FOOT }, "confetti", g);
+    else if (ev.again) toast(p === me ? "A 6! Spin again." : `${nameOf(p)} spun a 6 and goes again`);
     current = null;
     await wait(PACE.between * pace, g);
   }
