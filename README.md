@@ -148,3 +148,11 @@ three addresses (`SITE_ORIGINS` in `server/app.js`).
 - **No relay (TURN) server.** Wasmer Edge has no UDP, so some network pairs can't connect directly (strict NAT, some mobile carriers or VPNs). The game says so and offers a retry or the robot.
 - **Rooms live in server memory.** The app is pinned to one region to keep rooms on one set of instances. A friend's join could still in theory land on a different instance.
 - **Fair play is checked after the game, not refereed live.** A modified client could lie during play; the lie is detected at the end, and stalling or leaving is not prevented.
+
+## License
+
+The code and the original art (game icons and boards) are under the
+[MIT License](LICENSE). Two kinds of files keep their own terms:
+
+- **Recorded sounds** are third-party CC0 recordings, credited in each game's `sounds/LICENSE.txt`.
+- **Fonts** are under the SIL Open Font License, see `public/engine/fonts/LICENSE.txt`.
