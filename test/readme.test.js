@@ -24,7 +24,7 @@ test("readme: lists every ready game in games.json", () => {
 
 test("readme: relative links in README, CONTRIBUTING and docs/ point at existing files", () => {
   for (const doc of docs) {
-    const links = [...read(doc).matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]);
+    const links = [...read(doc).matchAll(/\]\(([^)\s]+)\)|(?:href|src|srcset)="([^"]+)"/g)].map((m) => m[1] ?? m[2]);
     for (const link of links) {
       if (/^[a-z]+:/i.test(link) || link.startsWith("#")) continue;
       const target = path.join(ROOT, path.dirname(doc), link.split("#")[0]);

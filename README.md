@@ -1,23 +1,48 @@
+<div align="center">
+
+<a href="https://www.dailydoseofplay.com"><img src="public/favicon.svg" width="72" alt=""></a>
+
 # Daily Dose of Play
 
-Free classic games for 2 to 4 players, in the browser. No sign-up and nothing
-to install: send a link to friends or play the robot. Once everyone is in,
-the game runs browser to browser; the server only introduces the players.
+**Game night, any time.** Free classic board games for 2 to 4 players, in the browser.
 
-**Play now:** https://www.dailydoseofplay.com
+[**Play now**](https://www.dailydoseofplay.com) ·
+[Games](#games) ·
+[Run it locally](#play-locally) ·
+[Add a game](#add-a-game-in-five-steps) ·
+[Report a bug](https://github.com/Faezehyas/dailydoseofplay/issues/new?labels=bug)
+
+[![Tests](https://github.com/Faezehyas/dailydoseofplay/actions/workflows/test.yml/badge.svg)](https://github.com/Faezehyas/dailydoseofplay/actions/workflows/test.yml)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+<a href="https://www.dailydoseofplay.com">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
+    <img src="docs/images/home-light.png" alt="The home page: a card for each game, with Play friends and Play the robot buttons" width="800">
+  </picture>
+</a>
+
+</div>
+
+No sign-up, no ads and nothing to install: send a link to friends or play the
+robot. Once everyone is in, the game runs browser to browser; the server only
+introduces the players.
 
 ## Games
 
-- [Sea Battle](https://www.dailydoseofplay.com/sea-battle/): Battleship rules, with gifts and special weapons; optional shot and game clocks.
-- [Tic Tac Toe](https://www.dailydoseofplay.com/tic-tac-toe/): 3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks.
-- [Connect 4](https://www.dailydoseofplay.com/connect-4/): drop discs and line up four, on a 7×6 board or bigger; optional clocks; an Easy, Medium or Hard robot.
-- [Gomoku](https://www.dailydoseofplay.com/gomoku/): five in a row on a 15×15 board; optional move and game clocks.
-- [Chess](https://www.dailydoseofplay.com/chess/): standard rules with castling, en passant and promotion; optional clocks; a robot with three levels.
-- [Checkers](https://www.dailydoseofplay.com/checkers/): English draughts on 8×8, with forced captures, multi-jumps and kings; optional clocks; an Easy, Medium or Hard robot.
-- [Backgammon](https://www.dailydoseofplay.com/backgammon/): race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels.
-- [Chutes and Ladders](https://www.dailydoseofplay.com/chutes-and-ladders/): the classic 100-square board with a 1–6 spinner, for 2 to 4 players; climb the ladders, slide down the chutes; house rules for the finish and for a 6.
-- [Dots and Boxes](https://www.dailydoseofplay.com/dots-and-boxes/): join the dots on a 3×3 to 6×6 board; closing a box earns another line; optional clocks; an Easy, Medium or Hard robot that plays the chains properly.
-- [Ludo](https://www.dailydoseofplay.com/ludo/): the classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send rivals back to their yard, and race four tokens home; house rules for three 6s, blocks and capture bonuses, play on for places, a move timer, and 1–3 robots at three levels.
+| | Game | Players |
+|:-:|---|:-:|
+| <a href="https://www.dailydoseofplay.com/sea-battle/"><img src="public/sea-battle/icon.svg" width="120" alt=""></a> | **[Sea Battle](https://www.dailydoseofplay.com/sea-battle/)**<br>Battleship rules, with gifts and special weapons; optional shot and game clocks. | 2 |
+| <a href="https://www.dailydoseofplay.com/tic-tac-toe/"><img src="public/tic-tac-toe/icon.svg" width="120" alt=""></a> | **[Tic Tac Toe](https://www.dailydoseofplay.com/tic-tac-toe/)**<br>3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks. | 2 |
+| <a href="https://www.dailydoseofplay.com/connect-4/"><img src="public/connect-4/icon.svg" width="120" alt=""></a> | **[Connect 4](https://www.dailydoseofplay.com/connect-4/)**<br>Drop discs and line up four, on a 7×6 board or bigger; optional clocks; an Easy, Medium or Hard robot. | 2 |
+| <a href="https://www.dailydoseofplay.com/gomoku/"><img src="public/gomoku/icon.svg" width="120" alt=""></a> | **[Gomoku](https://www.dailydoseofplay.com/gomoku/)**<br>Five in a row on a 15×15 board; optional move and game clocks. | 2 |
+| <a href="https://www.dailydoseofplay.com/chess/"><img src="public/chess/icon.svg" width="120" alt=""></a> | **[Chess](https://www.dailydoseofplay.com/chess/)**<br>Standard rules with castling, en passant and promotion; optional clocks; a robot with three levels. | 2 |
+| <a href="https://www.dailydoseofplay.com/checkers/"><img src="public/checkers/icon.svg" width="120" alt=""></a> | **[Checkers](https://www.dailydoseofplay.com/checkers/)**<br>English draughts on 8×8, with forced captures, multi-jumps and kings; optional clocks; an Easy, Medium or Hard robot. | 2 |
+| <a href="https://www.dailydoseofplay.com/backgammon/"><img src="public/backgammon/icon.svg" width="120" alt=""></a> | **[Backgammon](https://www.dailydoseofplay.com/backgammon/)**<br>Race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels. | 2 |
+| <a href="https://www.dailydoseofplay.com/chutes-and-ladders/"><img src="public/chutes-and-ladders/icon.svg" width="120" alt=""></a> | **[Chutes and Ladders](https://www.dailydoseofplay.com/chutes-and-ladders/)**<br>The classic 100-square board with a 1–6 spinner, for 2 to 4 players; climb the ladders, slide down the chutes; house rules for the finish and for a 6. | 2–4 |
+| <a href="https://www.dailydoseofplay.com/dots-and-boxes/"><img src="public/dots-and-boxes/icon.svg" width="120" alt=""></a> | **[Dots and Boxes](https://www.dailydoseofplay.com/dots-and-boxes/)**<br>Join the dots on a 3×3 to 6×6 board; closing a box earns another line; optional clocks; an Easy, Medium or Hard robot that plays the chains properly. | 2 |
+| <a href="https://www.dailydoseofplay.com/ludo/"><img src="public/ludo/icon.svg" width="120" alt=""></a> | **[Ludo](https://www.dailydoseofplay.com/ludo/)**<br>The classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send rivals back to their yard, and race four tokens home; house rules for three 6s, blocks and capture bonuses, play on for places, a move timer, and 1–3 robots at three levels. | 2–4 |
 
 More are coming; [GAMES.md](GAMES.md) has the backlog. Found a security
 problem? Report it privately, as [SECURITY.md](SECURITY.md) describes.
@@ -42,6 +67,9 @@ private), click **Play with a friend** in one, and open the invite link in
 the other. Two devices on the same Wi-Fi work too: open
 `http://<your-computer's-LAN-IP>:8080`.
 
+<details>
+<summary>Server options: allowed origins and the client address header</summary>
+
 The lobby socket (`/ws`) only accepts pages served by this server (whatever
 address you opened it at) or by the live site. To let pages from another
 origin connect, for example a preview deployment, list them in
@@ -51,6 +79,8 @@ Details in [ARCHITECTURE.md](ARCHITECTURE.md#server).
 Wrong room codes are rate limited per client address (5 a minute). The
 address is the first one in `X-Forwarded-For`, else the socket's; set
 `CLIENT_IP_HEADER` to read another header, e.g. `CLIENT_IP_HEADER=X-Real-IP npm start`.
+
+</details>
 
 ### Run with Anybuild
 
@@ -125,8 +155,12 @@ app.yaml           Wasmer Edge app config (name dailydoseofplay, owner faezeh_ya
 
 ## Credits and license
 
-- Made by [Faezeh Yass](https://github.com/Faezehyas). Chutes and Ladders, Dots and Boxes, Ludo and rooms for up to 4 players came from [M.Amin Rayej](https://github.com/maminrayej). Everyone who has helped is on the [contributors page](https://github.com/Faezehyas/dailydoseofplay/graphs/contributors).
+- Made by [Faezeh Yass](https://github.com/Faezehyas). Chutes and Ladders, Dots and Boxes, Ludo and rooms for up to 4 players came from [M.Amin Rayej](https://github.com/maminrayej).
 - The gameplay and flow follow papergames.io; names, art, text and code are original.
+
+Thanks to everyone who has helped:
+
+<a href="https://github.com/Faezehyas/dailydoseofplay/graphs/contributors"><img src="https://contrib.rocks/image?repo=Faezehyas/dailydoseofplay" alt="Contributors"></a>
 
 The code and the original art (game icons and boards) are under the
 [MIT License](LICENSE). Two kinds of files keep their own terms:
