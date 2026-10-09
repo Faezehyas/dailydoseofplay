@@ -13,6 +13,8 @@ import { localPair, MAX_MESSAGE_LENGTH } from "../public/engine/channel.js";
 import { localRoom } from "../public/engine/room.js";
 import { admitGuest, greetHost, startHub } from "../public/engine/session.js";
 import { startTurnRobot } from "../public/engine/turn-match.js";
+import { startCardRobot } from "../public/engine/card-match.js";
+import { makeRules as toyCards, chooseMove as toyMove } from "./fixtures/toy-cards.js";
 import { NAME_MAX } from "../public/engine/names.js";
 
 // "Far below": a real message may grow 16 times before it reaches the cap.
@@ -151,4 +153,18 @@ test("the engine's own handshake, with four players at the longest names, is far
   await Promise.all(joined);
   t.diagnostic(`engine handshake: ${largest.size} characters (${largest.t})`);
   assert.ok(largest.size * HEADROOM <= MAX_MESSAGE_LENGTH);
+});
+
+test("the card engine's largest message is far below the cap, with four players and a 108-card deck", { timeout: 300_000 }, async (t) => {
+  // Shuffles and share rounds grow with the deck, so CardMatch sends them in parts.
+  const rules = toyCards({ deckSize: 108, hand: 7, maxTurns: 40 });
+  const sessions = localRoom({ game: "cards", names: names(4), mode: "friend" });
+  const largest = { size: 0, t: null };
+  measure([...sessions[0].group.links.values(), ...sessions.slice(1).map((s) => s.group.link)], largest);
+  const robots = sessions.map((s) => startCardRobot(s, { rules, choose: toyMove, delay: 0 }));
+  await until(() => robots.every((r) => r.match.verdict || r.match.phase === "aborted"));
+  for (const r of robots) r.destroy();
+  assert.deepEqual(robots.map((r) => r.match.verdict?.ok), [true, true, true, true]);
+  t.diagnostic(`card engine: ${largest.size} characters (${largest.t})`);
+  assert.ok(largest.size * HEADROOM <= MAX_MESSAGE_LENGTH, `${largest.size} is too close to ${MAX_MESSAGE_LENGTH}`);
 });

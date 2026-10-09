@@ -27,14 +27,18 @@ const MIME = {
   ".woff2": "font/woff2",
   ".webmanifest": "application/manifest+json",
   ".txt": "text/plain; charset=utf-8",
+  ".wasm": "application/wasm",
 };
 
+const CSP = "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'";
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "same-origin",
-  "Content-Security-Policy":
-    "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+  "Content-Security-Policy": CSP,
 };
+// Only the card deck's worker compiles WebAssembly (see ARCHITECTURE.md).
+const DECK_WORKER = path.join("engine", "deck-worker.js");
+const DECK_WORKER_CSP = CSP.replace("default-src 'self';", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval';");
 
 export function parseRegistry(text) {
   const games = new Map();
@@ -120,6 +124,7 @@ export async function createApp({
       if (err) return notFound(req, res);
       res.writeHead(200, {
         ...SECURITY_HEADERS,
+        ...(path.relative(publicDir, file) === DECK_WORKER && { "Content-Security-Policy": DECK_WORKER_CSP }),
         "Content-Type": MIME[path.extname(file)] || "application/octet-stream",
         "Content-Length": data.length,
         "Cache-Control": "no-cache",
