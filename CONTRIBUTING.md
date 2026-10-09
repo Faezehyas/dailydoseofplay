@@ -24,6 +24,9 @@ npm install
 npm start               # http://localhost:8080 (PORT to change)
 npm test                # unit + integration tests (node --test)
 npm run test:browser    # Playwright: full friend match, robot game, failure screen
+anybuild plan .                       # Anybuild: show the detected build (see README)
+anybuild . --start                    # build and serve on PORT (default 8080)
+anybuild . --start --runner=wasmer    # the same inside Wasmer's runtime; needs the Wasmer CLI
 ```
 
 `npm run test:browser` skips itself when Playwright is missing. If it is
@@ -331,7 +334,7 @@ windows (one private).
 | `public/engine/turn-match.js` | `TurnMatch` and `startTurnRobot()` for open-information turn games |
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
-| `public/engine/shell.js` | Header, theme toggle, nickname, `el()`, `toast()` |
+| `public/engine/shell.js` | Header, footer, theme toggle, nickname, `el()`, `toast()` |
 | `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
 | `public/engine/result.js` | `resultPanel()`: the game-over panel with the result, Rematch and Leave, in every game |
 | `public/engine/celebrate.js` | `celebrate()`: the win, loss and draw moment as the result panel opens, with its chimes from `chimes.js` |

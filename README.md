@@ -62,6 +62,24 @@ Wrong room codes are rate limited per client address (5 a minute). The
 address is the first one in `X-Forwarded-For`, else the socket's; set
 `CLIENT_IP_HEADER` to read another header, e.g. `CLIENT_IP_HEADER=X-Real-IP npm start`.
 
+## Run with Anybuild
+
+[Anybuild](https://github.com/wasmerio/anybuild) finds the Node app on its
+own, runs `npm install` and starts the server. Install it with
+`curl -fsSL https://anybuild.run/install | sh`.
+
+```bash
+anybuild plan .                       # what it found: Node 24, npm, node server/server.js
+anybuild . --start                    # http://localhost:8080  (PORT=3000 anybuild . --start to change)
+anybuild . --start --runner=wasmer    # the same inside Wasmer's runtime, as in production
+```
+
+- `--start` runs the server with the Node you have installed.
+- `--runner=wasmer` needs the [Wasmer CLI](https://docs.wasmer.io/install). No sign-in is needed.
+- Anybuild writes an `Anybuild` file you can edit and a `.anybuild/` folder. Git ignores both: a committed `Anybuild` file could change how Wasmer builds the live site.
+
+Tested with Anybuild 0.33.0 and Wasmer 7.5.0.
+
 ## Tests
 
 ```bash
