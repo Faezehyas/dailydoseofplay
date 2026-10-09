@@ -1,12 +1,10 @@
 // UI shell shared by the home page and every game: header, theme and sound
-// toggles, nickname and last-game storage, toasts, tab-title alerts and tiny
-// DOM helpers.
+// toggles, nickname storage, toasts, tab-title alerts and tiny DOM helpers.
 import { soundOn, setSound } from "./sound.js";
 import { cleanName } from "./names.js";
 
 const THEME_KEY = "ddp-theme";
 const NAME_KEY = "ddp-name";
-const LAST_GAME_KEY = "ddp-last-game";
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -48,10 +46,6 @@ export function setNickname(name) {
   return clean;
 }
 export const displayName = (fallback = "Player") => getNickname() || fallback;
-
-// The slug of the last game started on this device; the home page shows it first.
-export const getLastGame = () => load(LAST_GAME_KEY);
-export const setLastGame = (slug) => store(LAST_GAME_KEY, slug);
 
 // Theme: "system" (default), "light" or "dark", applied as <html data-theme>.
 function applyTheme(theme) {
