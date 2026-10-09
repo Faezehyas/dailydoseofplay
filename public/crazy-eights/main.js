@@ -10,7 +10,7 @@ import { CardMatch } from "../engine/card-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
 import { makeRules, normalizeConfig, MAX_PLAYERS, SUIT_SIGNS, RANK_NAMES, suitOf, rankOf, points, cardName, toFollow, isEight, canDraw, canPass, playable } from "./rules.js";
 import { chooseMove, startRobot, timeoutMove } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 import { symbols, faceSvg, BACK_SVG, suitSvg } from "./art.js";
 
@@ -30,7 +30,6 @@ const BUSY = {
   auditing: ["Checking the game…", "Every key is shown and the game replayed"],
 };
 
-const settings = mountSettings(document.getElementById("ce-settings"), document.getElementById("lobby"));
 // Read at each use, so tests can switch it mid-game.
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -52,8 +51,8 @@ function robotDelay(st, me, move, face, level) {
 startGameShell({
   slug: "crazy-eights",
   title: "Crazy Eights",
-  tagline: "Match the suit or the rank, play an 8 to change the suit, and be the first with an empty hand.",
   layout: "wide",
+  settings,
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,
   robots: () => settings.get().robots,

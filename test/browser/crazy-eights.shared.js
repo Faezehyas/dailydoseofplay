@@ -1,7 +1,11 @@
 // Shared by the Crazy Eights browser tests: Playwright and the page helpers.
 export { ARTIFACTS, pw, wait, noHorizontalScroll, bg } from "./ludo.shared.js";
 
-export const pick = (page, name, value) => page.click(`#ce-settings label:has(input[name="ce-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+export async function pick(page, name, value) {
+  if (!(await page.locator("#ce-settings[open]").count())) await page.click("#ce-settings > summary");
+  await page.click(`#ce-settings label:has(input[name="ce-${name}"][value="${value}"])`);
+}
 export const state = (page) => page.evaluate(() => window.ddp.match.state);
 // The result box is in view without scrolling.
 export const resultInView = (page) =>
