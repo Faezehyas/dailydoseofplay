@@ -29,11 +29,15 @@ const MIME = {
   ".txt": "text/plain; charset=utf-8",
 };
 
+// On every response, including redirects, errors and the /ws refusal.
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "same-origin",
   "Content-Security-Policy":
-    "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+    "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+  "Strict-Transport-Security": "max-age=31536000",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 };
 
 export function parseRegistry(text) {
@@ -181,7 +185,7 @@ export async function createApp({
     else if (segments.length === 1 && games.has(segments[0])) {
       // /sea-battle -> /sea-battle/ so relative URLs resolve inside the game folder.
       const query = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-      res.writeHead(301, { Location: `/${segments[0]}/${query}` });
+      res.writeHead(301, { ...SECURITY_HEADERS, Location: `/${segments[0]}/${query}` });
       return res.end();
     }
     sendFile(req, res, file);
@@ -190,11 +194,12 @@ export async function createApp({
   const server = http.createServer((req, res) => {
     const pathname = pathOf(req.url);
     if (pathname === null) {
-      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.writeHead(400, { ...SECURITY_HEADERS, "Content-Type": "text/plain" });
       return res.end("Bad Request");
     }
     if (pathname === "/healthz") {
       res.writeHead(200, {
+        ...SECURITY_HEADERS,
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "no-store",
@@ -202,11 +207,11 @@ export async function createApp({
       return res.end(JSON.stringify({ ok: true, ...signaling.stats() }));
     }
     if (pathname === "/ws") {
-      res.writeHead(426, { "Content-Type": "text/plain" });
+      res.writeHead(426, { ...SECURITY_HEADERS, "Content-Type": "text/plain" });
       return res.end("Upgrade Required");
     }
     if (req.method !== "GET" && req.method !== "HEAD") {
-      res.writeHead(405, { Allow: "GET, HEAD" });
+      res.writeHead(405, { ...SECURITY_HEADERS, Allow: "GET, HEAD" });
       return res.end();
     }
     serveStatic(req, res, pathname);
@@ -218,7 +223,8 @@ export async function createApp({
     if (pathOf(req.url) !== "/ws") return socket.destroy();
     if (!wsOriginAllowed(req.headers, extraOrigins)) {
       socket.once("finish", () => socket.destroy());
-      return socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+      const headers = Object.entries(SECURITY_HEADERS).map(([name, value]) => `${name}: ${value}\r\n`).join("");
+      return socket.end(`HTTP/1.1 403 Forbidden\r\n${headers}Connection: close\r\nContent-Length: 0\r\n\r\n`);
     }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });

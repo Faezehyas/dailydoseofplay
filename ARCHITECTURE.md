@@ -39,8 +39,22 @@ Dotfiles, path traversal, directory paths and `*.test.js` return 404. A bare
 `/<slug>` gets a 301 to `/<slug>/` (the query string is kept) so the game's
 relative imports resolve.
 
-Every page response carries `Content-Security-Policy`, `X-Content-Type-Options`
-and `Referrer-Policy` headers. Scripts can only load from the site itself.
+**Security headers.** Every response carries the same set (`SECURITY_HEADERS`
+in `server/app.js`): pages, files, `304`, the `301` redirect, `400`, `404`,
+`405`, `426`, `/healthz` (which also keeps `Access-Control-Allow-Origin: *`)
+and the `403` that refuses a `/ws` handshake.
+
+| Header | Value | Why |
+|---|---|---|
+| `Content-Security-Policy` | `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'` | Scripts, fetches and sockets stay on the site itself. `connect-src 'self'` covers our own `ws:`/`wss:` in current browsers (CSP Level 3: Chrome 71, Firefox since 2018, Safari 16), so injected code can't open a socket to another host. WebRTC's STUN servers are not under `connect-src`. |
+| `Strict-Transport-Security` | `max-age=31536000` | Once a browser has seen the site over HTTPS, it never uses plain HTTP for it for a year. No `includeSubDomains` and no `preload`, so it can be dropped later. Browsers ignore it over plain HTTP, so `localhost` and LAN play are unaffected. |
+| `Cross-Origin-Opener-Policy` | `same-origin` | A page on another site that opens ours gets no handle to our window. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | No game needs them. The invite link's Share (`navigator.share`) and Copy (`navigator.clipboard`) stay allowed. |
+| `X-Content-Type-Options` | `nosniff` | Files are only run as the type we send. |
+| `Referrer-Policy` | `same-origin` | Invite links with their keys never leak to other sites. |
+
+`test/browser/security-headers.test.js` checks that, under these headers, the
+lobby still reaches `/ws` and the invite link still copies and shares.
 
 **Caching.** Static files carry `Cache-Control: no-cache` and a strong `ETag`,
 a 64-bit FNV-1a hash of the file's bytes (`etagOf` in `server/app.js`, pure JS,
