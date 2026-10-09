@@ -1,7 +1,7 @@
 # Architecture
 
 Daily Dose of Play is a free, no-login site of browser games for two or more
-players (Chutes and Ladders and Ludo seat up to four). One small Node server
+players (Chutes and Ladders, Ludo and Crazy Eights seat up to four). One small Node server
 on Wasmer Edge serves the pages and introduces players to each other. The games
 themselves run browser to browser over WebRTC DataChannels: with more than
 two players, every guest connects to the room creator's browser, which
@@ -415,7 +415,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `chimes.js` | The result chimes: the site's jingle for each outcome in each game's timbre, through `sound.js` (see **Result moment**). No DOM. |
 | `confirm.js` | `confirmDialog({ title, text, yes, no })`: a yes-or-no question in a modal `<dialog>` styled like the site. Focus moves to Cancel, Esc or Cancel says no, and focus returns to where it was (Leave). Resolves to `true` for yes. |
 | `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a group marked `robot` is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary. `get()` is the current config, which the game sends to its guests (`setup`). |
-| `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
+| `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon, Ludo and Crazy Eights, see each game's `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
 | `loudness.js` | `loudness(samples, sampleRate)`: how loud a sound is to the ear, in LUFS (K-weighted, loudest 100 ms). No DOM; runs in node too. |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
@@ -564,7 +564,8 @@ Chess 112 (a shared-random `draw`); the engine's handshake peaks at 127
 (`$start` with four 20-character names). A card game's shuffles and shares
 grow with the deck, so `CardMatch` sends them in parts (see **Card games**);
 its largest message, with four players and a 108-card deck, is 3063 (a part
-of a `shuffle`).
+of a `shuffle`); Crazy Eights' (four players, 52 cards) is about the same,
+3063 to 3065 as reshuffles add digits to the round number.
 
 **Why a pre-negotiated channel.** With the default in-band handshake, the
 guest's channel opens when the host's open request arrives, and Chrome
@@ -648,7 +649,7 @@ the lobby cards:
 | Lobby, invite, waiting room | 520 px | all |
 | Game, `layout: "narrow"` | 520 px | Tic Tac Toe, Connect 4, Chess, Checkers |
 | Game, `layout: "medium"` | 640 px | Gomoku, Backgammon |
-| Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo |
+| Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo, Crazy Eights |
 
 Below that width the column is the page's width less its 16 px gutters. A
 game's own top-level box has no `max-width`, so it fills `#game`. The default
@@ -798,7 +799,8 @@ that started the room, and has no dealer. `engine/card-match.js` does it with
 mental poker: every player holds a share of the deck's key, and a card can
 only be read with every share. With three or more players, a modified host
 can still read a hand (see **A modified host** below). The rules contract is
-at the top of that file; Crazy Eights is the first game meant to use it.
+at the top of that file; Crazy Eights is the first game to use it (see
+**Crazy Eights in depth**).
 
 **How a match runs.** Every message carries `m`, as in `TurnMatch`.
 
@@ -828,7 +830,11 @@ at the top of that file; Crazy Eights is the first game meant to use it.
    (`audit {key}`). Each browser checks every key against the one that player
    used, reads every card it couldn't see, and replays the game from the deal
    with every face known. The result is `match.verdict`: `{ ok: true }`, or
-   what went wrong and, when it was a move, whose.
+   what went wrong and, when it was a move, whose. Once the audit has
+   passed, `match.face()` returns every card, so a game can show the hands
+   left at the end (Crazy Eights counts their penalty points). During play
+   it returns only the open cards and your own, as before, and after a
+   failed audit nothing more.
 
 | Cheat | Caught |
 |---|---|
@@ -1576,6 +1582,153 @@ soft "no" for a passed turn, ticks for the timer's last seconds and the
 turn chime; the end of a match plays the engine's result chime (see
 **Result moment**). The die and a hop are both `action` sounds, so rolling
 and moving sound about as loud (see **Sound levels**).
+
+## Crazy Eights in depth
+
+Crazy Eights is the first game on `CardMatch` (see **Card games**), for two
+to four players with a 52-card deck. It copies Ludo's seating (four seats, a
+robot count, `setup {config}` accepted only from seat 0, a move timer that
+never loses) and Backgammon's habit of making forced moves for you.
+
+**Cards.** A face is 0–51: `suit = Math.floor(face / 13)` (spades, hearts,
+diamonds, clubs) and `rank = face % 13` (ace, 2 … 10, jack, queen, king).
+`newState` deals one card at a time round the table, starting with the first
+player: 7 each for two players, 5 for three or four. The rest is the stock,
+top first. `settle()` turns the starter: it opens the stock's top card into
+the discard pile, and the next `settle()`, when the face has arrived, reads
+it. An 8 goes to the bottom of the stock (face up, since everyone saw it) and
+the next card is turned, as often as it takes.
+
+**A turn.** A move is `{ play: slot }`, `{ play: slot, suit }` for an 8,
+`{ draw: true }` or `{ pass: true }`. `reveals()` names the played card, so
+the move carries its holder's share and everyone reads it before
+`applyMove()` checks it against the suit to follow (`state.suit`, the top
+card's or the one an 8 named) and the top card's rank. Drawing keeps the
+turn: with **Draw until you can play** (the classic rule) you draw again and
+again; with **Draw one, then pass**, one card, after which you play or pass.
+When the stock runs out, the discard pile under its top card goes through
+`deck.shuffle()` into a new stock, so every player shuffles it again with a
+proof. With nothing left to draw you pass; a full round of passes with
+nothing drawn ends a blocked game, won by the fewest cards (a tie goes to
+whoever is first in turn order from the player on turn). A game can also
+go round in circles: with action cards, two players with nothing else that
+plays can be forced to trade the last two queens for ever while the others
+are skipped. So after 1200 turns (draws within a turn don't count) the game
+ends the same way, with "the game went on too long" rather than "nobody could
+move". The longest honest games between four Hard robots take about 800
+turns; about one in 4000 with action cards loops until the limit.
+
+**Draw only when you can't play.** On by default. Nobody can see your hand,
+so the rule throws only when every face is known: in the audit. During play
+`deck.face()` is null for the cards in your hand, so the state never depends
+on them, and a player who draws (or passes instead of drawing from empty
+piles) while holding a card that plays gets a failed verdict naming them.
+Your own browser enforces it for you, so it can only be broken on purpose.
+With the setting off, you may draw any time. The pass after the one draw of
+**Draw one** is always allowed: you may keep a card that plays.
+
+**Action cards** (off by default). A 2 deals the next player two cards from
+the stock (reshuffling if need be) and they miss their turn; 2s don't stack.
+A queen skips the next player. An ace reverses the direction; with two
+players it gives you another turn, as a reverse can't otherwise change
+anything. A starter that is an action card does nothing.
+
+**Ranking.** The first player out wins and scores a point on the board,
+which carries across rematches. The others are ranked by penalty points left
+in their hands (8s 50, court cards 10, aces 1, others their number), and
+by cards left as long as the hands are hidden. Penalty points need every
+face, so they are counted from `match.face()` once the audit has passed (the
+one engine change this game needed, see **Card games**); the state doesn't
+depend on them. A blocked game's winner is decided by card counts, which
+everyone can see.
+
+**Robot** (`robot.js`). A robot only uses the public state and its seat's
+`face()`, which is null for other hands; `robot.test.js` swaps the faces in
+another hand and checks the robot's moves don't change.
+
+| Level | Plays | Names |
+|---|---|---|
+| Easy | a random card that plays, 8s included | a random suit it holds |
+| Medium | the current suit before a rank match, 8s only when nothing else plays | the suit it holds most of |
+| Hard | scores each card: how many of the new suit it keeps, how few of that suit are left unseen (it counts the pile and every open card), the suit the next player last drew or passed on (with the strict rule they probably don't hold it), high penalty cards first, and, with action cards, a 2, queen or ace at whoever is closest to going out | the suit that scores best the same way |
+
+Any level breaks a cycle of 8s: once a whole round has been nothing but 8s
+(everyone short of the suits being named, and the stock maybe only 8s), an 8
+names the suit the next player most likely holds rather than one they lack.
+Without that, about one four-player game in a hundred between Hard robots
+went on to the move limit.
+
+Crazy Eights is mostly the deal: over 1000 two-player games Hard beats Easy
+about 60% of the time (`robot.test.js` checks over 55%), and among three
+Easy robots it wins about 30% (25% would be even). A choice takes under 1 ms.
+`startRobot()` is `startCardRobot()` with a pause asked for each move, as in
+Ludo: robots wait while your screen replays, then think like a person,
+0.4 s for a forced draw, 0.6 to 1.8 s for a real choice, and half a second
+more to name a suit after an 8. In a hidden tab they hardly wait; with
+reduced motion they wait less. `globalThis.ddpRobotPace` scales every pause,
+so a test can run a whole robot game in about the time the deck's
+cryptography takes.
+
+**Your turn.** The cards that play glow and rise; the rest dim. When nothing
+plays, the draw (or pass) is made for you after 0.7 s. An 8 opens a small
+suit picker over the table, suggesting the suit you hold most of; the arrow
+keys and Enter pick, Escape cancels. On a keyboard the hand is one tab stop
+(arrow keys, Home and End move, Enter plays); D draws and P passes. The move
+timer (15, 30 or 60 s, off by default) times only your own browser, which is
+the only one that knows your hand, so it plays the first card that plays (an
+8 naming your longest suit), or draws or passes.
+
+**Table.** The felt sits in a wooden rim. Opponents sit round it in turn
+order, the next player on your left, with a fan of card backs and a count;
+on a phone (or a narrow table, by container query) they share the top row.
+The stock and the discard pile are in the middle, with a badge for the suit
+to follow that glows when an 8 named it, and the direction of play when an
+ace can turn it. Your hand is fanned at the bottom and sorted by suit; a
+hand too big for the row overlaps more, then scrolls inside its own row.
+Each player keeps one colour by seat everywhere it shows (coral, teal,
+violet, amber: pills, seats, score, log, standings).
+
+**Card art** (`art.js`). Inline SVG drawn in code: suit pips, large corner
+indices, the classic pip layouts, aces in a dotted ring, and original court
+figures (a jack in a feathered cap with a leaf staff, a queen with a tiara
+and a flower, a bearded king with a crown and sceptre) drawn once as the
+upper half and turned round for the lower, like a real double-headed card.
+The back is a coral lattice with an eight-pointed star. Each shape is one
+`<symbol>`, so a card is a few `<use>`s; the shapes inside carry inline
+styles, because a `<use>` clone doesn't match the page's class selectors.
+Faces stay paper-white in dark mode. **Four colours** (per device) draws
+diamonds blue and clubs green; the suits differ by shape either way.
+
+**Motion.** The match state never waits for the screen. While the deck is
+shuffled, half-decks riffle over the stock and the table says what the
+browsers are doing (only after half a second, so quick deals don't flicker).
+The deal flies card by card to each seat, and your cards turn face up once
+their shares have arrived; the starter flips onto the pile; a played card
+flies from its seat to the pile, turning over when it comes from an
+opponent; a drawn card flies from the stock to the drawer, face down for
+everyone else; an 8 sends its named suit bursting from the pile; a reshuffle
+gathers the pile into the stock; the last card gets a "Last card!" call, and
+the win confetti. Every event is queued and played in order, faster when
+turns pile up, and at once with `prefers-reduced-motion` (read at each use)
+or a hidden tab. Motion uses the Web Animations API on transform and
+opacity, timed from the `--dur-*` and `--ease-*` tokens. Animations belong
+to a match generation, so a rematch drops the old queue and its count.
+
+**Sound** (`sounds.js`). The card handling is recorded, from Kenney's CC0
+"Casino Audio" (`crazy-eights/sounds/LICENSE.txt`): a riffle while the deck
+is shuffled, a soft flick per card dealt, a snap for a card played, a slide
+for a card drawn, and a fan of cards for a reshuffle. The rest is
+synthesized: a rising arpeggio and sparkle for an 8 (ending on a note that
+depends on the suit named), knocks for a 2, a whoosh for a skip, a swoop for
+a reverse, a bell call for the last card, the turn chime, a soft pass, the
+timer's ticks, and tunes for a win and a loss.
+
+**Leaving.** Any player leaving ends the game for everyone, since every card
+needs every player's key. The engine's notice gets a line saying whether
+the game was checked: verified before they left, left during the audit so it
+couldn't be verified, or stopped before the end. With three or more players
+it also says the game is over for everyone and lists each player's cards
+left.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
