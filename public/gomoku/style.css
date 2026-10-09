@@ -316,38 +316,3 @@
 .gmk-board.done.lined .gmk-cell:not(.win)::after {
   opacity: 0.45;
 }
-
-/* ---------- game over ---------- */
-.gmk-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-.gmk-over h2 {
-  font-size: 1.6rem;
-}
-
-.gmk-over h2.win {
-  color: var(--accent-text);
-}
-
-.gmk-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.gmk-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.gmk-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}

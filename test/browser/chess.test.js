@@ -163,9 +163,9 @@ test("two friends play Chess on the host's settings through the invite link, the
   await host.waitForTimeout(400); // the last piece lands, then knocks
   assert.deepEqual(await host.evaluate(() => [window.knocks, window.clacks]), [4, 0], "every move lands with a knock");
   assert.equal(await knocks(guest), 4);
-  assert.equal(await guest.locator("#chess-result").innerText(), "Victory!");
-  assert.equal(await host.locator("#chess-result").innerText(), "Defeat");
-  assert.equal(await host.locator("#chess-detail").innerText(), "Bo checkmated you with Qh4#.");
+  assert.equal(await guest.locator("#result").innerText(), "You won");
+  assert.equal(await host.locator("#result").innerText(), "You lost");
+  assert.equal(await host.locator("#result-reason").innerText(), "Bo checkmated you with Qh4#.");
   assert.equal(await host.locator(".sq.check").count(), 1, "the mated king is marked");
   assert.match(await host.locator("#score").innerText(), /You\s+0\s+Draws\s+0\s+Bo\s+1/);
   assert.match(await guest.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
@@ -220,9 +220,9 @@ test("two friends play Chess on the host's settings through the invite link, the
   assert.equal(await moveCount(guest), 9, "one tap does not resign");
   await guest.click("#resign");
   await wait(host, () => window.ddp.match.phase === "over");
-  assert.equal(await host.locator("#chess-result").innerText(), "Victory!");
-  assert.equal(await host.locator("#chess-detail").innerText(), "Bo resigned.");
-  assert.equal(await guest.locator("#chess-detail").innerText(), "You resigned.");
+  assert.equal(await host.locator("#result").innerText(), "You won");
+  assert.equal(await host.locator("#result-reason").innerText(), "Bo resigned.");
+  assert.equal(await guest.locator("#result-reason").innerText(), "You resigned.");
   assert.match(await host.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
   assert.match(await host.locator("#chess-moves").innerText(), /1\.\s*e4\s*d5[\s\S]*5\.\s*bxa8=N/);
   assert.ok(await noHorizontalScroll(guest));
@@ -309,7 +309,7 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   assert.ok(Math.min(...replies) >= 250, `the robot never answers instantly: ${replies}`);
   const average = replies.reduce((a, b) => a + b, 0) / replies.length;
   assert.ok(average >= 700, `the robot takes its time: ${Math.round(average)} ms on average`);
-  assert.match(await page.locator("#chess-result").innerText(), /^(Victory!|Defeat|Draw)$/);
+  assert.match(await page.locator("#result").innerText(), /^(You won|You lost|Draw)$/);
   assert.ok(await noHorizontalScroll(page));
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${ARTIFACTS}/chess-6-robot-light.png`, fullPage: true });
@@ -325,8 +325,8 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   await page.clock.fastForward(28_000);
   await wait(page, () => window.ddp.match.phase === "over");
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
-  assert.equal(await page.locator("#chess-result").innerText(), "Defeat");
-  assert.equal(await page.locator("#chess-detail").innerText(), "Your clock ran out.");
+  assert.equal(await page.locator("#result").innerText(), "You lost");
+  assert.equal(await page.locator("#result-reason").innerText(), "Your clock ran out.");
   assert.match(await page.locator("#score").innerText(), /Robot\s+[1-2]/);
   await page.screenshot({ path: `${ARTIFACTS}/chess-8-clock-loss-dark.png`, fullPage: true });
   await page.click("#leave");

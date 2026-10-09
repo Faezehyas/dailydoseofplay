@@ -198,41 +198,6 @@
   font-size: 0.85rem;
 }
 
-/* ---------- game over ---------- */
-.bg-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-.bg-over h2 {
-  font-size: 1.6rem;
-}
-
-.bg-over h2.win {
-  color: var(--accent-text);
-}
-
-.bg-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.bg-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.bg-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 /* ---------- board ---------- */
 .bg-board-wrap {
   display: grid;

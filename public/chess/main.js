@@ -5,6 +5,7 @@ import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
 import {
   makeRules,
   normalizeConfig,
@@ -88,7 +89,6 @@ function mountChess(session, root, shell) {
   let rules = null;
   let match = null;
   let m = 0;
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let turnStart = 0;
   let forfeited = false;
@@ -128,7 +128,7 @@ function mountChess(session, root, shell) {
   const movesList = el("ol", { class: "chess-moves", id: "chess-moves", "aria-label": "Moves" });
   const configLine = el("p", { class: "chess-config", id: "chess-config" });
   const note = el("p", { class: "chess-note", id: "chess-note" });
-  const overBox = el("div", { class: "chess-over", id: "chess-over", hidden: true });
+  const result = resultPanel(session, { onLeave: () => shell.leave() });
   let squares = []; // by square index
   let flipped = false;
 
@@ -143,7 +143,7 @@ function mountChess(session, root, shell) {
       el("div", { class: "chess-board-wrap" }, board, promoBox),
       pills[0].taken,
       actions,
-      overBox,
+      result.node,
       movesList,
       configLine,
       note,
@@ -585,46 +585,23 @@ function mountChess(session, root, shell) {
 
   function renderOver() {
     const phase = match?.phase;
-    if (phase !== "over" && phase !== "aborted") {
-      overBox.hidden = true;
-      return;
-    }
+    if (phase !== "over" && phase !== "aborted") return result.hide();
     promoFor = null;
     promoBox.hidden = true;
-    overBox.hidden = false;
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === DRAW ? "Draw" : winner === me ? "Victory!" : "Defeat";
-    let detail;
-    if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
-    else if (winner === DRAW) detail = { stalemate: "Stalemate: no legal move, but no check either.", repetition: "The same position came up three times.", fifty: "Fifty moves each without a capture or a pawn move.", material: "Neither side has enough pieces left to checkmate." }[st.reason];
-    else if (st.reason === "timeout") detail = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
-    else if (st.reason === "resign") detail = winner === me ? `${oppName} resigned.` : "You resigned.";
-    else detail = winner === me ? `Checkmate with ${st.moves.at(-1).san}.` : `${oppName} checkmated you with ${st.moves.at(-1).san}.`;
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : "", id: "chess-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "chess-detail" }, detail),
-      el(
-        "div",
-        { class: "chess-over-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (winner === DRAW) reason = { stalemate: "Stalemate: no legal move, but no check either.", repetition: "The same position came up three times.", fifty: "Fifty moves each without a capture or a pawn move.", material: "Neither side has enough pieces left to checkmate." }[st.reason];
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    else if (st.reason === "resign") reason = winner === me ? `${oppName} resigned.` : "You resigned.";
+    else reason = winner === me ? `Checkmate with ${st.moves.at(-1).san}.` : `${oppName} checkmated you with ${st.moves.at(-1).san}.`;
+    result.show({ winner: winner === DRAW ? -1 : winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
-    rematch = { me: false, them: false };
     forfeited = false;
     claimed = false;
     selected = -1;
@@ -678,11 +655,6 @@ function mountChess(session, root, shell) {
 
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") begin(settings.get());

@@ -435,55 +435,10 @@
   color: var(--theirs-text);
 }
 
-/* ---------- game over ---------- */
-.db-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-  animation: db-in 0.3s ease-out;
-}
-
-.db-over h2 {
-  font-size: 1.6rem;
-}
-
-.db-over h2.win {
-  color: var(--accent-text);
-}
-
-.db-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.db-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.db-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-@keyframes db-in {
-  from { opacity: 0; transform: translateY(8px); }
-}
-
-/* Phones: a tighter column, so the result fits under the board. */
+/* Phones: a tighter column. */
 @media (max-width: 859px) {
   .dots-boxes {
     gap: 8px;
-  }
-
-  /* The result says the same, and has to fit on screen. */
-  .dots-boxes[data-phase="over"] .db-tally {
-    display: none;
   }
 
   .dots-boxes .pb-score dd {
@@ -493,25 +448,11 @@
   .db-tally {
     padding: 8px 10px;
   }
-
-  .db-over {
-    padding: 12px;
-  }
-
-  .db-over h2 {
-    font-size: 1.4rem;
-    margin-bottom: 0.25em;
-  }
-
-  .db-over .detail {
-    margin-bottom: 10px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .db-board .line.fresh .ink,
-  .player-bar .count.bump,
-  .db-over {
+  .player-bar .count.bump {
     animation: none;
   }
 

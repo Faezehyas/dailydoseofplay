@@ -65,10 +65,10 @@ test("four friends fill a Chutes and Ladders room and play a full game, then a r
   }
   const won = await playOut();
   const winnerPage = pages[won.winner];
-  await winnerPage.locator("#cl-result").filter({ hasText: "You win!" }).waitFor();
+  await winnerPage.locator("#result").filter({ hasText: "You won" }).waitFor();
   for (const p of pages.filter((p) => p !== winnerPage)) {
-    await p.locator("#cl-detail").waitFor();
-    assert.match(await p.locator("#cl-detail").innerText(), /reached 100 in \d+ spins?[\s\S]*Behind: .* and .*/);
+    await p.locator("#result-reason").waitFor();
+    assert.match(await p.locator("#result-reason").innerText(), /reached 100 in \d+ spins?[\s\S]*Behind: .* and .*/);
   }
   await host.screenshot({ path: `${ARTIFACTS}/cl-8-four-over.png`, fullPage: true });
 

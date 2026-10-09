@@ -7,6 +7,7 @@ import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, cellOf, LADDERS, CHUTES, LAST, SIZE, SPINNER, MAX_PLAYERS } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -430,7 +431,6 @@ function mountGame(session, root, shell) {
   let match = null;
   let m = 0;
   let gen = 0; // bumps on every new match, so old animations stop
-  let rematch = { me: false, them: false, seats: [] };
   let destroyed = false;
   let shown = Array(count).fill(0); // where each pawn is drawn, by seat
   let queue = Promise.resolve();
@@ -458,7 +458,7 @@ function mountGame(session, root, shell) {
   const logList = el("ol", { class: "cl-log", id: "cl-log", "aria-label": "Recent spins" });
   const configLine = el("p", { class: "cl-config", id: "cl-config" });
   const note = el("p", { class: "cl-note", id: "cl-note" });
-  const overBox = el("div", { class: "cl-over", id: "cl-over", hidden: true });
+  const result = resultPanel(session, { onLeave: () => shell.leave() });
 
   root.append(
     el(
@@ -470,10 +470,11 @@ function mountGame(session, root, shell) {
         "div",
         { class: "cl-main" },
         el("div", { class: "cl-board-wrap" }, board.svg),
-        el("div", { class: "cl-side" }, overBox, el("div", { class: "cl-spin-panel" }, dial, spinBtn), logList),
+        el("div", { class: "cl-side" }, el("div", { class: "cl-spin-panel" }, dial, spinBtn), logList),
       ),
       configLine,
       note,
+      result.node,
     ),
   );
   // Pawns are coloured by seat: p0 coral, p1 teal, p2 violet, p3 amber.
@@ -812,58 +813,26 @@ function mountGame(session, root, shell) {
   function renderOver() {
     const phase = match?.phase;
     // Let the winning pawn finish its trip first.
-    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && pending)) {
-      overBox.hidden = true;
-      if (overBox.firstChild) overBox.replaceChildren();
-      return;
-    }
-    if (overBox.hidden) {
-      overBox.hidden = false;
-      requestAnimationFrame(() => overBox.scrollIntoView?.({ block: "nearest", behavior: still() ? "auto" : "smooth" }));
-    }
+    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && pending)) return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    const title = phase === "aborted" ? "Match stopped" : winner === me ? "You win!" : `${nameOf(winner)} wins`;
-    let detail;
-    if (phase === "aborted") detail = match.abortReason || "The match was stopped.";
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
     else {
       const w = winner;
       const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-      detail = `${nameOf(w)} reached 100 in ${plural(st.spins[w], "spin")}, with ${plural(st.climbs[w], "ladder")} and ${plural(st.slides[w], "chute")} on the way.`;
+      reason = `${nameOf(w)} reached 100 in ${plural(st.spins[w], "spin")}, with ${plural(st.climbs[w], "ladder")} and ${plural(st.slides[w], "chute")} on the way.`;
       const rest = seats.filter((p) => p !== w);
-      if (duel) detail += ` ${nameOf(rest[0])} ${rest[0] === me ? "were" : "was"} on square ${st.pos[rest[0]] || "0"}.`;
-      else detail += ` Behind: ${listOf(rest.map((p) => `${p === me ? "you" : nameOf(p)} on square ${st.pos[p] || "0"}`))}.`;
+      if (duel) reason += ` ${nameOf(rest[0])} ${rest[0] === me ? "were" : "was"} on square ${st.pos[rest[0]] || "0"}.`;
+      else reason += ` Behind: ${listOf(rest.map((p) => `${p === me ? "you" : nameOf(p)} on square ${st.pos[p] || "0"}`))}.`;
     }
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${listOf(seats.filter((p) => !rematch.seats?.includes(p)).map(nameOf))}…`;
-    else if (rematch.them) rematchText = wantsRematch();
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : "", id: "cl-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "cl-detail" }, detail),
-      el(
-        "div",
-        { class: "cl-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
-  }
-
-  function wantsRematch() {
-    const voters = (rematch.seats || []).filter((p) => p !== me);
-    return `${listOf(voters.map(nameOf))} ${voters.length === 1 ? "wants" : "want"} a rematch!`;
+    result.show({ winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- match lifecycle ----------
   function newMatch() {
     m += 1;
     gen += 1;
-    rematch = { me: false, them: false, seats: [] };
     clearTimeout(autoTimer);
     spinner.stop();
     shown = Array(count).fill(0);
@@ -917,11 +886,6 @@ function mountGame(session, root, shell) {
   document.addEventListener("visibilitychange", onVisible);
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(wantsRematch().replace("!", ""));
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   placePawns();

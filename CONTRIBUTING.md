@@ -117,6 +117,7 @@ import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
 import { rules } from "./rules.js";
 import { chooseMove } from "./robot.js";
 
@@ -129,10 +130,10 @@ startGameShell({
     const router = matchRouter(session);
     const score = { wins: [0, 0], draws: 0 }; // leave out draws if the game has none
     const bar = playerBar(session, { onLeave: () => shell.leave() });
-    root.append(bar.node);
+    const result = resultPanel(session, { onLeave: () => shell.leave() });
+    root.append(bar.node, result.node);
     let match;
     let m = 0;
-    let rematch = { me: false, them: false };
     function newMatch() {
       match = new TurnMatch({ send: (msg) => session.send(msg), me: session.index, rules, m: ++m });
       window.ddp.match = match; // browser tests read this
@@ -146,12 +147,11 @@ startGameShell({
       // match.state is null until the coin toss ends (match.phase === "playing").
       bar.update({ turn: match.phase === "playing" ? match.state.turn : -1, score });
       // Draw match.state; on input call match.play(move) when match.canMove().
-      // On "over"/"aborted" show the result, Rematch and Leave.
+      if (match.phase === "over") result.show({ winner: match.state.winner === 2 ? -1 : match.state.winner, reason: "…" });
+      else if (match.phase === "aborted") result.show({ stopped: true, reason: match.abortReason });
+      else result.hide();
     }
-    const offs = [
-      session.on("rematch", (v) => { rematch = v; render(); }),
-      session.on("rematch-start", () => { rematch = { me: false, them: false }; newMatch(); }),
-    ];
+    const offs = [session.on("rematch-start", newMatch)];
     newMatch();
     return { destroy: () => offs.forEach((off) => off()) };
   },
@@ -171,7 +171,7 @@ The view must provide:
 
 - The player bar from `engine/players.js` (see **Player bar** in `ARCHITECTURE.md`), first in the view: names, whose turn it is, the score and **Leave**. Don't build your own. Pass `badges` (a node per seat: a mark, disc or colour) and `notes` (a short line per seat, such as pips) to `update()` if the game has them, and `classes` to `playerBar()` if seats have colours of their own.
 - A clear status line.
-- On game over: a result banner, a **Rematch** button (`id="rematch"`, calling `session.requestRematch()`), "Waiting for …" / "… wants a rematch!" text (`id="rematch-status"`), and Leave.
+- On game over, the result panel from `engine/result.js` (see **Result panel** in `ARCHITECTURE.md`): call `show({ winner, stopped, reason, places, extra })` when the match ends and `hide()` while it is on. Don't build your own result box or Rematch button: the panel shows who won, a reason line, **Rematch** with everyone's votes, and Leave. Pass `places` (`[{ seat, note }]` in finishing order) if the game plays on for places, `extra` for a node of your own (Sea Battle's fair-play verdict), and `onShow` to `resultPanel()` for a result moment of your own, such as a fanfare.
 - A draw state if the game has one.
 
 **Width.** Pick the narrowest `layout` the game fits: `"narrow"` (520 px,
@@ -298,6 +298,7 @@ windows (one private).
 - [ ] All randomness comes from `SharedRandom`, through `TurnMatch` or a custom match
 - [ ] `layout` passed to `startGameShell()`, and the view's top-level box has no `max-width`
 - [ ] Names, turn, score and Leave come from `playerBar()`, not a bar of the game's own
+- [ ] The result, Rematch and Leave at game over come from `resultPanel()`, not a box of the game's own
 - [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
 - [ ] No fonts or timings of its own: timers carry `mono`, transitions use the `--dur-*` and `--ease-*` tokens
@@ -324,6 +325,7 @@ windows (one private).
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
 | `public/engine/shell.js` | Header, theme toggle, nickname, `el()`, `toast()` |
 | `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
+| `public/engine/result.js` | `resultPanel()`: the game-over panel with the result, Rematch and Leave, in every game |
 | `public/engine/theme.css` | Design tokens (light and dark), fonts, motion and shared components |
 | `public/sea-battle/` | The reference game, with hidden information and a custom protocol |
 | `public/games.json` | Game registry, read by the home page and the server |

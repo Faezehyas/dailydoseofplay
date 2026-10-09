@@ -187,16 +187,17 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   const { st: won, extra } = await finish();
   assert.ok(extra > 0, "someone closed a box and went again");
   const [winner, loser] = won.winner === 0 ? [host, guest] : [guest, host];
-  await winner.locator("#db-result").filter({ hasText: "You win!" }).waitFor();
-  assert.match(await loser.locator("#db-result").innerText(), /wins$/);
-  assert.match(await loser.locator("#db-detail").innerText(), /took \d of 9 boxes/);
+  await winner.locator("#result").filter({ hasText: "You won" }).waitFor();
+  await loser.locator("#result").waitFor();
+  assert.equal(await loser.locator("#result").innerText(), "You lost");
+  assert.match(await loser.locator("#result-reason").innerText(), /took \d of 9 boxes/);
   assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
   assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
   assert.equal(await host.locator("#db-board .box").count(), 9);
   assert.equal(await host.locator("#db-board .box.p0").count(), won.score[0], "your boxes are marked yours on your screen");
   assert.equal(await guest.locator("#db-board .box.p0").count(), won.score[1], "and theirs on theirs");
   for (const page of [host, guest]) {
-    const r = await page.locator("#db-over").boundingBox();
+    const r = await page.locator("#result-panel").boundingBox();
     assert.ok(r && r.y >= 0 && r.y + r.height <= page.viewportSize().height + 1, "the result is on screen");
   }
   await host.screenshot({ path: `${ARTIFACTS}/db-2-friend-over-light.png` });
@@ -314,12 +315,12 @@ test("Dots and Boxes vs the robot on a 360 px phone: touch, keyboard, pen stroke
   const st = await state(page);
   assert.equal(st.score[0] + st.score[1], 16);
   assert.equal(await page.evaluate(() => window.ddp.robot.match.state.drawn), 40, "the robot saw every line");
-  await page.locator("#db-result").waitFor();
-  assert.match(await page.locator("#db-result").innerText(), /^(You win!|Robot wins|It's a draw)$/);
+  await page.locator("#result").waitFor();
+  assert.match(await page.locator("#result").innerText(), /^(You won|You lost|Draw)$/);
   sounds = await heard();
   assert.ok(sounds.includes("box"), "boxes pop with a note");
   assert.ok(sounds.includes(st.winner === 2 ? "draw" : st.winner === 0 ? "win" : "lose"));
-  const r = await page.locator("#db-over").boundingBox();
+  const r = await page.locator("#result-panel").boundingBox();
   assert.ok(r.y >= 0 && r.y + r.height <= 740, `the result is on the phone's screen (${Math.round(r.y)}–${Math.round(r.y + r.height)})`);
   await page.screenshot({ path: `${ARTIFACTS}/db-6-robot-over-mobile-light.png` });
 
