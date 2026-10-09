@@ -1,7 +1,8 @@
 // Headless-browser tests: every game tile on the home page is the same size,
 // whatever its description's length, and a phone screen doesn't scroll
-// sideways; placeholders hold the tiles' places while the list loads, and a
-// failed load offers Retry. Skips if Playwright is missing.
+// sideways or hide the first tile below the hero; placeholders hold the
+// tiles' places while the list loads, and a failed load offers Retry. Skips if
+// Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -70,6 +71,8 @@ test("home page tiles are all the same size", { skip: !pw && "Playwright not ins
     }
     if (width === 360) {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "no horizontal scroll at 360 px");
+      const iconBottom = await page.locator(".game-card[data-slug] .game-icon").first().evaluate((e) => e.getBoundingClientRect().bottom);
+      assert.ok(iconBottom <= 640, `first tile's picture ends at ${iconBottom} px, below a 640 px phone screen`);
     }
     await page.screenshot({ path: `${ARTIFACTS}/home-${width}.png`, fullPage: true });
     await page.close();
