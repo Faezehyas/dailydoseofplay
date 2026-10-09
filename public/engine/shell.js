@@ -138,10 +138,17 @@ export function toast(message, ms = 2600) {
     node = el("div", { id: "toast", class: "toast", role: "status", "aria-live": "polite" });
     document.body.append(node);
   }
-  node.textContent = message;
-  node.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => node.classList.remove("show"), ms);
+  const show = () => {
+    node.textContent = message;
+    node.classList.add("show");
+    toastTimer = setTimeout(() => node.classList.remove("show"), ms);
+  };
+  // A screen reader skips text that is already there, so a repeat empties the
+  // toast first and fills it again a moment later.
+  if (node.textContent !== message) return show();
+  node.textContent = "";
+  toastTimer = setTimeout(show, 100);
 }
 
 export async function copyText(text) {
