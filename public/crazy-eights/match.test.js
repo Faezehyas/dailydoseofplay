@@ -50,13 +50,15 @@ async function play({ players, config = {}, choose = () => (st, me, rng, face) =
 for (const players of [2, 4]) {
   test(`${players} seats: a full game, the same state everywhere, a passing audit and no seat ever knowing another's hidden card`, { timeout: 300_000 }, async () => {
     const { matches, checks } = await play({ players, config: { actions: players === 4 } });
-    assert.ok(checks > 50, "checked as the game went");
     for (const m of matches) {
       assert.equal(m.phase, "over", m.abortReason);
       assert.deepEqual(m.verdict, { ok: true });
       assert.deepEqual(m.state, matches[0].state);
     }
     const st = matches[0].state;
+    // Every seat applies every move in a step that ends with an update. A fixed
+    // count would be flaky: the deal is random and a 2-seat game can take 13 moves.
+    assert.ok(checks >= players * st.plays.reduce((a, b) => a + b), "checked as the game went");
     assert.ok(st.winner >= 0 && st.winner < players);
     assert.equal(st.players, players);
     assert.ok(st.plays.every((n) => n > 0), "everyone played");
