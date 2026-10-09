@@ -137,7 +137,6 @@ flowchart TB
   g_rules --> e_rng
   g_rules --> e_turn_match
   g_settings --> e_settings
-  g_settings --> e_shell
   g_settings --> g_robot
   g_settings --> g_rules
   g_sounds --> e_sound
@@ -368,11 +367,11 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
 | `robot-pace.js` | `robotPause(ms)`: every robot's pause before it moves goes through it, so browser tests can speed robots up by setting `globalThis.ddpRobotPace` (1 for players) |
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
-| `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column. |
+| `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. With a game's `settings` it shows them inside the home screen's card, between the nickname and the Play buttons, and their summary on the host's waiting screen, so friends see the rules before the game starts. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
 | `result.js` | `resultPanel(session, { onLeave, onShow, classes })`: the game-over panel of every game, with Rematch and Leave (see **Result panel**). |
-| `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
+| `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a group marked `robot` is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary. `get()` is the current config, which the game sends to its guests (`setup`). |
 | `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
 | `loudness.js` | `loudness(samples, sampleRate)`: how loud a sound is to the ear, in LUFS (K-weighted, loudest 100 ms). No DOM; runs in node too. |
@@ -558,7 +557,7 @@ compositor, so they cause no layout or paint. `home.js` adds `.paused` while
 the scene is off screen (IntersectionObserver) or the tab is hidden, and with
 `prefers-reduced-motion` the scene is still.
 
-**Page column.** A game page stacks the lobby, the game's settings, the game
+**Page column.** A game page stacks the lobby, the game
 and "How to play" (`.rules`), and they all share one centred column, as wide
 as the view on show, so their edges line up. `startGameShell()` sets
 `data-view` (`lobby` or `game`) and `data-layout` on `<main class="page">`,
@@ -567,7 +566,7 @@ the lobby cards:
 
 | View | Column at 1280 px | Games |
 |---|---|---|
-| Lobby, invite, waiting room, settings | 520 px | all |
+| Lobby, invite, waiting room | 520 px | all |
 | Game, `layout: "narrow"` | 520 px | Tic Tac Toe, Connect 4, Chess, Checkers |
 | Game, `layout: "medium"` | 640 px | Gomoku, Backgammon |
 | Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo |
@@ -674,7 +673,8 @@ its own audio context or output.
 | File | Job |
 |---|---|
 | `index.html` | Page with `#lobby` and `#game` sections and the rules |
-| `main.js` | `startGameShell({ slug, title, layout, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; the lobby's tagline is the game's `description` there (a `tagline` option still overrides it); `layout` picks the page column (see **Page column**). |
+| `main.js` | `startGameShell({ slug, title, layout, settings, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; the lobby's tagline is the game's `description` there (a `tagline` option still overrides it); `layout` picks the page column (see **Page column**). |
+| `settings.js` | Optional: the game's settings, `export const settings = gameSettings({ key, prefix, groups, normalize, hint })`, passed to `startGameShell()` and read with `settings.get()` |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
 | `match.js` | Only for games with hidden information: one player's protocol state machine. Other games use `engine/turn-match.js`. |
 | `sounds.js` | Optional: the game's sounds, `export const sounds = defineSounds({...})` with a role for each (see **Sound levels**), and the `play` helpers `main.js` calls. The only file that imports `engine/sound.js`. |
@@ -798,7 +798,7 @@ its moves are easy to follow.
 
 Tic Tac Toe has no hidden information, so it runs on `TurnMatch`. What it adds
 is room settings and clocks, both of which later games (Connect 4, Gomoku)
-can copy; the settings panel itself is the engine's `settings.js`.
+can copy; the settings themselves are the engine's `settings.js`.
 
 **Room settings.** Before a game, the player picks the board (3×3 with three
 in a row, or 5×5 with four), a limit per move, a total per player, and who
@@ -854,8 +854,8 @@ Over 200 games on 7×6, Hard beats Easy 93% of the time and Medium beats Easy
 ## Gomoku in depth
 
 Gomoku is Tic Tac Toe's settings and clocks on a 15×15 board, with no engine
-changes. `public/gomoku/` copies the Tic Tac Toe view patterns (settings panel,
-`setup {config}`, clocks, the 5 s claim) rather than sharing them, so each game
+changes. `public/gomoku/` copies the Tic Tac Toe view patterns (`setup {config}`,
+clocks, the 5 s claim) rather than sharing them, so each game
 can change on its own.
 
 - **Rules.** Five or more in a row wins (an overline counts, as on papergames),

@@ -34,7 +34,11 @@ const pw = await loadPlaywright();
 const wait = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 20_000 });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#ck-settings label:has(input[name="ck-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#ck-settings[open]").count())) await page.click("#ck-settings > summary");
+  await page.click(`#ck-settings label:has(input[name="ck-${name}"][value="${value}"])`);
+}
 const square = (sq) => `.ck-sq[data-sq="${sq}"]`;
 
 // The path the page's player should play now: the robot's best move at

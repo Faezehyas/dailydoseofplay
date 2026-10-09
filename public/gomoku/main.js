@@ -8,7 +8,7 @@ import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, stoneOf, isTimed, timeLeft, EMPTY, DRAW, SIZE } from "./rules.js";
 import { chooseMove } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 
 const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
@@ -16,12 +16,11 @@ const COLUMNS = "ABCDEFGHJKLMNOP"; // board coordinates skip I, as on Go boards
 const STARS = [[3, 3], [3, 11], [7, 7], [11, 3], [11, 11]];
 const COUNT_WORD = { 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine" };
 
-const settings = mountSettings(document.getElementById("gmk-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "gomoku",
   title: "Gomoku",
   layout: "medium",
+  settings,
   createRobot: (session) =>
     startTurnRobot(session, {
       rules: makeRules(settings.get()),

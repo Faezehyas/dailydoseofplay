@@ -10,7 +10,7 @@ import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, cellOf, LADDERS, CHUTES, LAST, SIZE, SPINNER, MAX_PLAYERS } from "./rules.js";
 import { chooseMove } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 import { s, icon, VIGNETTES } from "./art.js";
 
@@ -28,7 +28,6 @@ const SPIN_SPEED = 1100; // degrees per second at full spin
 const PACE = { hop: 230, rung: 120, between: 380 };
 const FINISH_TEXT = { exact: "exact spin to finish", bounce: "bounce back off 100", any: "any spin past 100 wins" };
 
-const settings = mountSettings(document.getElementById("cl-settings"), document.getElementById("lobby"));
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const still = () => reduced.matches;
 
@@ -36,6 +35,7 @@ startGameShell({
   slug: "chutes-and-ladders",
   title: "Chutes and Ladders",
   layout: "wide",
+  settings,
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,
   robots: () => settings.get().robots,

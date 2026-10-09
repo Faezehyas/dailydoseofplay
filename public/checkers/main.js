@@ -8,7 +8,7 @@ import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, legalMoves, capturedBy, countPieces, isTimed, timeLeft, owner, isKing, isJump, isDark, EMPTY, DRAW, QUIET_LIMIT } from "./rules.js";
 import { chooseMove } from "./robot.js";
-import { mountSettings, normalizeLevel } from "./settings.js";
+import { settings, normalizeLevel } from "./settings.js";
 import { playMove } from "./sounds.js";
 
 const CROWN_SVG =
@@ -17,12 +17,11 @@ const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const LEVEL_NAMES = { easy: "Easy", medium: "Medium", hard: "Hard" };
 
-const settings = mountSettings(document.getElementById("ck-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "checkers",
   title: "Checkers",
   layout: "narrow",
+  settings,
   createRobot: (session) => {
     const { level, ...config } = settings.get();
     return startTurnRobot(session, {
