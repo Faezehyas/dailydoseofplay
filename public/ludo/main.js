@@ -771,6 +771,7 @@ function mountGame(session, root, shell) {
     if (destroyed) return;
     const st = match?.state;
     const phase = ended ? "ended" : match?.phase || "setup";
+    shell.setInProgress(phase !== "ended" && phase !== "over" && phase !== "aborted");
     root.querySelector(".ludo").dataset.phase = phase;
     const d = decision();
     bar.update({ turn: phase !== "playing" ? -1 : current ? current.player : st.turn, score });

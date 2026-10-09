@@ -692,6 +692,29 @@ input::placeholder {
   text-align: center;
 }
 
+/* confirm.js: a modal question, such as "Leave the game?". ::backdrop doesn't
+   inherit the tokens in every browser, so it repeats the overlay's shade. */
+.confirm {
+  max-width: min(420px, calc(100vw - 32px));
+  color: var(--text);
+  text-align: center;
+}
+
+.confirm::backdrop {
+  background: rgb(10 12 18 / 55%);
+}
+
+.confirm h2 {
+  margin-top: 0;
+}
+
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
 /* Just below the 60px header (and the notch), clear of the sound and theme
    buttons and above a game board on a phone. Centred with auto margins rather
    than left: 50%, so it can use the full width between the 16px gutters, and a

@@ -150,6 +150,8 @@ startGameShell({
     function render() {
       // match.state is null until the coin toss ends (match.phase === "playing").
       bar.update({ turn: match.phase === "playing" ? match.state.turn : -1, score });
+      // While a friend match is on, Leave asks before ending it for everyone.
+      shell.setInProgress(match.phase !== "over" && match.phase !== "aborted");
       // Draw match.state; on input call match.play(move) when match.canMove().
       if (match.phase === "over") result.show({ winner: match.state.winner === 2 ? -1 : match.state.winner, reason: "…" });
       else if (match.phase === "aborted") result.show({ stopped: true, reason: match.abortReason });
@@ -360,6 +362,7 @@ windows (one private).
 | `public/engine/settings.js` | `gameSettings()`: a game's settings, shown in the lobby card |
 | `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
 | `public/engine/result.js` | `resultPanel()`: the game-over panel with the result, Rematch and Leave, in every game |
+| `public/engine/confirm.js` | `confirmDialog()`: a yes-or-no question in a modal dialog, such as "Leave the game?" |
 | `public/engine/theme.css` | Design tokens (light and dark), fonts, motion and shared components |
 | `public/sea-battle/` | The reference game, with hidden information and a custom protocol |
 | `public/games.json` | Game registry, read by the home page and the server |

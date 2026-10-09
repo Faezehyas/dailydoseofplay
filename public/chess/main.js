@@ -561,6 +561,7 @@ function mountChess(session, root, shell) {
     if (destroyed) return;
     const st = match?.state;
     const phase = match?.phase || "setup";
+    shell.setInProgress(phase !== "over" && phase !== "aborted");
     root.querySelector(".chess").dataset.phase = phase;
     // Coral is White, who moves first, on every screen.
     root.querySelector(".chess").dataset.you = st ? (st.white === me ? "a" : "b") : "";

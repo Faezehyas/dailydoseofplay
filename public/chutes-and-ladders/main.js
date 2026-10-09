@@ -780,6 +780,7 @@ function mountGame(session, root, shell) {
     if (destroyed) return;
     const st = match?.state;
     const phase = match?.phase || "setup";
+    shell.setInProgress(phase !== "over" && phase !== "aborted");
     root.querySelector(".chutes-ladders").dataset.phase = phase;
     bar.update({
       turn: phase !== "playing" ? -1 : current ? current.player : st.turn,

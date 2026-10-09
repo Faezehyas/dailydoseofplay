@@ -4,7 +4,9 @@
 //
 //   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout, settings })
 //
-// onSession(session, root) mounts the game in `root` and returns { destroy }.
+// onSession(session, root, shell) mounts the game in `root` and returns { destroy }.
+// shell.leave() goes back to the lobby; while the game says a friend match is
+// on (shell.setInProgress(true)), it asks first.
 // createRobot(session) drives one robot seat over an in-memory group; robots
 // is how many seats (a number, or a function read when a robot game starts).
 // maxPlayers must match the game's entry in games.json (the server enforces it).
@@ -14,7 +16,8 @@
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
 // settings is the game's gameSettings() (settings.js): the home screen shows
 // them inside the lobby card, and the host's waiting screen their summary.
-import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
+import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert, askBeforeLeaving } from "./shell.js";
+import { confirmDialog } from "./confirm.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
 
@@ -473,13 +476,26 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     lobbyRoot.hidden = true;
     gameRoot.hidden = false;
     gameRoot.replaceChildren();
-    state.game = onSession(session, gameRoot, { leave: () => leaveGame() });
+    let inProgress = false;
+    state.game = onSession(session, gameRoot, {
+      leave: async () => {
+        if (inProgress && session.mode === "friend" && askBeforeLeaving() && !(await confirmLeave(session))) return;
+        leaveGame();
+      },
+      setInProgress: (on) => (inProgress = on),
+    });
     session.on("end", (reason, seat) => {
+      inProgress = false;
       if (reason === "self") return;
       const who = session.players[seat]?.name ?? session.opponent.name;
       if (reason === "message_too_big") return showEnded(ERRORS.message_too_big);
       showEnded(reason === "left" ? `${who} left the game.` : `The connection to ${who} was lost.`);
     });
+  }
+
+  function confirmLeave(session) {
+    const text = session.players.length === 2 ? `${session.opponent.name} will be told you left.` : "It ends for everyone.";
+    return confirmDialog({ title: "Leave the game?", text, yes: "Leave" });
   }
 
   function showEnded(text) {
