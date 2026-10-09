@@ -94,6 +94,8 @@ flowchart TB
     e_shell["shell.js"]
     e_players["players.js"]
     e_result["result.js"]
+    e_celebrate["celebrate.js"]
+    e_chimes["chimes.js"]
     e_settings["settings.js"]
     e_names["names.js"]
     e_robot_pace["robot-pace.js"]
@@ -112,6 +114,7 @@ flowchart TB
   games_json[("public/games.json")]
 
   p_home --> e_shell
+  p_main --> e_celebrate
   p_main --> e_lobby
   p_main --> e_players
   p_main --> e_result
@@ -142,6 +145,10 @@ flowchart TB
   g_sounds --> e_sound
   g_sounds --> e_synth
   e_boot --> e_shell
+  e_celebrate --> e_chimes
+  e_celebrate --> e_shell
+  e_chimes --> e_sound
+  e_chimes --> e_synth
   e_fair --> e_rng
   e_group --> e_channel
   e_lobby --> e_names
@@ -149,6 +156,7 @@ flowchart TB
   e_lobby --> e_shell
   e_peer --> e_channel
   e_players --> e_shell
+  e_result --> e_celebrate
   e_result --> e_shell
   e_room --> e_channel
   e_room --> e_group
@@ -357,7 +365,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 |---|---|
 | `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`), the footer every page ends with (how games run, then links to this file, the repository and the privacy page; more links join `FOOTER_LINKS`), nickname in `localStorage`, toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar, the result panel and `.text-page` (the privacy page's reading column) |
+| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar, the result panel, the result moment and `.text-page` (the privacy page's reading column) |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
@@ -371,6 +379,8 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
 | `result.js` | `resultPanel(session, { onLeave, onShow, classes })`: the game-over panel of every game, with Rematch and Leave (see **Result panel**). |
+| `celebrate.js` | `celebrate({ outcome, flavour, highlight, anchor, board })`: the result moment a game plays from the panel's `onShow`, and `calm()`, which the panel calls when it hides (see **Result moment**). |
+| `chimes.js` | The result chimes: the site's jingle for each outcome in each game's timbre, through `sound.js` (see **Result moment**). No DOM. |
 | `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a group marked `robot` is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary. `get()` is the current config, which the game sends to its guests (`setup`). |
 | `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
@@ -544,8 +554,9 @@ Transitions use `--dur-fast`, `--dur-med` or `--dur-slow` and `--ease-out` or
 animate only transform and opacity; nothing loops forever except the home
 hero's scene; everything stops under `prefers-reduced-motion`; no motion starts
 without a user action, except the room code, whose letters settle in one by
-one (350 ms) when the waiting room opens, and the hero's scene. Loading
-indicators run only while something loads.
+one (350 ms) when the waiting room opens, the result moment when a match
+ends (see **Result moment**), and the hero's scene. Loading indicators run
+only while something loads.
 
 **Hero scene.** The home hero ends with a small game table, an inline SVG in
 `index.html` (decorative, `aria-hidden`), drawn in theme tokens so it follows
@@ -613,9 +624,38 @@ announces another player's vote. The game creates it once and calls
 `show({ winner, stopped, reason, places, extra })` whenever something
 changes (`winner` is a seat or -1 for a draw) and `hide()` while the match
 is on. It opens once per match: focus moves to its title, and `onShow({
-winner, stopped })` runs, the hook for a game's own result moment (Ludo's
-fanfare and confetti). Place colours read `--seat`, like the player bar,
-from `.mine`, `.theirs` or the game's `classes`.
+winner, stopped, outcome })` runs, the hook for the result moment (below).
+Place colours read `--seat`, like the player bar, from `.mine`, `.theirs`
+or the game's `classes`.
+
+**Result moment.** When the panel opens, every game plays the same short,
+gentle moment, about 1.5 s, from `celebrate()` in `celebrate.js`. The
+panel's `onShow` passes `outcome`: `"win"`, `"loss"`, `"draw"`, `"over"`
+(someone else won and more than two play: never a loss sting), or `null`
+for a stopped match, which gets nothing. Each browser plays its own
+player's moment.
+
+| Outcome | What moves | Chime |
+|---|---|---|
+| win | the winning pieces (`highlight`) light up one after another, then three sets of the logo's four dots, coral and teal, rise from the title | three notes rising |
+| loss | the `board` dims a little and the title fades in | two notes falling, 2 dB softer |
+| draw | the player pills pulse once | one note twice, 2 dB softer |
+| over | the winner's pieces light up and the title fades in | the win's first two notes, 4 dB softer |
+
+The game passes the pieces in the order they light up: the line in Tic Tac
+Toe, Connect 4 and Gomoku, the mated king in Chess, the last capture in
+Checkers, the last checker borne off in Backgammon, the last ship sunk in
+Sea Battle (once its shell lands), the pawn on 100 in Chutes and Ladders,
+the last box in Dots and Boxes, and the winner's tokens home in Ludo. The
+chimes (`chimes.js`) are one melody, a C-major pentatonic jingle, in a
+timbre that fits the game's pieces (`flavour`): `wood` for Chess, Checkers,
+Backgammon and Ludo; `paper` for Tic Tac Toe, Gomoku and Dots and Boxes;
+`plastic` for Connect 4; `bell` for Chutes and Ladders; `water` (a bubble
+under the bell) for Sea Battle. They are synthesized, at the `fanfare`
+level, and follow the mute toggle. With `prefers-reduced-motion` only the
+colours change: the pieces glow, the board dims, the pills take their seat
+colour, and nothing moves. The colours stay while the panel is up; it calls
+`calm()` when it hides, for a rematch.
 
 **Player colours.** A player has the same colour on every screen, so "I'm the
 coral one" is true for everyone at the table. In a two-player game whoever
@@ -662,11 +702,11 @@ and above it rounds off peaks when sounds stack. A `DynamicsCompressorNode`
 can't do this job, because Chromium's turns a sound down by 1 to 2 dB even when
 it never reaches the threshold, which would undo the levels.
 
-`test/browser/sound-levels.test.js` renders every sound of every game
-offline through that output (each recording, and each synthesized stand-in),
-with random parts seeded, and fails if one lands more than 1.5 dB from its
-role, printing the trim to set. `test/sound.test.js` checks that no game opens
-its own audio context or output.
+`test/browser/sound-levels.test.js` renders every sound of every game, and
+the result chimes, offline through that output (each recording, and each
+synthesized stand-in), with random parts seeded, and fails if one lands more
+than 1.5 dB from its role, printing the trim to set. `test/sound.test.js`
+checks that no game opens its own audio context or output.
 
 ### Game (`public/<slug>/`)
 
@@ -1103,7 +1143,8 @@ pointer; a hop is a pawn tap plus a marimba note that climbs a C-major
 pentatonic scale with each square (and walks back down after a bounce); a
 ladder is a xylophone run, then a shimmer; a chute is a slide whistle over
 rushing air, then a bump; overshooting with the exact rule is a two-note
-"nope", bouncing off 100 a spring; plus a turn chime and win and lose tunes.
+"nope", bouncing off 100 a spring; plus a turn chime. The end of a match
+plays the engine's result chime (see **Result moment**).
 The spin (flick and settle) is an `action`, like a hop, so spinning sounds
 as loud as moving (see **Sound levels**).
 
@@ -1222,8 +1263,9 @@ header's mute toggle): a pencil scratch per line (grains of filtered noise
 shaped to the stroke's length, over a darker rub, with a tap at the end), a
 pop and a mallet note per box that climbs a pentatonic scale through a turn's
 run, a sparkle when a run of three or more ends, a soft thud for a line that
-can't be drawn, the turn chime, and tunes for a win, a loss and a draw. A
-line is an `action` and a box a `highlight` (see **Sound levels**).
+can't be drawn and the turn chime; the end of a match plays the engine's
+result chime (see **Result moment**). A line is an `action` and a box a
+`highlight` (see **Sound levels**).
 
 ## Ludo in depth
 
@@ -1338,9 +1380,10 @@ synthesized like Chutes and Ladders': a wooden tap and a marimba note per hop
 that climbs as the token goes, a cork pop for coming out, a shimmer into the
 home column, a small bell on a safe square, a bonk for a capture (a slide
 whistle down if it was yours), a fanfare home, a chirp for another roll, a
-soft "no" for a passed turn, ticks for the timer's last seconds, the turn
-chime, and tunes for a win and a loss. The die and a hop are both `action`
-sounds, so rolling and moving sound about as loud (see **Sound levels**).
+soft "no" for a passed turn, ticks for the timer's last seconds and the
+turn chime; the end of a match plays the engine's result chime (see
+**Result moment**). The die and a hop are both `action` sounds, so rolling
+and moving sound about as loud (see **Sound levels**).
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 

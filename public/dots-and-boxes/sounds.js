@@ -1,7 +1,7 @@
 // Dots and Boxes sounds, synthesized: a pencil scratching a line on paper,
 // a pop and a note for every box (the notes climb through a chain), a
-// flourish when a long chain is swept up, a turn chime, and little tunes for
-// winning, losing and a draw. They play through the engine
+// flourish when a long chain is swept up and a turn chime. The result
+// chimes are the engine's (engine/chimes.js). They play through the engine
 // (engine/sound.js), which sets their loudness.
 import { defineSounds } from "../engine/sound.js";
 import { tone, noise, pentatonic } from "../engine/synth.js";
@@ -52,21 +52,6 @@ const SYNTH = {
     tone(a, o, t, { freq: note(10), dur: 0.16, gain: 0.05 });
     tone(a, o, t + 0.1, { freq: note(12), dur: 0.24, gain: 0.05 });
   },
-  win: (a, o, t) => {
-    [10, 12, 13, 15].forEach((s, i) => mallet(a, o, t + i * 0.11, note(s), 0.12));
-    for (const s of [15, 17, 18, 20]) tone(a, o, t + 0.46, { freq: note(s), type: "triangle", dur: 0.9, gain: 0.045, attack: 0.02 });
-    noise(a, o, t + 0.46, { dur: 0.5, gain: 0.03, type: "highpass", freq: 7000, attack: 0.05 });
-  },
-  lose: (a, o, t) => {
-    [12, 11, 10].forEach((s, i) => tone(a, o, t + i * 0.2, { freq: note(s), type: "triangle", dur: 0.3, gain: 0.08 }));
-    tone(a, o, t + 0.6, { freq: note(8), to: note(7), type: "triangle", dur: 0.6, gain: 0.08 });
-  },
-  // An even split: two answering phrases that land on the same note.
-  draw: (a, o, t) => {
-    [10, 12].forEach((s, i) => mallet(a, o, t + i * 0.13, note(s), 0.1));
-    [12, 10].forEach((s, i) => mallet(a, o, t + 0.34 + i * 0.13, note(s) * 0.5, 0.1));
-    for (const s of [10, 12]) tone(a, o, t + 0.66, { freq: note(s), type: "triangle", dur: 0.7, gain: 0.04, attack: 0.02 });
-  },
 };
 
 export const sounds = defineSounds({
@@ -75,9 +60,6 @@ export const sounds = defineSounds({
   chain: { role: "highlight", synth: SYNTH.chain, trim: 9.5 },
   nope: { role: "ui", synth: SYNTH.nope, trim: 5.7 },
   turn: { role: "ui", synth: SYNTH.turn, trim: 5.9 },
-  win: { role: "fanfare", synth: SYNTH.win, trim: 5.8 },
-  lose: { role: "fanfare", synth: SYNTH.lose, trim: 11.9 },
-  draw: { role: "fanfare", synth: SYNTH.draw, trim: 8.8 },
 });
 
 // Plays `name` now, or `at` seconds from now.

@@ -1,7 +1,7 @@
 // Sea Battle sounds. Real recordings (CC0, see sounds/LICENSE.txt) of heavy
 // objects hitting water, shells exploding on a steel hull and bigger blasts
 // at the waterline; synthesized shells in the air, a nuke, a sinking hull's
-// groan and the chimes. A recording's synthesized stand-in plays until it has
+// groan and the turn and gift chimes. A recording's synthesized stand-in plays until it has
 // loaded. They play through the engine (engine/sound.js), which sets their
 // loudness.
 import { defineSounds } from "../engine/sound.js";
@@ -133,8 +133,6 @@ export const sounds = defineSounds({
   gift: { role: "ui", trim: 2.9, synth: (a, o, t) => [523, 659, 784, 1047].forEach((f, k) => tone(a, o, t, { freq: f, type: "triangle", at: k * 0.07, dur: 0.14, gain: 0.1 })) },
   turn: { role: "ui", trim: 7.7, synth: (a, o, t) => [660, 880].forEach((f, k) => tone(a, o, t, { freq: f, at: k * 0.1, dur: 0.12, gain: 0.07 })) },
   tick: { role: "cue", trim: 7.4, synth: (a, o, t) => tone(a, o, t, { freq: 1200, dur: 0.04, gain: 0.05, type: "square" }) },
-  win: { role: "fanfare", trim: 12.1, synth: (a, o, t) => [523, 659, 784, 1047].forEach((f, k) => tone(a, o, t, { freq: f, type: "triangle", at: k * 0.12, dur: 0.22, gain: 0.12 })) },
-  lose: { role: "fanfare", trim: 13.4, synth: (a, o, t) => [392, 330, 262].forEach((f, k) => tone(a, o, t, { freq: f, type: "triangle", at: k * 0.16, dur: 0.28, gain: 0.1 })) },
 });
 
 export const play = sounds.play;
