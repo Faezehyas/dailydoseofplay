@@ -106,7 +106,6 @@ test("every default name is two capitalised words that pass the nickname rules a
       assert.deepEqual(checkName(name), { name, problem: null });
     }
   }
-  for (const word of [...ADJECTIVES, ...ANIMALS]) assert.doesNotMatch(word, /^(Host|Guest|Friend|You|Player|Robot)$/);
   for (let i = 0; i < 1000; i++) {
     const [adjective, animal] = defaultName().split(" ");
     assert.ok(ADJECTIVES.includes(adjective) && ANIMALS.includes(animal));

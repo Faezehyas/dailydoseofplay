@@ -208,7 +208,7 @@ test("a blocked peer connection shows the no-TURN explanation", { skip: !pw && "
   const guest = await ctx.newPage();
   await guest.goto(`${srv.base}/sea-battle/`);
   await guest.fill("#join-code", code.toLowerCase());
-  await host.locator("#roster li.knock", { hasText: "Guest wants to join" }).getByRole("button", { name: "Accept" }).click();
+  await host.locator("#roster li.knock", { hasText: "wants to join" }).getByRole("button", { name: "Accept" }).click();
   await guest.locator("#connect-error").waitFor({ timeout: 10_000 }).catch(async (err) => {
     throw new Error(`${err.message}\nguest lobby: ${await guest.locator("#lobby").innerText()}`);
   });
