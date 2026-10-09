@@ -322,11 +322,25 @@ h3 {
   transition: transform var(--dur-fast) var(--ease-out);
 }
 
-.btn:hover {
-  filter: brightness(1.04);
+/* Only where a pointer can hover, so a tapped button doesn't stay lit. */
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    background: var(--border);
+    transform: translateY(-1px);
+  }
+
+  .btn.primary:hover:not(:disabled) {
+    background: var(--accent);
+    filter: brightness(1.1);
+  }
+
+  .btn.ghost:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--text);
+  }
 }
 
-.btn:active {
+.btn:active:not(:disabled) {
   transform: translateY(1px);
 }
 
@@ -725,9 +739,11 @@ input::placeholder {
 }
 
 /* One line, so a wide fallback font can't make one tile taller than its
-   loading placeholder; the full name stays in the DOM. */
+   loading placeholder; the full name stays in the DOM. A step lighter than
+   the page headings, so names read as labels. */
 .game-card h2 {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
+  font-weight: 600;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -862,10 +878,6 @@ input::placeholder {
 .game-card.placeholder .game-meta span:first-child {
   display: inline-block;
   width: 30%;
-}
-
-.game-card.placeholder .badge {
-  width: 52px;
 }
 
 @keyframes shimmer {
