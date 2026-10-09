@@ -10,6 +10,7 @@ WebRTC. Read `ARCHITECTURE.md` once before your first change.
 - **Language:** plain JavaScript only. Node ES modules on the server; browser JS, HTML and CSS in `public/`. No TypeScript, no frameworks, no build step, no bundler.
 - **Dependencies:** `ws` is the only one. Do not add more.
 - **Originality:** use original names, art, text and sounds. Copy papergames' rules and flow only, never their logo, art, sounds or wording.
+- **License:** contributions are accepted under the repo's [MIT License](LICENSE). A third-party asset needs a license compatible with it, credited in the game's folder the way each `sounds/LICENSE.txt` credits its recordings.
 - **No accounts:** no logins, tournaments, leaderboards, ads, analytics or random matchmaking. The nickname stays in `localStorage`.
 - **No secrets:** no tokens or keys in the repo. Deploys happen through Wasmer's GitHub integration on every push to `main`.
 - **Server:** a new game must not need changes under `server/`. If it seems to, stop and explain why in the PR.
@@ -123,7 +124,6 @@ import { chooseMove } from "./robot.js";
 startGameShell({
   slug: "<slug>",
   title: "<Name>",
-  tagline: "<one original sentence>",
   layout: "narrow", // the page column while playing: "narrow", "medium" or "wide"
   createRobot: (session) => startTurnRobot(session, { rules, choose: chooseMove, delay: 600 }),
   onSession(session, root, shell) {
@@ -236,8 +236,8 @@ In `public/games.json`, set the game's entry to `"status": "ready"` (add an
 entry if the game isn't listed, and copy one more placeholder tile into
 `public/index.html`'s `#games` list so the home page doesn't jump as it
 loads). Fields: `slug`, `name`, `status`, `players`,
-`maxPlayers` (2, or the same `maxPlayers` you pass to `startGameShell()` for a game with more players), and a one-sentence original `description`. The home page
-picks it up automatically. The server reads `games.json` once at startup, so
+`maxPlayers` (2, or the same `maxPlayers` you pass to `startGameShell()` for a game with more players), and a one-sentence original `description`. The home tile and
+the lobby both show it. The server reads `games.json` once at startup, so
 restart `npm start` after editing it, or creating a room will fail with `bad_game`.
 The browser test reads the "Coming soon" count from the registry, so it needs
 no change.

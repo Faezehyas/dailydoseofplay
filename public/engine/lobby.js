@@ -8,9 +8,11 @@
 // createRobot(session) drives one robot seat over an in-memory group; robots
 // is how many seats (a number, or a function read when a robot game starts).
 // maxPlayers must match the game's entry in games.json (the server enforces it).
+// The lobby tagline is the game's description in games.json; `tagline`
+// overrides it (older games passed their own).
 // layout is the page column while the game is on show: "narrow", "medium" or
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
-import { initShell, el, $, toast, copyText, getNickname, setNickname, setLastGame, setTabAlert } from "./shell.js";
+import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
 
@@ -78,6 +80,18 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   const progress = el("p", { class: "sr-only", id: "lobby-progress", role: "status" });
   lobbyRoot.append(progress);
   let firstView = true;
+
+  // The lobby shows at once; the description fills in when games.json arrives.
+  const taglineEl = el("p", { class: "tagline", hidden: !tagline }, tagline);
+  if (!tagline) {
+    fetch("/games.json", { cache: "no-cache" })
+      .then((res) => res.json())
+      .then(({ games }) => {
+        taglineEl.textContent = games.find((g) => g.slug === slug)?.description ?? "";
+        taglineEl.hidden = !taglineEl.textContent;
+      })
+      .catch(() => {});
+  }
 
   // A new view takes focus to its heading, except on page load.
   function view(...children) {
@@ -163,7 +177,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     );
     view(
       el("h1", {}, title),
-      tagline && el("p", { class: "tagline" }, tagline),
+      taglineEl,
       nicknameField(),
       el(
         "div",
@@ -444,7 +458,6 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // ---------- game hand-off ----------
   function startSession(session) {
     state.session = session;
-    setLastGame(slug);
     clearRoomParam();
     showView("game");
     lobbyRoot.hidden = true;

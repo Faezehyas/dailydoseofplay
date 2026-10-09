@@ -22,7 +22,6 @@ const settings = mountSettings(document.getElementById("ck-settings"), document.
 startGameShell({
   slug: "checkers",
   title: "Checkers",
-  tagline: "Hop, capture, crown a king. Leave your friend without a piece to move.",
   layout: "narrow",
   createRobot: (session) => {
     const { level, ...config } = settings.get();

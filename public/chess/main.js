@@ -61,7 +61,6 @@ const settings = mountSettings(document.getElementById("chess-settings"), docume
 startGameShell({
   slug: "chess",
   title: "Chess",
-  tagline: "Sixty-four squares, two armies, one king to trap. Your move.",
   layout: "narrow",
   createRobot(session) {
     const config = settings.get();
