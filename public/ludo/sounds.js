@@ -1,93 +1,14 @@
 // Ludo sounds. The die is a real recording (CC0, see sounds/LICENSE.txt);
-// everything else is synthesized with WebAudio: a wooden tap and a marimba
-// note per hop that climbs as the token goes, a pop for leaving the yard, a
-// shimmer into the home column, a bell on a safe square, a bonk for a
-// capture, a slide whistle for being captured, a fanfare home, and tunes for
-// the end. They follow the site-wide mute button and never throw.
-import { soundOn, playSample, preload } from "../engine/sound.js";
-
-const DICE = ["dice-1", "dice-2"].map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
-preload(DICE);
-
-let ctx = null;
-let out = null;
-const noiseBufs = new WeakMap();
-
-function audio() {
-  if (!ctx) {
-    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (!AC) return null;
-    ctx = new AC();
-    out = master(ctx);
-  }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
-  return ctx;
-}
-
-// A gentle compressor, so a chord over a run of hops never clips.
-function master(a) {
-  const comp = a.createDynamicsCompressor();
-  comp.threshold.value = -10;
-  comp.knee.value = 6;
-  comp.ratio.value = 4;
-  const gain = a.createGain();
-  gain.gain.value = 0.9;
-  comp.connect(gain).connect(a.destination);
-  return comp;
-}
-
-// Browsers only start audio after a click or key press: get it ready on the first one.
-for (const type of ["pointerdown", "keydown"]) {
-  globalThis.addEventListener?.(type, () => soundOn() && audio(), { once: true, capture: true });
-}
-
-function noiseBuf(a) {
-  let buf = noiseBufs.get(a);
-  if (!buf) {
-    buf = a.createBuffer(1, Math.round(a.sampleRate * 2), a.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    noiseBufs.set(a, buf);
-  }
-  return buf;
-}
-
-function decay(a, o, t, peak, dur, attack = 0.003) {
-  const g = a.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(peak, t + attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  g.connect(o);
-  return g;
-}
-
-function tone(a, o, t, { freq, to = freq, type = "sine", dur = 0.15, gain = 0.1, attack = 0.003 }) {
-  const osc = a.createOscillator();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, t);
-  if (to !== freq) osc.frequency.exponentialRampToValueAtTime(to, t + dur);
-  osc.connect(decay(a, o, t, gain, dur, attack));
-  osc.start(t);
-  osc.stop(t + dur + 0.02);
-  return osc;
-}
-
-function noise(a, o, t, { dur = 0.05, gain = 0.1, type = "bandpass", freq = 1500, to = freq, q = 1, attack = 0.002 }) {
-  const src = a.createBufferSource();
-  src.buffer = noiseBuf(a);
-  const f = a.createBiquadFilter();
-  f.type = type;
-  f.Q.value = q;
-  f.frequency.setValueAtTime(freq, t);
-  if (to !== freq) f.frequency.exponentialRampToValueAtTime(to, t + dur);
-  src.connect(f).connect(decay(a, o, t, gain, dur, attack));
-  src.start(t, Math.random() * 1.5);
-  src.stop(t + dur + 0.02);
-}
+// everything else is synthesized: a wooden tap and a marimba note per hop
+// that climbs as the token goes, a pop for leaving the yard, a shimmer into
+// the home column, a bell on a safe square, a bonk for a capture, a slide
+// whistle for being captured, a fanfare home, and tunes for the end. They
+// play through the engine (engine/sound.js), which sets their loudness.
+import { defineSounds } from "../engine/sound.js";
+import { tone, noise, decay, pentatonic } from "../engine/synth.js";
 
 // G major pentatonic from G3 up: runs of hops always sound bright.
-const PENTA = [0, 2, 4, 7, 9];
-const note = (step, base = 196) => base * 2 ** ((12 * Math.floor(step / 5) + PENTA[((step % 5) + 5) % 5]) / 12);
+const note = pentatonic(196);
 
 // A soft mallet on wood: the note, its bright fourth harmonic, a tap.
 function marimba(a, o, t, freq, gain = 0.16, dur = 0.3) {
@@ -108,7 +29,7 @@ function sparkle(a, o, t, gain = 0.05) {
   noise(a, o, t, { dur: 0.35, gain: gain * 0.6, type: "highpass", freq: 7000, attack: 0.04 });
 }
 
-const SOUNDS = {
+const SYNTH = {
   // A synthesized rattle, until the recording has loaded.
   dice: (a, o, t) => {
     for (let i = 0; i < 7; i++) {
@@ -202,43 +123,24 @@ const SOUNDS = {
   },
 };
 
-// Each sound's level, set against the recorded samples other games play
-// (rendered offline: hops and landings near 0.3 peak, ticks lower).
-const LEVEL = { dice: 5.5, hop: 4.4, out: 1.9, stretch: 2.1, safe: 2.4, capture: 1.7, captured: 3.4, home: 0.75, again: 3.2, nope: 2.2, turn: 3.4, tick: 2.8, win: 1.9, lose: 3 };
-const DICE_GAIN = 0.55;
+const DICE = ["dice-1", "dice-2"].map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
 
-function voice(a, o, name) {
-  const g = a.createGain();
-  g.gain.value = LEVEL[name] ?? 1;
-  g.connect(o);
-  return g;
-}
-
-export const SOUND_NAMES = Object.keys(SOUNDS);
+export const sounds = defineSounds({
+  dice: { role: "action", samples: DICE, synth: SYNTH.dice, trim: 16 },
+  hop: { role: "action", synth: SYNTH.hop, trim: 5.2 },
+  out: { role: "highlight", synth: SYNTH.out, trim: 5.2 },
+  stretch: { role: "ui", synth: SYNTH.stretch, trim: 2.2 },
+  safe: { role: "highlight", synth: SYNTH.safe, trim: 4.6 },
+  capture: { role: "highlight", synth: SYNTH.capture, trim: 3.5 },
+  captured: { role: "highlight", synth: SYNTH.captured, trim: 5.7 },
+  home: { role: "highlight", synth: SYNTH.home, trim: 4.6 },
+  again: { role: "ui", synth: SYNTH.again, trim: 6.7 },
+  nope: { role: "ui", synth: SYNTH.nope, trim: 5.2 },
+  turn: { role: "ui", synth: SYNTH.turn, trim: 5.2 },
+  tick: { role: "cue", synth: SYNTH.tick, trim: 5.2 },
+  win: { role: "fanfare", synth: SYNTH.win, trim: 6.2 },
+  lose: { role: "fanfare", synth: SYNTH.lose, trim: 12.2 },
+});
 
 // Plays `name` now, or `at` seconds from now.
-export function play(name, opts = {}, at = 0) {
-  if (!soundOn() || !SOUNDS[name]) return;
-  globalThis.ddpSounds?.push(name); // browser tests count what played
-  try {
-    if (name === "dice" && playSample(DICE, { gain: DICE_GAIN })) return;
-    const a = audio();
-    // Not started yet (no click on this page so far): skip, rather than
-    // queue sounds that would all play at once later.
-    if (!a || a.state !== "running") return;
-    SOUNDS[name](a, voice(a, out, name), a.currentTime + 0.005 + at, opts);
-  } catch {}
-}
-
-// Renders a sound offline and returns its samples (for checking levels).
-export async function render(name, opts = {}, seconds = 2) {
-  const a = new OfflineAudioContext(1, Math.round(44100 * seconds), 44100);
-  SOUNDS[name](a, voice(a, master(a), name), 0.01, opts);
-  return (await a.startRendering()).getChannelData(0);
-}
-
-// Peak of a recorded sample at the gain it plays at (for checking levels).
-export async function samplePeak() {
-  const [buf] = await preload([DICE[0]]);
-  return buf ? Math.max(...buf.getChannelData(0).map(Math.abs)) * DICE_GAIN : 0;
-}
+export const play = sounds.play;

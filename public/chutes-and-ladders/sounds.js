@@ -1,89 +1,13 @@
-// Chutes and Ladders sounds, synthesized with WebAudio: spinner clicks that
-// slow down with the pointer, a marimba note per hop that counts up the
-// scale, a xylophone run up a ladder, a slide whistle down a chute, a spring
-// for bouncing back off 100, and little tunes for winning and losing.
-// They follow the site-wide mute button and never throw.
-import { soundOn } from "../engine/sound.js";
-
-let ctx = null;
-let out = null;
-const noiseBufs = new WeakMap();
-
-function audio() {
-  if (!ctx) {
-    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (!AC) return null;
-    ctx = new AC();
-    out = master(ctx);
-  }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
-  return ctx;
-}
-
-// A gentle compressor, so a chord or a whistle over hops never clips.
-function master(a) {
-  const comp = a.createDynamicsCompressor();
-  comp.threshold.value = -10;
-  comp.knee.value = 6;
-  comp.ratio.value = 4;
-  const gain = a.createGain();
-  gain.gain.value = 0.9;
-  comp.connect(gain).connect(a.destination);
-  return comp;
-}
-
-// Browsers only start audio after a click or key press: get it ready on the first one.
-for (const type of ["pointerdown", "keydown"]) {
-  globalThis.addEventListener?.(type, () => soundOn() && audio(), { once: true, capture: true });
-}
-
-function noiseBuf(a) {
-  let buf = noiseBufs.get(a);
-  if (!buf) {
-    buf = a.createBuffer(1, Math.round(a.sampleRate * 2), a.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    noiseBufs.set(a, buf);
-  }
-  return buf;
-}
-
-function decay(a, o, t, peak, dur, attack = 0.003) {
-  const g = a.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(peak, t + attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  g.connect(o);
-  return g;
-}
-
-function tone(a, o, t, { freq, to = freq, type = "sine", dur = 0.15, gain = 0.1, attack = 0.003 }) {
-  const osc = a.createOscillator();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, t);
-  if (to !== freq) osc.frequency.exponentialRampToValueAtTime(to, t + dur);
-  osc.connect(decay(a, o, t, gain, dur, attack));
-  osc.start(t);
-  osc.stop(t + dur + 0.02);
-  return osc;
-}
-
-function noise(a, o, t, { dur = 0.05, gain = 0.1, type = "bandpass", freq = 1500, to = freq, q = 1, attack = 0.002 }) {
-  const src = a.createBufferSource();
-  src.buffer = noiseBuf(a);
-  const f = a.createBiquadFilter();
-  f.type = type;
-  f.Q.value = q;
-  f.frequency.setValueAtTime(freq, t);
-  if (to !== freq) f.frequency.exponentialRampToValueAtTime(to, t + dur);
-  src.connect(f).connect(decay(a, o, t, gain, dur, attack));
-  src.start(t, Math.random() * 1.5);
-  src.stop(t + dur + 0.02);
-}
+// Chutes and Ladders sounds, synthesized: spinner clicks that slow down
+// with the pointer, a marimba note per hop that counts up the scale, a
+// xylophone run up a ladder, a slide whistle down a chute, a spring for
+// bouncing back off 100, and little tunes for winning and losing. They play
+// through the engine (engine/sound.js), which sets their loudness.
+import { defineSounds } from "../engine/sound.js";
+import { tone, noise, decay, pentatonic } from "../engine/synth.js";
 
 // C major pentatonic from C4 up, so any run of hops or rungs sounds sunny.
-const PENTA = [0, 2, 4, 7, 9];
-const note = (step, base = 261.63) => base * 2 ** ((12 * Math.floor(step / 5) + PENTA[((step % 5) + 5) % 5]) / 12);
+const note = pentatonic(261.63);
 
 // A soft mallet on wood: the note, its bright fourth harmonic, a tap.
 function marimba(a, o, t, freq, gain = 0.16) {
@@ -99,7 +23,7 @@ function xylo(a, o, t, freq, gain = 0.12) {
   noise(a, o, t, { dur: 0.012, gain: gain * 0.6, freq: 4000, q: 1.5 });
 }
 
-const SOUNDS = {
+const SYNTH = {
   // The spinner's pointer flicking past a peg.
   tick: (a, o, t, { pitch = 1 } = {}) => {
     noise(a, o, t, { dur: 0.016, gain: 0.16, type: "highpass", freq: 2800 * pitch });
@@ -189,7 +113,7 @@ const SOUNDS = {
   win: (a, o, t) => {
     [10, 12, 13, 15].forEach((s, i) => marimba(a, o, t + i * 0.11, note(s), 0.12));
     for (const s of [15, 17, 18, 20]) tone(a, o, t + 0.46, { freq: note(s), type: "triangle", dur: 0.9, gain: 0.045, attack: 0.02 });
-    SOUNDS.sparkle(a, o, t + 0.5);
+    SYNTH.sparkle(a, o, t + 0.5);
   },
   lose: (a, o, t) => {
     [12, 11, 10].forEach((s, i) => tone(a, o, t + i * 0.2, { freq: note(s), type: "triangle", dur: 0.3, gain: 0.08 }));
@@ -197,36 +121,21 @@ const SOUNDS = {
   },
 };
 
-// Each sound's level, set against the recorded samples other games play:
-// hops and landings near 0.3 peak, the spinner's rapid ticks lower, the
-// winning tune on top.
-const LEVEL = { tick: 2, flick: 7, settle: 5, hop: 5, rung: 6, sparkle: 2.3, slide: 1.6, bump: 3.5, boing: 4, stay: 2.5, turn: 3.5, win: 2, lose: 3 };
-
-function voice(a, o, name) {
-  const g = a.createGain();
-  g.gain.value = LEVEL[name] ?? 1;
-  g.connect(o);
-  return g;
-}
-
-export const SOUND_NAMES = Object.keys(SOUNDS);
+export const sounds = defineSounds({
+  tick: { role: "cue", synth: SYNTH.tick, trim: 2.1 },
+  flick: { role: "action", synth: SYNTH.flick, trim: 19.7 },
+  settle: { role: "action", synth: SYNTH.settle, trim: 15.3 },
+  hop: { role: "action", synth: SYNTH.hop, trim: 3.8 },
+  rung: { role: "action", synth: SYNTH.rung, trim: 7.6 },
+  sparkle: { role: "highlight", synth: SYNTH.sparkle, trim: 8.2 },
+  slide: { role: "highlight", synth: SYNTH.slide, trim: 0.4 },
+  bump: { role: "action", synth: SYNTH.bump, trim: -0.7 },
+  boing: { role: "highlight", synth: SYNTH.boing, trim: 5.1 },
+  stay: { role: "ui", synth: SYNTH.stay, trim: 4.8 },
+  turn: { role: "ui", synth: SYNTH.turn, trim: 5.6 },
+  win: { role: "fanfare", synth: SYNTH.win, trim: 4.8 },
+  lose: { role: "fanfare", synth: SYNTH.lose, trim: 12 },
+});
 
 // Plays `name` now, or `at` seconds from now.
-export function play(name, opts = {}, at = 0) {
-  if (!soundOn() || !SOUNDS[name]) return;
-  globalThis.ddpSounds?.push(name); // browser tests count what played
-  try {
-    const a = audio();
-    // Not started yet (no click on this page so far): skip, rather than
-    // queue sounds that would all play at once later.
-    if (!a || a.state !== "running") return;
-    SOUNDS[name](a, voice(a, out, name), a.currentTime + 0.005 + at, opts);
-  } catch {}
-}
-
-// Renders a sound offline and returns its samples (for checking levels).
-export async function render(name, opts = {}, seconds = 2) {
-  const a = new OfflineAudioContext(1, Math.round(44100 * seconds), 44100);
-  SOUNDS[name](a, voice(a, master(a), name), 0.01, opts);
-  return (await a.startRendering()).getChannelData(0);
-}
+export const play = sounds.play;

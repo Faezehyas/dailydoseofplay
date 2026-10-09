@@ -4,7 +4,6 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
-import { playSample, preload } from "../engine/sound.js";
 import {
   makeRules,
   normalizeConfig,
@@ -28,6 +27,7 @@ import {
 } from "./rules.js";
 import { startRobot } from "./robot.js";
 import { mountSettings, LEVEL_NAMES } from "./settings.js";
+import { playMove } from "./sounds.js";
 
 const ROBOT_SEARCH_MS = 250; // search cap, so a slow phone still answers quickly
 const SLIDE_MS = 190;
@@ -36,11 +36,6 @@ const COLOR_NAMES = ["White", "Black"];
 const PIECE_NAMES = ["", "pawn", "knight", "bishop", "rook", "queen", "king"];
 const VALUES = [0, 1, 3, 3, 5, 9, 0];
 const PROMOS = [["q", QUEEN], ["r", ROOK], ["b", BISHOP], ["n", KNIGHT]];
-// Real recordings (CC0, see sounds/LICENSE.txt): a piece set down on a wooden
-// board, and for captures a sharper wooden clack over the knock.
-const sample = (name) => new URL(`./sounds/${name}.mp3`, import.meta.url).href;
-const KNOCKS = [1, 2, 3, 4].map((k) => sample(`move-${k}`));
-const CLACKS = [1, 2].map((k) => sample(`capture-${k}`));
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Original piece art on a 100×100 grid; class "d" is a detail line, "e" an eye.
@@ -61,17 +56,6 @@ const pieceSvg = (piece) => `<svg viewBox="6 3 88 88" class="pc ${colorOf(piece)
 const pieceName = (piece) => `${COLOR_NAMES[colorOf(piece)].toLowerCase()} ${PIECE_NAMES[typeOf(piece)]}`;
 
 const settings = mountSettings(document.getElementById("chess-settings"), document.getElementById("lobby"));
-preload([...KNOCKS, ...CLACKS]);
-
-// A piece lands: a capture clacks; castling knocks twice, the king then the rook.
-function knock(moved) {
-  if (moved.captured) playSample(CLACKS, { gain: 0.8 });
-  else if (moved.san.startsWith("O-O")) {
-    playSample(KNOCKS, { gain: 0.7 });
-    setTimeout(() => playSample(KNOCKS, { gain: 0.5, rate: 1.08 }), 120);
-  } else playSample(KNOCKS, { gain: 0.7 });
-}
-
 startGameShell({
   slug: "chess",
   title: "Chess",
@@ -539,7 +523,7 @@ function mountChess(session, root, shell) {
       if (moved.san.startsWith("O-O")) slide(...ROOK_HOP[moved.to], 120);
     }
     if (moved.captured && !reducedMotion()) takeAway(moved, still ? 0 : SLIDE_MS * 0.6);
-    setTimeout(() => !destroyed && knock(moved), still ? 0 : SLIDE_MS);
+    setTimeout(() => !destroyed && playMove(moved), still ? 0 : SLIDE_MS);
   }
 
   function slide(from, to, delay = 0) {
