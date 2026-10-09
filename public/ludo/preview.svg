@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-ludo">
+<style>.pv-ludo .a{color:var(--danger)}
+.pv-ludo .b{color:var(--ok)}
+.pv-ludo .c{color:var(--hit-2)}
+.pv-ludo .d{color:var(--focus)}
+.pv-ludo .bg{fill:var(--surface-2)}
+.pv-ludo .frame,.pv-ludo .panel,.pv-ludo .log{fill:var(--surface);stroke:var(--border)}
+.pv-ludo .yard,.pv-ludo .lane{fill:currentColor}
+.pv-ludo .pad{fill:var(--surface)}
+.pv-ludo .spot{fill:currentColor;opacity:.25}
+.pv-ludo .track{fill:var(--surface)}
+.pv-ludo .grid{fill:none;stroke:var(--border);stroke-width:.8}
+.pv-ludo .star{fill:none;stroke:var(--muted);stroke-width:.8}
+.pv-ludo use{stroke:var(--text);stroke-width:.8;stroke-opacity:.6}
+.pv-ludo .die{fill:var(--surface);stroke:var(--control-border);stroke-width:1.5}
+.pv-ludo .pip{fill:var(--text)}
+.pv-ludo .pip .gone,.pv-ludo .pip .fade{animation-duration:.12s}
+.pv-ludo .btn{fill:var(--accent)}
+.pv-ludo .btn-text{fill:var(--accent-ink);font:600 10px var(--font-display);text-anchor:middle}
+.pv-ludo .roll{transform-box:fill-box;transform-origin:center;animation-name:pv-ludo-roll;animation-duration:.55s}
+.pv-ludo .out{animation-name:pv-ludo-arc;animation-duration:.45s}
+.pv-ludo .sent{animation-name:pv-ludo-arc;animation-duration:.5s}
+.pv-ludo .hop1{animation-name:pv-ludo-hop1;animation-duration:.25s}
+.pv-ludo .blue-move{animation-name:pv-ludo-blue;animation-duration:.6s}
+@keyframes pv-ludo-roll{from{transform:rotate(-360deg)}50%{transform:rotate(-120deg) scale(1.2)}}
+@keyframes pv-ludo-arc{from{transform:translate(var(--x),var(--y))}50%{transform:translate(calc(var(--x)/2),calc(var(--y)/2 - 16px)) scale(1.4)}}
+@keyframes pv-ludo-hop1{from{transform:translateY(var(--y))}50%{transform:translateY(calc(var(--y)/2 - 5px)) scale(1.2)}}
+@keyframes pv-ludo-blue{0%{transform:translate(12px,24px)}16.7%{transform:translate(6px,19px) scale(1.2)}33.3%{transform:translate(0px,24px)}50%{transform:translate(0px,13px) scale(1.2)}66.7%{transform:translate(0px,12px)}83.3%{transform:translate(0px,1px) scale(1.2)}100%{transform:translate(0px,0px)}}</style>
+<rect class="bg" width="320" height="200"/>
+<defs><path id="pv-ludo-tk" fill="currentColor" d="M-4.5 3a4.5 1.8 0 0 0 9 0c0-3.4-2.6-4.4-2.6-7a2.9 2.9 0 1 0-3.8 0c0 2.6-2.6 3.6-2.6 7z"/></defs>
+<rect class="frame" x="4" y="6" width="188" height="188" rx="8"/>
+<g class="b"><rect class="yard" x="8" y="10" width="72" height="72"/><rect class="pad" x="20" y="22" width="48" height="48" rx="7"/><circle class="spot" cx="32" cy="34" r="7.5"/><circle class="spot" cx="56" cy="34" r="7.5"/><circle class="spot" cx="32" cy="58" r="7.5"/><circle class="spot" cx="56" cy="58" r="7.5"/></g>
+<g class="c"><rect class="yard" x="116" y="10" width="72" height="72"/><rect class="pad" x="128" y="22" width="48" height="48" rx="7"/><circle class="spot" cx="140" cy="34" r="7.5"/><circle class="spot" cx="164" cy="34" r="7.5"/><circle class="spot" cx="140" cy="58" r="7.5"/><circle class="spot" cx="164" cy="58" r="7.5"/></g>
+<g class="a"><rect class="yard" x="8" y="118" width="72" height="72"/><rect class="pad" x="20" y="130" width="48" height="48" rx="7"/><circle class="spot" cx="32" cy="142" r="7.5"/><circle class="spot" cx="56" cy="142" r="7.5"/><circle class="spot" cx="32" cy="166" r="7.5"/><circle class="spot" cx="56" cy="166" r="7.5"/></g>
+<g class="d"><rect class="yard" x="116" y="118" width="72" height="72"/><rect class="pad" x="128" y="130" width="48" height="48" rx="7"/><circle class="spot" cx="140" cy="142" r="7.5"/><circle class="spot" cx="164" cy="142" r="7.5"/><circle class="spot" cx="140" cy="166" r="7.5"/><circle class="spot" cx="164" cy="166" r="7.5"/></g>
+<path class="track" d="M8 82h180v36h-180zM80 10h36v180h-36z"/><path class="grid" d="M8 82h180M80 10v180M8 94h180M92 10v180M8 106h180M104 10v180M8 118h180M116 10v180M8 82v36M80 10h36M20 82v36M80 22h36M32 82v36M80 34h36M44 82v36M80 46h36M56 82v36M80 58h36M68 82v36M80 70h36M128 82v36M80 130h36M140 82v36M80 142h36M152 82v36M80 154h36M164 82v36M80 166h36M176 82v36M80 178h36M188 82v36M80 190h36"/>
+<path class="a lane" d="M92 118h12v12h-12zM92 130h12v12h-12zM92 142h12v12h-12zM92 154h12v12h-12zM92 166h12v12h-12zM80 166h12v12h-12z"/>
+<path class="b lane" d="M20 94h12v12h-12zM32 94h12v12h-12zM44 94h12v12h-12zM56 94h12v12h-12zM68 94h12v12h-12zM20 82h12v12h-12z"/>
+<path class="c lane" d="M92 22h12v12h-12zM92 34h12v12h-12zM92 46h12v12h-12zM92 58h12v12h-12zM92 70h12v12h-12zM104 22h12v12h-12z"/>
+<path class="d lane" d="M116 94h12v12h-12zM128 94h12v12h-12zM140 94h12v12h-12zM152 94h12v12h-12zM164 94h12v12h-12zM164 106h12v12h-12z"/>
+<path class="star" d="M38 108l1.2 2.6 2.8.3-2.1 1.9.6 2.8-2.5-1.4-2.5 1.4.6-2.8-2.1-1.9 2.8-.3zM86 36l1.2 2.6 2.8.3-2.1 1.9.6 2.8-2.5-1.4-2.5 1.4.6-2.8-2.1-1.9 2.8-.3zM158 84l1.2 2.6 2.8.3-2.1 1.9.6 2.8-2.5-1.4-2.5 1.4.6-2.8-2.1-1.9 2.8-.3zM110 156l1.2 2.6 2.8.3-2.1 1.9.6 2.8-2.5-1.4-2.5 1.4.6-2.8-2.1-1.9 2.8-.3z"/>
+<path class="b lane" d="M80 82v36L98 100z"/><path class="c lane" d="M80 82h36L98 100z"/><path class="d lane" d="M116 82v36L98 100z"/><path class="a lane" d="M80 118h36L98 100z"/>
+<g class="b"><g transform="translate(32 34)"><use href="#pv-ludo-tk"/></g></g>
+<g class="b"><g transform="translate(56 34)"><use href="#pv-ludo-tk"/></g></g>
+<g class="b"><g transform="translate(32 58)"><use href="#pv-ludo-tk"/></g></g>
+<g class="b"><g transform="translate(56 58)"><use href="#pv-ludo-tk"/></g></g>
+<g class="c"><g transform="translate(140 34)"><use href="#pv-ludo-tk"/></g></g>
+<g class="c"><g transform="translate(164 34)"><use href="#pv-ludo-tk"/></g></g>
+<g class="c"><g transform="translate(140 58)"><use href="#pv-ludo-tk"/></g></g>
+<g class="c"><g transform="translate(164 58)"><use href="#pv-ludo-tk"/></g></g>
+<g class="a"><g transform="translate(56 142)"><use href="#pv-ludo-tk"/></g></g>
+<g class="a"><g transform="translate(32 166)"><use href="#pv-ludo-tk"/></g></g>
+<g class="a"><g transform="translate(56 166)"><use href="#pv-ludo-tk"/></g></g>
+<g class="d"><g transform="translate(164 142)"><use href="#pv-ludo-tk"/></g></g>
+<g class="d"><g transform="translate(140 166)"><use href="#pv-ludo-tk"/></g></g>
+<g class="d"><g transform="translate(164 166)"><use href="#pv-ludo-tk"/></g></g>
+<g class="d"><g transform="translate(140 142)"><g class="sent" style="--d:3.85s;--x:-54px;--y:18px"><g class="blue-move" style="--d:0.9s"><use href="#pv-ludo-tk"/></g></g></g></g>
+<g class="a"><g transform="translate(86 160)"><g class="hop1" style="--d:3.6s;--y:12px"><g class="out" style="--d:2.5s;--x:-54px;--y:-30px"><use href="#pv-ludo-tk"/></g></g></g></g>
+<rect class="panel" x="204" y="28" width="108" height="96" rx="10"/>
+<rect class="lit d" x="241" y="49" width="36" height="36" rx="9" style="--d:0s;--l:1.6s"/>
+<rect class="lit a" x="241" y="49" width="36" height="36" rx="9" style="--d:1.6s;--l:2.7s"/>
+<rect class="lit b stay" x="241" y="49" width="36" height="36" rx="9" style="--d:4.3s"/>
+<g transform="translate(259 67)"><g class="roll" style="--d:0.2s"><g class="roll" style="--d:1.8s"><g class="roll" style="--d:2.95s"><rect class="die" x="-15" y="-15" width="30" height="30" rx="7"/><g class="pip"><g class="gone" style="--d:0.75s"><circle cx="0" cy="0" r="2.6"/></g><g class="gone" style="--d:2.35s"><g class="fade" style="--d:0.75s"><circle cx="-7" cy="-7" r="2.6"/><circle cx="0" cy="0" r="2.6"/><circle cx="7" cy="7" r="2.6"/></g></g><g class="gone" style="--d:3.45s"><g class="fade" style="--d:2.35s"><circle cx="-7" cy="-7.5" r="2.6"/><circle cx="7" cy="-7.5" r="2.6"/><circle cx="-7" cy="0" r="2.6"/><circle cx="7" cy="0" r="2.6"/><circle cx="-7" cy="7.5" r="2.6"/><circle cx="7" cy="7.5" r="2.6"/></g></g><g class="fade" style="--d:3.45s"><circle cx="0" cy="0" r="2.6"/></g></g></g></g></g></g>
+<rect class="btn" x="222" y="96" width="74" height="18" rx="9"/><text class="btn-text" x="259" y="108.5">Roll</text>
+<g class="d fade" style="--d:1.5s"><rect class="log" x="204" y="132" width="108" height="14" rx="4"/><rect x="204" y="132" width="3" height="14" fill="currentColor"/><rect class="name" x="214" y="137.5" width="70" height="3" rx="1.5"/></g>
+<g class="a fade" style="--d:2.9s"><rect class="log" x="204" y="150" width="108" height="14" rx="4"/><rect x="204" y="150" width="3" height="14" fill="currentColor"/><rect class="name" x="214" y="155.5" width="54" height="3" rx="1.5"/></g>
+<g class="a fade" style="--d:4.3s"><rect class="log" x="204" y="168" width="108" height="14" rx="4"/><rect x="204" y="168" width="3" height="14" fill="currentColor"/><rect class="name" x="214" y="173.5" width="80" height="3" rx="1.5"/></g>
+<g class="a"><rect class="tag" x="201" y="6" width="26" height="14" rx="7"/><circle cx="209" cy="13" r="4" fill="currentColor"/><rect class="name" x="216" y="11.5" width="6" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="230" y="6" width="26" height="14" rx="7"/><circle cx="238" cy="13" r="4" fill="currentColor"/><rect class="name" x="245" y="11.5" width="6" height="3" rx="1.5"/></g>
+<g class="c"><rect class="tag" x="259" y="6" width="26" height="14" rx="7"/><circle cx="267" cy="13" r="4" fill="currentColor"/><rect class="name" x="274" y="11.5" width="6" height="3" rx="1.5"/></g>
+<g class="d"><rect class="tag" x="288" y="6" width="26" height="14" rx="7"/><circle cx="296" cy="13" r="4" fill="currentColor"/><rect class="name" x="303" y="11.5" width="6" height="3" rx="1.5"/></g>
+<rect class="lit d" x="286" y="4" width="30" height="18" rx="9" style="--d:0s;--l:1.6s"/>
+<rect class="lit a" x="199" y="4" width="30" height="18" rx="9" style="--d:1.6s;--l:2.7s"/>
+<rect class="lit b stay" x="228" y="4" width="30" height="18" rx="9" style="--d:4.3s"/>
+</svg>

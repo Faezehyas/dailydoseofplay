@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-dab">
+<style>.pv-dab .bg{fill:var(--surface-2)}
+.pv-dab .old,.pv-dab .new{stroke-width:4;stroke-linecap:round}
+.pv-dab .old{stroke:var(--control-border)}
+.pv-dab .new{stroke:currentColor}
+.pv-dab .box{fill:currentColor;opacity:.4}
+.pv-dab .dot{fill:var(--text)}</style>
+<rect class="bg" width="320" height="200"/>
+<g transform="translate(88 46)"><path class="old" d="M0 0h36"/></g>
+<g transform="translate(88 46) rotate(90)"><path class="old" d="M0 0h36"/></g>
+<g transform="translate(196 46)"><path class="old" d="M0 0h36"/></g>
+<g transform="translate(232 82) rotate(90)"><path class="old" d="M0 0h36"/></g>
+<g transform="translate(160 154)"><path class="old" d="M0 0h36"/></g>
+<g transform="translate(196 118) rotate(90)"><path class="old" d="M0 0h36"/></g>
+<g transform="translate(160 46) rotate(90)"><path class="old" d="M0 0h36"/></g>
+<g class="a"><rect class="box pop" x="127" y="85" width="30" height="30" rx="3" style="--d:3.65s"/></g>
+<g class="a"><g transform="translate(124 82)"><path class="new draw" d="M0 0h36" style="--d:0.3s"/></g></g>
+<g class="b"><g transform="translate(88 118) rotate(90)"><path class="new draw" d="M0 0h36" style="--d:0.8s"/></g></g>
+<g class="a"><g transform="translate(124 82) rotate(90)"><path class="new draw" d="M0 0h36" style="--d:1.3s"/></g></g>
+<g class="b"><g transform="translate(196 82)"><path class="new draw" d="M0 0h36" style="--d:1.8s"/></g></g>
+<g class="a"><g transform="translate(88 154)"><path class="new draw" d="M0 0h36" style="--d:2.3s"/></g></g>
+<g class="b"><g transform="translate(124 118)"><path class="new draw" d="M0 0h36" style="--d:2.8s"/></g></g>
+<g class="a"><g transform="translate(160 82) rotate(90)"><path class="new draw" d="M0 0h36" style="--d:3.3s"/></g></g>
+<path class="dot" d="M84.5 46a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM84.5 82a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM84.5 118a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM84.5 154a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM120.5 46a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM120.5 82a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM120.5 118a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM120.5 154a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM156.5 46a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM156.5 82a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM156.5 118a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM156.5 154a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM192.5 46a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM192.5 82a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM192.5 118a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM192.5 154a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM228.5 46a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM228.5 82a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM228.5 118a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0zM228.5 154a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0z"/>
+<g class="a"><rect class="tag" x="250" y="6" width="30" height="14" rx="7"/><circle cx="258" cy="13" r="4" fill="currentColor"/><rect class="name" x="265" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="284" y="6" width="30" height="14" rx="7"/><circle cx="292" cy="13" r="4" fill="currentColor"/><rect class="name" x="299" y="11.5" width="10" height="3" rx="1.5"/></g>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:0s;--l:0.5s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:0.5s;--l:0.5s"/>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:1s;--l:0.5s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:1.5s;--l:0.5s"/>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:2s;--l:0.5s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:2.5s;--l:0.5s"/>
+<rect class="lit a stay" x="248" y="4" width="34" height="18" rx="9" style="--d:3s"/>
+</svg>

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-chess">
+<style>.pv-chess .bg{fill:var(--surface-2)}
+.pv-chess .light{fill:var(--surface)}
+.pv-chess .dark{fill:var(--border)}
+.pv-chess .w{fill:var(--surface);stroke:var(--text);stroke-width:1.2;stroke-linejoin:round}
+.pv-chess .k{fill:var(--text);stroke:var(--surface);stroke-width:.8;stroke-linejoin:round}
+.pv-chess .check{fill:var(--danger);opacity:.45}
+.pv-chess .mate{transform-box:fill-box;transform-origin:50% 100%;animation-name:pv-chess-mate;animation-duration:.5s}
+@keyframes pv-chess-mate{to{transform:rotate(80deg)}}</style>
+<defs><path id="pv-chess-p" d="M-5 7h10l-1.5-4h-1.6l-.6-3.2a3.4 3.4 0 1 0-2.6 0l-.6 3.2h-1.6z"/><path id="pv-chess-n" d="M-5.5 7h11c0-6-1-11.5-6.5-13.5l-1-2-1.2 2.3c-2.2.6-4.2 2.6-5.3 4.9l1.4 2.2 3.2-1.4c.8 1.4-.2 3.5-1.6 5.5z"/><path id="pv-chess-b" d="M-5 7h10l-1.3-3c2-2.4 1.9-6.2-1.7-9.4l-2-2.2-2 2.2c-3.6 3.2-3.7 7-1.7 9.4z"/><path id="pv-chess-r" d="M-5.5 7h11v-2.2h-1.4l-.9-6.3h1.8v-5h-2.2v2h-1.8v-2h-2v2h-1.8v-2h-2.2v5h1.8l-.9 6.3h-1.4z"/><path id="pv-chess-q" d="M-6 7h12l-.9-3.2 2.3-8.6-4.4 4.4-1.2-6.8-1.8 5.6-1.8-5.6-1.2 6.8-4.4-4.4 2.3 8.6z"/><path id="pv-chess-k" d="M-6 7h12l-.9-3.2c2.4-2.2 2-5.8-1.2-6.4-1.2-.2-2.4.3-3.1 1v-2.6h2v-1.8h-2v-2h-1.6v2h-2v1.8h2v2.6c-.7-.7-1.9-1.2-3.1-1-3.2.6-3.6 4.2-1.2 6.4z"/></defs>
+<rect class="bg" width="320" height="200"/>
+<rect class="light" x="80" y="32" width="160" height="160"/>
+<path class="dark" d="M100 32h20v20h-20zM140 32h20v20h-20zM180 32h20v20h-20zM220 32h20v20h-20zM80 52h20v20h-20zM120 52h20v20h-20zM160 52h20v20h-20zM200 52h20v20h-20zM100 72h20v20h-20zM140 72h20v20h-20zM180 72h20v20h-20zM220 72h20v20h-20zM80 92h20v20h-20zM120 92h20v20h-20zM160 92h20v20h-20zM200 92h20v20h-20zM100 112h20v20h-20zM140 112h20v20h-20zM180 112h20v20h-20zM220 112h20v20h-20zM80 132h20v20h-20zM120 132h20v20h-20zM160 132h20v20h-20zM200 132h20v20h-20zM100 152h20v20h-20zM140 152h20v20h-20zM180 152h20v20h-20zM220 152h20v20h-20zM80 172h20v20h-20zM120 172h20v20h-20zM160 172h20v20h-20zM200 172h20v20h-20z"/>
+<g transform="translate(90 182)"><use href="#pv-chess-r" class="w"/></g>
+<g transform="translate(110 182)"><use href="#pv-chess-n" class="w"/></g>
+<g transform="translate(130 182)"><use href="#pv-chess-b" class="w"/></g>
+<g transform="translate(170 182)"><use href="#pv-chess-k" class="w"/></g>
+<g transform="translate(130 122)"><use href="#pv-chess-b" class="w"/></g>
+<g transform="translate(210 182)"><use href="#pv-chess-n" class="w"/></g>
+<g transform="translate(230 182)"><use href="#pv-chess-r" class="w"/></g>
+<g transform="translate(90 162)"><use href="#pv-chess-p" class="w"/></g>
+<g transform="translate(110 162)"><use href="#pv-chess-p" class="w"/></g>
+<g transform="translate(130 162)"><use href="#pv-chess-p" class="w"/></g>
+<g transform="translate(150 162)"><use href="#pv-chess-p" class="w"/></g>
+<g transform="translate(170 122)"><use href="#pv-chess-p" class="w"/></g>
+<g transform="translate(190 162)"><use href="#pv-chess-p" class="w"/></g>
+<g transform="translate(210 162)"><use href="#pv-chess-p" class="w"/></g>
+<g transform="translate(230 162)"><use href="#pv-chess-p" class="w"/></g>
+<g transform="translate(90 42)"><use href="#pv-chess-r" class="k"/></g>
+<g transform="translate(130 42)"><use href="#pv-chess-b" class="k"/></g>
+<g transform="translate(150 42)"><use href="#pv-chess-q" class="k"/></g>
+<g transform="translate(190 42)"><use href="#pv-chess-b" class="k"/></g>
+<g transform="translate(230 42)"><use href="#pv-chess-r" class="k"/></g>
+<g transform="translate(130 82)"><use href="#pv-chess-n" class="k"/></g>
+<g transform="translate(90 62)"><use href="#pv-chess-p" class="k"/></g>
+<g transform="translate(110 62)"><use href="#pv-chess-p" class="k"/></g>
+<g transform="translate(130 62)"><use href="#pv-chess-p" class="k"/></g>
+<g transform="translate(150 62)"><use href="#pv-chess-p" class="k"/></g>
+<g transform="translate(170 102)"><use href="#pv-chess-p" class="k"/></g>
+<g transform="translate(210 62)"><use href="#pv-chess-p" class="k"/></g>
+<g transform="translate(230 62)"><use href="#pv-chess-p" class="k"/></g>
+<g transform="translate(190 62)"><g class="gone" style="--d:2.05s"><use href="#pv-chess-p" class="k"/></g></g>
+<g transform="translate(190 82)"><g class="slide" style="--d:1.0s;--x:20px;--y:-40px"><use href="#pv-chess-n" class="k"/></g></g>
+<g transform="translate(190 62)"><g class="slide" style="--d:1.7s;--x:40px;--y:40px"><g class="slide" style="--d:0.3s;--x:-80px;--y:80px"><use href="#pv-chess-q" class="w"/></g></g></g>
+<g transform="translate(170 42)"><circle class="check pop" r="10" style="--d:2.35s"/><g class="mate" style="--d:2.85s"><use href="#pv-chess-k" class="k"/></g></g>
+<g class="a"><rect class="tag" x="250" y="6" width="30" height="14" rx="7"/><circle cx="258" cy="13" r="4" fill="currentColor"/><rect class="name" x="265" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="284" y="6" width="30" height="14" rx="7"/><circle cx="292" cy="13" r="4" fill="currentColor"/><rect class="name" x="299" y="11.5" width="10" height="3" rx="1.5"/></g>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:0s;--l:0.7s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:0.7s;--l:0.7s"/>
+<rect class="lit a stay" x="248" y="4" width="34" height="18" rx="9" style="--d:1.4s"/>
+</svg>

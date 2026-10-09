@@ -365,7 +365,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 |---|---|
 | `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`), the footer every page ends with (how games run, then links to this file, the repository and the privacy page; more links join `FOOTER_LINKS`), nickname in `localStorage`, toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar, the result panel, the result moment and `.text-page` (the privacy page's reading column) |
+| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), the moves the tiles' previews use (see **Tile previews**) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar, the result panel, the result moment and `.text-page` (the privacy page's reading column) |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
@@ -552,11 +552,12 @@ dot for a seat or a fact ("2–4 players" on the home tiles): the dot is
 Transitions use `--dur-fast`, `--dur-med` or `--dur-slow` and `--ease-out` or
 `--ease-spring`. The rules, at the top of the motion section in `theme.css`:
 animate only transform and opacity; nothing loops forever except the home
-hero's scene; everything stops under `prefers-reduced-motion`; no motion starts
+hero's scene and a tile's preview while it is hovered, focused or, on a touch
+screen, in view; everything stops under `prefers-reduced-motion`; no motion starts
 without a user action, except the room code, whose letters settle in one by
 one (350 ms) when the waiting room opens, the result moment when a match
-ends (see **Result moment**), and the hero's scene. Loading indicators run
-only while something loads.
+ends (see **Result moment**), the hero's scene, and a tile's preview on a
+touch screen. Loading indicators run only while something loads.
 
 **Hero scene.** The home hero ends with a small game table, an inline SVG in
 `index.html` (decorative, `aria-hidden`), drawn in theme tokens so it follows
@@ -567,6 +568,23 @@ The loops animate only transform and opacity, which Chrome runs on the
 compositor, so they cause no layout or paint. `home.js` adds `.paused` while
 the scene is off screen (IntersectionObserver) or the tab is hidden, and with
 `prefers-reduced-motion` the scene is still.
+
+**Tile previews.** While a ready game's home tile is hovered or has keyboard
+focus, or on a touch screen (`hover: none`) while it is at least 60% in view,
+it loops a 3–5 second preview of the game: its pieces move and small player
+tags light up in turn. Each loop holds its last frame for a moment; when the
+tile loses hover, focus or view, its icon comes back. `home.js` fetches
+`<slug>/preview.svg` the first time, inlines it in place of the icon (an
+`<img>` couldn't reach the page's tokens or be started) and calls `play()` on
+its animations, which start paused, again after each loop. Without the file,
+or with `prefers-reduced-motion`, the icon stays. Because the SVG is inlined, its
+`<style>` applies to the whole page: selectors start with the game's class
+(`.pv-ttt`) and keyframes and ids with its name. `theme.css` gives every
+preview the same timing (each piece waits `--d`), the seat colours (`.a` to
+`.d`), the player tags and a few moves (`.pop`, `.fade`, `.gone`, `.draw`,
+`.slide`, `.fall`, `.lit`). The CSP needs no change: the fetch is same-origin
+and inline styles are already allowed; `test/server.test.js` checks each
+preview has no script and no external references.
 
 **Page column.** A game page stacks the lobby, the game
 and "How to play" (`.rules`), and they all share one centred column, as wide
@@ -721,6 +739,7 @@ checks that no game opens its own audio context or output.
 | `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`; custom-protocol games (Sea Battle) also export `startRobot(session)`. |
 | `*.test.js` | `node --test` unit tests, next to the code |
 | `icon.svg` | Card art for the home page (16:10) |
+| `preview.svg` | Optional: the tile's short animated preview (see **Tile previews**) |
 
 ## Sea Battle in depth
 
