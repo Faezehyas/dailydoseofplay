@@ -341,6 +341,37 @@ h3 {
   text-align: center;
 }
 
+.site-footer p {
+  margin: 0;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 16px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+}
+
+/* An open result panel is fixed to the bottom of the screen. The footer, which
+   ends every page, makes room for it, so nothing scrolls under the panel. */
+body:has(.result-panel:not([hidden])) .page {
+  padding-bottom: 48px;
+}
+
+body:has(.result-panel:not([hidden])) .site-footer {
+  padding-bottom: calc(var(--result-h, 0px) + 32px);
+}
+
 /* ---------- buttons and fields ---------- */
 .btn {
   display: inline-flex;

@@ -1,10 +1,16 @@
-// UI shell shared by the home page and every game: header, theme and sound
-// toggles, nickname storage, toasts, tab-title alerts and tiny DOM helpers.
+// UI shell shared by the home page and every game: header, footer, theme and
+// sound toggles, nickname storage, toasts, tab-title alerts and tiny DOM helpers.
 import { soundOn, setSound } from "./sound.js";
 import { cleanName } from "./names.js";
 
 const THEME_KEY = "ddp-theme";
 const NAME_KEY = "ddp-name";
+const REPO = "https://github.com/Faezehyas/dailydoseofplay";
+// The footer's links, in order. A Privacy page gets its link here.
+const FOOTER_LINKS = [
+  ["How it works", `${REPO}/blob/main/ARCHITECTURE.md`],
+  ["GitHub", REPO],
+];
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -119,6 +125,14 @@ export function initShell({ title } = {}) {
     main.id ||= "main";
     document.body.prepend(el("a", { class: "skip-link", href: `#${main.id}` }, "Skip to content"));
   }
+  document.body.append(
+    el(
+      "footer",
+      { class: "site-footer" },
+      el("p", {}, "Games run directly between your browsers. Nothing to install, nothing stored but your nickname."),
+      el("ul", { class: "footer-links" }, FOOTER_LINKS.map(([text, href]) => el("li", {}, el("a", { href }, text)))),
+    ),
+  );
   return header;
 }
 
