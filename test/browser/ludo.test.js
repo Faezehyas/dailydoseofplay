@@ -158,7 +158,6 @@ test("a four-seat Ludo room: two friends join by the invite key, a third types t
   const di = await open("Di");
   await di.goto(`${srv.base}/ludo/`);
   await di.fill("#join-code", code);
-  await di.click(".join-row button");
   const knock = host.locator("#roster li.knock", { hasText: "Di wants to join" });
   await knock.waitFor();
   assert.match(await host.locator("#roster").innerText(), /Ada\s+host[\s\S]*Bo\s+in[\s\S]*Cy\s+in[\s\S]*Di wants to join/, "the knock sits in the player list");
