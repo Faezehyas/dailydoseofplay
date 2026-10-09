@@ -10,7 +10,7 @@ import { el, toast, setTabAlert } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, geometry, lineEnds, DRAW } from "./rules.js";
 import { startRobot } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 
 const U = 100; // one box, in board units
@@ -23,7 +23,6 @@ const PACE = { mine: 170, theirs: 330, first: 300, gap: 200, after: 240, pop: 42
 const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const NS = "http://www.w3.org/2000/svg";
 
-const settings = mountSettings(document.getElementById("db-settings"), document.getElementById("lobby"));
 // Read live, so a browser test can switch it mid-game.
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -31,6 +30,7 @@ startGameShell({
   slug: "dots-and-boxes",
   title: "Dots and Boxes",
   layout: "wide",
+  settings,
   createRobot: (session) => {
     const config = settings.get();
     return startRobot(session, { rules: makeRules(config), level: config.level });

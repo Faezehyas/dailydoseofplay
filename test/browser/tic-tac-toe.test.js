@@ -32,7 +32,11 @@ const pw = await loadPlaywright();
 const wait = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 20_000 });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#ttt-settings label:has(input[name="ttt-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#ttt-settings[open]").count())) await page.click("#ttt-settings > summary");
+  await page.click(`#ttt-settings label:has(input[name="ttt-${name}"][value="${value}"])`);
+}
 
 test("two friends play Tic Tac Toe on the host's settings through the invite link, then a rematch", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
@@ -58,9 +62,11 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   await host.goto(`${srv.base}/tic-tac-toe/`);
   await pick(host, "size", 5);
   await pick(host, "first", "host");
+  assert.equal(await host.locator("#ttt-settings .settings-line").innerText(), "5 × 5 · 30 s a move · 2 min each · You go first", "the summary follows the choice");
   await host.click("#play-friend");
   assert.ok(await host.locator("#ttt-settings").isHidden(), "settings are only on the home screen");
   await host.locator("#room-code").waitFor();
+  assert.equal(await host.locator("#room-settings").innerText(), "Settings: 5 × 5 · 30 s a move · 2 min each · You go first", "the waiting screen shows the room's settings");
   const invite = await host.locator("#invite-link").inputValue();
   const code = (await host.locator("#room-code").innerText()).trim();
   assert.match(invite, new RegExp(`/tic-tac-toe/\\?room=${code}&key=[\\w-]{22}$`));

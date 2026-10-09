@@ -25,7 +25,11 @@ export const pw = await loadPlaywright();
 export const wait = (page, fn, arg, timeout = 20_000) => page.waitForFunction(fn, arg, { timeout });
 export const ply = (page) => page.evaluate(() => window.ddp.match.state.ply);
 export const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-export const pick = (page, name, value) => page.click(`#bg-settings label:has(input[name="bg-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+export async function pick(page, name, value) {
+  if (!(await page.locator("#bg-settings[open]").count())) await page.click("#bg-settings > summary");
+  await page.click(`#bg-settings label:has(input[name="bg-${name}"][value="${value}"])`);
+}
 export const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 
 // Waits for this page's dice to roll themselves, then plays the whole turn by

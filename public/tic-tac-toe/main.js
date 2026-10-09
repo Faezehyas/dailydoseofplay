@@ -7,7 +7,7 @@ import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, markOf, isTimed, timeLeft, EMPTY, DRAW, IN_A_ROW } from "./rules.js";
 import { chooseMove } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 
 const MARK_SVG = {
   X: '<svg viewBox="0 0 100 100" class="mark x" aria-hidden="true"><path d="M24 24 76 76"/><path d="M76 24 24 76"/></svg>',
@@ -17,12 +17,11 @@ const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const IN_A_ROW_WORD = { 3: "three", 4: "four" };
 
-const settings = mountSettings(document.getElementById("ttt-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "tic-tac-toe",
   title: "Tic Tac Toe",
   layout: "narrow",
+  settings,
   createRobot: (session) =>
     startTurnRobot(session, {
       rules: makeRules(settings.get()),

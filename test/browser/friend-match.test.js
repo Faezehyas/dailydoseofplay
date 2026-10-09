@@ -503,7 +503,11 @@ test("a robot game on a 360 px phone with the longest nickname has no sideways s
   assert.deepEqual(errors, []);
 });
 
-const pick = (page, name, value) => page.click(`#sb-settings label:has(input[name="sb-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#sb-settings[open]").count())) await page.click("#sb-settings > summary");
+  await page.click(`#sb-settings label:has(input[name="sb-${name}"][value="${value}"])`);
+}
 
 test("the host's time settings apply to both friends; a shot's time running out fires a random shot", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
   const srv = await startServer();

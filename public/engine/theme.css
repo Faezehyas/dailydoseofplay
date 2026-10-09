@@ -445,7 +445,7 @@ input::placeholder {
 }
 
 /* ---------- game page column ---------- */
-/* The lobby, the settings, the game and "How to play" share one column, as
+/* The lobby, the game and "How to play" share one column, as
    wide as the view on show. lobby.js sets data-view ("lobby" or "game") and
    the game's data-layout on .page; the lobby is always narrow. */
 .page[data-view] {
@@ -1627,13 +1627,61 @@ input.mono {
   }
 }
 
-/* ---------- game settings (lobby, engine/settings.js) ---------- */
-.settings-card {
+/* ---------- game settings (lobby card, engine/settings.js) ---------- */
+/* Folded to a summary line; it opens to the options. */
+.settings {
+  margin: 12px 0 0;
   text-align: left;
 }
 
-.settings-card h2 {
-  font-size: 1.1rem;
+.settings > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings > summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.settings-line {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-part {
+  white-space: nowrap;
+}
+
+.settings-change {
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.settings-body {
+  padding: 12px 0 0;
+}
+
+.robot-only {
+  margin-left: 6px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.room-settings {
+  font-size: 0.9rem;
 }
 
 .settings-group {
@@ -1702,7 +1750,7 @@ input.mono {
   outline-offset: 2px;
 }
 
-.settings-card .hint {
+.settings .hint {
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 0.85rem;

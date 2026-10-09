@@ -33,7 +33,11 @@ const pw = await loadPlaywright();
 const wait = (page, fn, arg, timeout = 20_000) => page.waitForFunction(fn, arg, { timeout });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#chess-settings label:has(input[name="chess-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#chess-settings[open]").count())) await page.click("#chess-settings > summary");
+  await page.click(`#chess-settings label:has(input[name="chess-${name}"][value="${value}"])`);
+}
 const sq = (name) => (Number(name[1]) - 1) * 8 + "abcdefgh".indexOf(name[0]);
 const square = (page, name) => page.locator(`.sq[data-sq="${sq(name)}"]`);
 // Counts recorded piece sounds (short samples; the engine's noise buffers are
