@@ -4,10 +4,10 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
-import { playSample, preload } from "../engine/sound.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, legalPlays, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
 import { chooseMove, inContact, startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
+import { play } from "./sounds.js";
 
 const ROBOT_DELAY = 800;
 const ROBOT_RACING = 250; // the robot's pause once you let the game race your checkers home
@@ -30,14 +30,6 @@ const BOTTOM = [12, 11, 10, 9, 8, 7, BAR, 6, 5, 4, 3, 2, 1, OFF];
 
 const settings = mountSettings(document.getElementById("bg-settings"), document.getElementById("lobby"));
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-// Real recordings (CC0, see sounds/LICENSE.txt): a checker set down on a wooden board, and dice.
-const sounds = (...names) => names.map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
-const CLACK = sounds("checker-1", "checker-2", "checker-3");
-const DICE = sounds("dice-1", "dice-2");
-preload([...CLACK, ...DICE]);
-const CLACKS = { place: { gain: 0.7 }, hit: { gain: 1, rate: 0.88 }, bar: { gain: 0.45, rate: 1.08 }, off: { gain: 0.5, rate: 1.2 } };
-const clack = (kind) => playSample(CLACK, CLACKS[kind]);
 
 function robotChoice(level) {
   return (state, me, rng, ms) => {
@@ -231,7 +223,7 @@ function mountBackgammon(session, root, shell) {
     for (const s of keep) applyStaged(s, s.forced);
     if (after) {
       render();
-      return clack("bar");
+      return play("bar");
     }
     hide(last.from, 1);
     if (last.hit) hide(last.to, 1);
@@ -240,7 +232,7 @@ function mountBackgammon(session, root, shell) {
       fly(whose, from, topRect(key), MY_PACE).then(() => {
         hide(key, -1);
         render();
-        clack("bar");
+        play("bar");
       });
     back("mine", start, last.from);
     if (last.hit) back("theirs", blot, last.to);
@@ -562,12 +554,12 @@ function mountBackgammon(session, root, shell) {
     await fly(whose, start, topRect(key(to)), pace, drop.node);
     hide(key(to), -1);
     render();
-    clack(to === OFF ? "off" : done.hit ? "hit" : "place");
+    play(to === OFF ? "off" : done.hit ? "hit" : "place");
     if (!done.hit) return;
     await fly(null, under, topRect(barKey), pace, knocked);
     hide(barKey, -1);
     render();
-    clack("bar");
+    play("bar");
   }
 
   // The opponent's play, one checker at a time, after a short pause.
@@ -880,7 +872,7 @@ function mountBackgammon(session, root, shell) {
       for (const ev of events) {
         if (ev.type === "roll") {
           rollId++;
-          playSample(DICE, { gain: 0.55 });
+          play("dice");
         }
         if (ev.type === "pass") {
           toast(player === me ? `No move with ${rollText(ev.roll)}. Your turn passes.` : `${oppName} can't move with ${rollText(ev.roll)}.`);

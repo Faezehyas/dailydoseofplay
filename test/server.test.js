@@ -51,9 +51,9 @@ test("HTTP routes: home, games, healthz, ws, 404s", async (t) => {
 });
 
 test("sea battle: every recorded sound exists and is credited", () => {
-  const main = fs.readFileSync(new URL("../public/sea-battle/main.js", import.meta.url), "utf8");
+  const main = fs.readFileSync(new URL("../public/sea-battle/sounds.js", import.meta.url), "utf8");
   const credits = fs.readFileSync(new URL("../public/sea-battle/sounds/LICENSE.txt", import.meta.url), "utf8");
-  const names = [...main.matchAll(/sounds\(([^)]*)\)/g)].flatMap((m) => [...m[1].matchAll(/"([\w-]+)"/g)].map((n) => n[1]));
+  const names = [...main.matchAll(/rec\(([^)]*)\)/g)].flatMap((m) => [...m[1].matchAll(/"([\w-]+)"/g)].map((n) => n[1]));
   assert.ok(names.length >= 8, "found the sample lists");
   for (const n of names) {
     assert.ok(fs.existsSync(new URL(`../public/sea-battle/sounds/${n}.mp3`, import.meta.url)), `${n}.mp3`);

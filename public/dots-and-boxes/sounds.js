@@ -1,89 +1,13 @@
-// Dots and Boxes sounds, synthesized with WebAudio: a pencil scratching a
-// line on paper, a pop and a note for every box (the notes climb through a
-// chain), a flourish when a long chain is swept up, a turn chime, and little
-// tunes for winning, losing and a draw. They follow the site-wide mute
-// button and never throw.
-import { soundOn } from "../engine/sound.js";
-
-let ctx = null;
-let out = null;
-const noiseBufs = new WeakMap();
-
-function audio() {
-  if (!ctx) {
-    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (!AC) return null;
-    ctx = new AC();
-    out = master(ctx);
-  }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
-  return ctx;
-}
-
-// A gentle compressor, so a chain's notes over a scratch never clip.
-function master(a) {
-  const comp = a.createDynamicsCompressor();
-  comp.threshold.value = -10;
-  comp.knee.value = 6;
-  comp.ratio.value = 4;
-  const gain = a.createGain();
-  gain.gain.value = 0.9;
-  comp.connect(gain).connect(a.destination);
-  return comp;
-}
-
-// Browsers only start audio after a click or key press: get it ready on the first one.
-for (const type of ["pointerdown", "keydown"]) {
-  globalThis.addEventListener?.(type, () => soundOn() && audio(), { once: true, capture: true });
-}
-
-function noiseBuf(a) {
-  let buf = noiseBufs.get(a);
-  if (!buf) {
-    buf = a.createBuffer(1, Math.round(a.sampleRate * 2), a.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    noiseBufs.set(a, buf);
-  }
-  return buf;
-}
-
-function decay(a, o, t, peak, dur, attack = 0.003) {
-  const g = a.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(peak, t + attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  g.connect(o);
-  return g;
-}
-
-function tone(a, o, t, { freq, to = freq, type = "sine", dur = 0.15, gain = 0.1, attack = 0.003 }) {
-  const osc = a.createOscillator();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, t);
-  if (to !== freq) osc.frequency.exponentialRampToValueAtTime(to, t + dur);
-  osc.connect(decay(a, o, t, gain, dur, attack));
-  osc.start(t);
-  osc.stop(t + dur + 0.02);
-  return osc;
-}
-
-function noise(a, o, t, { dur = 0.05, gain = 0.1, type = "bandpass", freq = 1500, to = freq, q = 1, attack = 0.002 }) {
-  const src = a.createBufferSource();
-  src.buffer = noiseBuf(a);
-  const f = a.createBiquadFilter();
-  f.type = type;
-  f.Q.value = q;
-  f.frequency.setValueAtTime(freq, t);
-  if (to !== freq) f.frequency.exponentialRampToValueAtTime(to, t + dur);
-  src.connect(f).connect(decay(a, o, t, gain, dur, attack));
-  src.start(t, Math.random() * 1.5);
-  src.stop(t + dur + 0.02);
-}
+// Dots and Boxes sounds, synthesized: a pencil scratching a line on paper,
+// a pop and a note for every box (the notes climb through a chain), a
+// flourish when a long chain is swept up, a turn chime, and little tunes for
+// winning, losing and a draw. They play through the engine
+// (engine/sound.js), which sets their loudness.
+import { defineSounds } from "../engine/sound.js";
+import { tone, noise, pentatonic } from "../engine/synth.js";
 
 // D major pentatonic from D4 up: any run of boxes sounds bright.
-const PENTA = [0, 2, 4, 7, 9];
-const note = (step, base = 293.66) => base * 2 ** ((12 * Math.floor(step / 5) + PENTA[((step % 5) + 5) % 5]) / 12);
+const note = pentatonic(293.66);
 
 // A soft mallet: the note, its bright fourth harmonic, a tap.
 function mallet(a, o, t, freq, gain = 0.16, dur = 0.34) {
@@ -92,7 +16,7 @@ function mallet(a, o, t, freq, gain = 0.16, dur = 0.34) {
   noise(a, o, t, { dur: 0.016, gain: gain * 0.45, freq: 2600, q: 1.2 });
 }
 
-const SOUNDS = {
+const SYNTH = {
   // Graphite dragged across paper: a hiss in short grains that follow the
   // pencil's grip, a darker rub under it, and a tap where the line ends.
   line: (a, o, t, { dur = 0.22, mine = true } = {}) => {
@@ -145,35 +69,16 @@ const SOUNDS = {
   },
 };
 
-// Each sound's level, set against the recorded samples other games play:
-// lines and boxes near 0.3 peak, the turn chime softer, the tunes on top.
-const LEVEL = { line: 4, box: 3.1, chain: 3.6, nope: 3, turn: 3.5, win: 2, lose: 3, draw: 2.2 };
-
-function voice(a, o, name) {
-  const g = a.createGain();
-  g.gain.value = LEVEL[name] ?? 1;
-  g.connect(o);
-  return g;
-}
-
-export const SOUND_NAMES = Object.keys(SOUNDS);
+export const sounds = defineSounds({
+  line: { role: "action", synth: SYNTH.line, trim: 15.4 },
+  box: { role: "highlight", synth: SYNTH.box, trim: 5.5 },
+  chain: { role: "highlight", synth: SYNTH.chain, trim: 9.5 },
+  nope: { role: "ui", synth: SYNTH.nope, trim: 5.7 },
+  turn: { role: "ui", synth: SYNTH.turn, trim: 5.9 },
+  win: { role: "fanfare", synth: SYNTH.win, trim: 5.8 },
+  lose: { role: "fanfare", synth: SYNTH.lose, trim: 11.9 },
+  draw: { role: "fanfare", synth: SYNTH.draw, trim: 8.8 },
+});
 
 // Plays `name` now, or `at` seconds from now.
-export function play(name, opts = {}, at = 0) {
-  if (!soundOn() || !SOUNDS[name]) return;
-  globalThis.ddpSounds?.push(name); // browser tests count what played
-  try {
-    const a = audio();
-    // Not started yet (no click on this page so far): skip, rather than
-    // queue sounds that would all play at once later.
-    if (!a || a.state !== "running") return;
-    SOUNDS[name](a, voice(a, out, name), a.currentTime + 0.005 + at, opts);
-  } catch {}
-}
-
-// Renders a sound offline and returns its samples (for checking levels).
-export async function render(name, opts = {}, seconds = 2) {
-  const a = new OfflineAudioContext(1, Math.round(44100 * seconds), 44100);
-  SOUNDS[name](a, voice(a, master(a), name), 0.01, opts);
-  return (await a.startRendering()).getChannelData(0);
-}
+export const play = sounds.play;
