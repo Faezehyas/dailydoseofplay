@@ -69,3 +69,13 @@ async function load(retrying = false) {
 }
 
 load();
+
+// The hero scene's loops run only while it is on screen and the tab is shown.
+const scene = $(".hero-scene");
+let onScreen = true;
+const pause = () => scene.classList.toggle("paused", document.hidden || !onScreen);
+new IntersectionObserver(([entry]) => {
+  onScreen = entry.isIntersecting;
+  pause();
+}).observe(scene);
+document.addEventListener("visibilitychange", pause);

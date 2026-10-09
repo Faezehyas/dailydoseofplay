@@ -1,8 +1,9 @@
 // Headless-browser tests: every game tile on the home page is the same size,
 // whatever its description's length, and a phone screen doesn't scroll
 // sideways or hide the first tile below the hero; placeholders hold the
-// tiles' places while the list loads, and a failed load offers Retry. Skips if
-// Playwright is missing.
+// tiles' places while the list loads, and a failed load offers Retry; the
+// hero's scene loops, pauses off screen and in a hidden tab, and holds still
+// with reduced motion. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -163,5 +164,59 @@ test("home page shows placeholders while loading and a Retry button on failure",
   assert.equal(await page.locator(".game-card.placeholder .game-icon").first().evaluate((e) => getComputedStyle(e).animationName), "none");
   release();
   await page.close();
+  assert.deepEqual(errors, []);
+});
+
+test("the hero scene loops, plays a move on hover and pauses when unseen", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  mkdirSync(ARTIFACTS, { recursive: true });
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+  const states = (page) => page.evaluate(() => [...new Set(document.querySelector(".hero-scene").getAnimations({ subtree: true }).map((a) => a.playState))]);
+  const setHidden = (page, hidden) =>
+    page.evaluate((hidden) => {
+      Object.defineProperty(document, "hidden", { value: hidden, configurable: true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    }, hidden);
+
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(`${srv.base}/`);
+  const scene = page.locator(".hero-scene");
+  assert.equal(await scene.getAttribute("aria-hidden"), "true");
+  assert.ok((await scene.evaluate((e) => e.outerHTML.length)) < 25_000, "the scene's SVG is under 25 KB");
+  assert.deepEqual(await states(page), ["running"]);
+
+  await page.locator(".hero-scene .piece").nth(2).hover();
+  assert.equal(await page.locator(".hero-scene .die").evaluate((e) => getComputedStyle(e).animationName), "scene-die", "hovering the die rolls it once");
+  await page.mouse.move(0, 0);
+
+  await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+  await page.waitForFunction(() => document.querySelector(".hero-scene").classList.contains("paused"));
+  assert.deepEqual(await states(page), ["paused"], "off screen");
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.waitForFunction(() => !document.querySelector(".hero-scene").classList.contains("paused"));
+  await setHidden(page, true);
+  assert.deepEqual(await states(page), ["paused"], "hidden tab");
+  await setHidden(page, false);
+  assert.deepEqual(await states(page), ["running"]);
+  await page.close();
+
+  // Reduced motion: a still scene, at each size and theme.
+  for (const colorScheme of ["light", "dark"]) {
+    for (const width of [360, 1280]) {
+      const still = await browser.newPage({ viewport: { width, height: 800 }, colorScheme, reducedMotion: "reduce" });
+      still.on("pageerror", (e) => errors.push(e.message));
+      await still.goto(`${srv.base}/`);
+      await still.locator(".hero-scene .piece").nth(2).hover();
+      assert.equal(await still.locator(".hero-scene").evaluate((e) => e.getAnimations({ subtree: true }).length), 0, `${width} px ${colorScheme}: no animations`);
+      await still.screenshot({ path: `${ARTIFACTS}/home-scene-still-${width}-${colorScheme}.png` });
+      await still.close();
+    }
+  }
   assert.deepEqual(errors, []);
 });
