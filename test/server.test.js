@@ -85,6 +85,22 @@ test("static files: ETag, 304 when it matches, a new ETag after an edit", async 
   assert.equal(await edited.text(), "export const v = 2;\n");
 });
 
+test("privacy page: served, and it names every localStorage key in public/", async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
+  const res = await fetch(`${srv.base}/privacy/`);
+  assert.equal(res.status, 200);
+  const page = await res.text();
+  const publicDir = new URL("../public/", import.meta.url);
+  const keys = new Set();
+  for (const file of fs.readdirSync(publicDir, { recursive: true })) {
+    if (!file.endsWith(".js") || file.endsWith(".test.js")) continue;
+    for (const [, key] of fs.readFileSync(new URL(file, publicDir), "utf8").matchAll(/["'`](ddp-[\w-]+)["'`]/g)) keys.add(key);
+  }
+  assert.ok(keys.has("ddp-name"), "found the keys");
+  for (const key of keys) assert.ok(page.includes(`<code>${key}</code>`), `public/privacy/index.html lists ${key}`);
+});
+
 test("sea battle: every recorded sound exists and is credited", () => {
   const main = fs.readFileSync(new URL("../public/sea-battle/sounds.js", import.meta.url), "utf8");
   const credits = fs.readFileSync(new URL("../public/sea-battle/sounds/LICENSE.txt", import.meta.url), "utf8");

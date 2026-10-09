@@ -332,6 +332,21 @@ h3 {
   padding: 20px;
 }
 
+/* A page of reading, such as /privacy/. */
+.text-page {
+  max-width: 680px;
+  margin: 16px auto;
+  overflow-wrap: break-word;
+}
+
+.text-page h2 {
+  margin-top: 1.5em;
+}
+
+.text-page li {
+  margin: 6px 0;
+}
+
 .site-footer {
   max-width: 1100px;
   margin: 0 auto;
