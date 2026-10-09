@@ -204,7 +204,9 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. It also sets which view is on show for the page column, and saves the game's slug when a game starts. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
-| `sound.js` | Sound effects behind a per-device mute toggle in the header: synthesized with WebAudio, plus `preload()`/`playSample()` for short recorded samples (Sea Battle, Chess, Backgammon and Ludo play CC0 recordings, see each game's `sounds/LICENSE.txt`) |
+| `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
+| `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
+| `loudness.js` | `loudness(samples, sampleRate)`: how loud a sound is to the ear, in LUFS (K-weighted, loudest 100 ms). No DOM; runs in node too. |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
 
 **Session flow.**
@@ -340,6 +342,45 @@ rather than `--accent` and `--accent-2`; the game sets `data-you` on its root
 two. Telling you apart is the job of words ("You", "(you)") and layout, not
 colour.
 
+**Sound levels.** Each game used to set its own levels on its own output
+(three different compressors and master gains), matching sounds by their
+peaks. Peaks say little about how loud something sounds: a dice recording
+peaks near full scale but is mostly quiet, while a synthesized note is dense.
+So a move in Ludo came out 13 to 18 dB louder than its die (issue #28), Sea
+Battle's shell whoosh 24 dB under the hit that followed, and a Checkers move
+19 dB under a Ludo hop. Now every sound has a role, and every role one
+loudness for the whole site, measured as the ear hears it (`loudness.js`:
+K-weighted as in ITU-R BS.1770, the loudest 100 ms, about how long the ear
+sums sound):
+
+| Role | LUFS | For |
+|---|---|---|
+| `cue` | -34 | a background signal: a timer tick, a shell in the air |
+| `ui` | -29 | your turn, another roll, a move that can't be made |
+| `action` | -24 | the routine move: a die, a piece set down, a hop, a line |
+| `highlight` | -21 | something happened: a capture, a box, a hit, a ladder |
+| `fanfare` | -19 | the big moments: a win, a loss, a sunk ship, a nuke |
+
+A recording is measured once it loads and played at its role, so recordings
+of uneven loudness need no tuning. A synthesized sound carries a `trim` in dB
+that brings it there. A sound may set itself apart from its role by up to
+6 dB with `offset`, for a softer layer under another sound or a quieter take
+(a backgammon checker going back to the bar), and a single `play()` may pass
+`{ offset }` for a bigger or smaller version of the same sound. The roles sit
+low enough that the spikiest recording (the dice) still fits under full
+scale.
+
+The site's output is a soft clipper: below -1 dBFS it leaves sound untouched,
+and above it rounds off peaks when sounds stack. A `DynamicsCompressorNode`
+can't do this job, because Chromium's turns a sound down by 1 to 2 dB even when
+it never reaches the threshold, which would undo the levels.
+
+`test/browser/sound-levels.test.js` renders every sound of every game
+offline through that output (each recording, and each synthesized stand-in),
+with random parts seeded, and fails if one lands more than 1.5 dB from its
+role, printing the trim to set. `test/sound.test.js` checks that no game opens
+its own audio context or output.
+
 ### Game (`public/<slug>/`)
 
 | File | Job |
@@ -348,6 +389,7 @@ colour.
 | `main.js` | `startGameShell({ slug, title, tagline, layout, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; `layout` picks the page column (see **Page column**). |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
 | `match.js` | Only for games with hidden information: one player's protocol state machine. Other games use `engine/turn-match.js`. |
+| `sounds.js` | Optional: the game's sounds, `export const sounds = defineSounds({...})` with a role for each (see **Sound levels**), and the `play` helpers `main.js` calls. The only file that imports `engine/sound.js`. |
 | `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`; custom-protocol games (Sea Battle) also export `startRobot(session)`. |
 | `*.test.js` | `node --test` unit tests, next to the code |
 | `icon.svg` | Card art for the home page (16:10) |
@@ -592,7 +634,7 @@ so it doesn't slide. With "reduce motion" set in the OS, nothing animates.
 When the piece lands it plays one of four CC0 recordings of a piece set down
 on a wooden board; a capture plays a sharper wooden clack instead, and
 castling knocks twice, king then rook (`chess/sounds/LICENSE.txt`). Sounds go
-through the engine's `playSample()`, so the header's mute toggle covers them.
+through `sounds.js` and the engine, so the header's mute toggle covers them.
 
 **Colours.** The board and pieces have their own light and dark tokens at the
 top of `chess/style.css`, because a white piece must stay white in both
@@ -628,12 +670,11 @@ at about 35 ms on a laptop. Before searching it takes a move that leaves the
 opponent stuck, and avoids one that lets the opponent do that.
 
 **Sounds.** `sounds.js` synthesizes a wooden clack per landing, a knock per
-captured piece and a chime for a new king with WebAudio, and follows the
-header's mute button (`soundOn()` from `engine/sound.js`). The engine's sound
-list is Sea Battle's and the shared UI sounds, so these stay in the game
-folder. Audio starts on the first click or key press; until then sounds are
-skipped rather than queued, so a friend who opened the invite link but hasn't
-clicked yet doesn't get a burst of them later.
+captured piece and a chime for a new king, and plays them through the engine,
+which follows the header's mute button. Audio starts on the first click or key
+press; until then sounds are skipped rather than queued, so a friend who
+opened the invite link but hasn't clicked yet doesn't get a burst of them
+later. This holds for every game.
 
 ## Backgammon in depth
 
@@ -690,7 +731,7 @@ into a slab in the tray. The opponent's play waits 250 ms after their dice
 land, then moves one checker at a time with a short pause between steps; your
 dice roll 400 ms after their last checker settles. New dice tumble in. Every
 landing plays a recorded wooden clack, and a roll plays dice on wood, through
-`playSample()` and the header's mute toggle. With `prefers-reduced-motion`,
+`sounds.js` and the header's mute toggle. With `prefers-reduced-motion`,
 checkers move at once and the dice don't tumble.
 
 **Picking, dragging and marks.** You tap a checker and then a point, or drag
@@ -768,15 +809,15 @@ top and what came of it at the bottom (too many cookies → tummy ache, a ball
 → broken window…). The board's palette lives in `style.css` as `--cl-*`
 tokens with a dark set.
 
-**Sound** (`sounds.js`, synthesized with WebAudio, behind the header's mute
-toggle). The spinner clicks once per wedge, so the clicks slow down with the
+**Sound** (`sounds.js`, synthesized, behind the header's mute toggle). The
+spinner clicks once per wedge, so the clicks slow down with the
 pointer; a hop is a pawn tap plus a marimba note that climbs a C-major
 pentatonic scale with each square (and walks back down after a bounce); a
 ladder is a xylophone run, then a shimmer; a chute is a slide whistle over
 rushing air, then a bump; overshooting with the exact rule is a two-note
 "nope", bouncing off 100 a spring; plus a turn chime and win and lose tunes.
-Levels were set by rendering each sound offline and matching the recorded
-samples other games play (hops and landings about 0.3 peak, ticks lower).
+The spin (flick and settle) is an `action`, like a hop, so spinning sounds
+as loud as moving (see **Sound levels**).
 
 **Up to four players.** It is the first game that seats more than two (see
 **Groups**). The rules keep one pawn per seat (`pos`, `spins`, `climbs` and
@@ -894,10 +935,8 @@ header's mute toggle): a pencil scratch per line (grains of filtered noise
 shaped to the stroke's length, over a darker rub, with a tap at the end), a
 pop and a mallet note per box that climbs a pentatonic scale through a turn's
 run, a sparkle when a run of three or more ends, a soft thud for a line that
-can't be drawn, the turn chime, and tunes for a win, a loss and a draw. Levels
-were set by rendering each sound offline: the scratch and box pops peak around
-0.25–0.3, like Chutes and Ladders' hops, and the chime and tunes match its
-own.
+can't be drawn, the turn chime, and tunes for a win, a loss and a draw. A
+line is an `action` and a box a `highlight` (see **Sound levels**).
 
 ## Ludo in depth
 
@@ -1013,9 +1052,8 @@ that climbs as the token goes, a cork pop for coming out, a shimmer into the
 home column, a small bell on a safe square, a bonk for a capture (a slide
 whistle down if it was yours), a fanfare home, a chirp for another roll, a
 soft "no" for a passed turn, ticks for the timer's last seconds, the turn
-chime, and tunes for a win and a loss. Levels were set by rendering each
-sound offline: hops about 0.27 peak and landings about 0.35, next to the
-dice recording's 0.49.
+chime, and tunes for a win and a loss. The die and a hop are both `action`
+sounds, so rolling and moving sound about as loud (see **Sound levels**).
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 

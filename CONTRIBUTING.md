@@ -54,6 +54,7 @@ public/<slug>/
 ├── main.js          startGameShell(...) and the view
 ├── rules.js         pure rules
 ├── robot.js         move choice (+ startRobot when not using startTurnRobot)
+├── sounds.js        optional: the game's sounds, played through the engine (step 5b)
 ├── icon.svg         original 16:10 card art (viewBox 0 0 320 200), no external refs
 ├── rules.test.js    rules unit tests
 ├── robot.test.js    robot unit tests (+ a full robot-vs-robot game)
@@ -187,6 +188,33 @@ inputs and segmented options are outlined in `var(--control-border)`; and
 fade text with a muted colour, not `opacity`. A new game-specific colour
 used as text needs 4.5:1 on its background in both themes.
 
+### 5b. Sounds (optional)
+
+Sounds live in `sounds.js` and play through `engine/sound.js`, so every game
+shares one output and one loudness scale. Never open an `AudioContext` or
+import the engine's sound modules from `main.js`; `test/sound.test.js` fails
+if you do.
+
+```js
+import { defineSounds } from "../engine/sound.js";
+import { tone, noise } from "../engine/synth.js";
+
+const rec = (...names) => names.map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
+
+export const sounds = defineSounds({
+  // A recording: levelled to its role as it loads. Credit it in sounds/LICENSE.txt.
+  move: { role: "action", samples: rec("move-1", "move-2") },
+  // Synthesized: (audio context, output, start time, opts). `trim` brings it to its role.
+  turn: { role: "ui", trim: 0, synth: (a, o, t) => tone(a, o, t, { freq: 880, dur: 0.15, gain: 0.08 }) },
+});
+export const play = sounds.play; // play("move"), play("turn", {}, 0.2) for 0.2 s from now
+```
+
+Give each sound the role that matches its job: `cue`, `ui`, `action`,
+`highlight` or `fanfare` (see **Sound levels** in `ARCHITECTURE.md`). Then run
+`node --test test/browser/sound-levels.test.js`: it measures every sound and,
+for a synthesized one that is off, prints the `trim` to set.
+
 ### 6. Register it
 
 In `public/games.json`, set the game's entry to `"status": "ready"` (add an
@@ -211,6 +239,7 @@ no change.
   - it blocks an immediate loss;
   - robot vs robot over 20 seeded games always finishes with legal moves.
 - **Protocol** (in `match.test.js` or `robot.test.js`): pair two `TurnMatch`es over `localPair()` + `openSession()` + `matchRouter()` (see `public/engine/turn-match.test.js`), play a full game, and assert both states are equal. For more than two players, seat them with `localRoom()` from `engine/room.js` and pass `players` to each `TurnMatch` (see the three-player test in `turn-match.test.js`).
+- **Sounds:** nothing to add. `test/browser/sound-levels.test.js` finds every `sounds.js` and checks each sound's loudness.
 - **Message size:** add the game to `GAMES` in `test/message-size.test.js` (its biggest board and most players). It plays a full match and fails if a message is over 4 K characters; a browser cuts off a player whose message is over 64 K (see **Message size** in `ARCHITECTURE.md`). Send moves, not whole states.
 - **Browser (recommended):** add `test/browser/<slug>.test.js` modelled on `test/browser/friend-match.test.js`. Host clicks `#play-friend`, the guest opens `#invite-link`, both play through `window.ddp.match`, then a rematch.
   - Don't wait in real time. In a robot game, set `globalThis.ddpRobotPace = 0.1` with `addInitScript` so the robot answers in a tenth of its usual pause (leave it at 1 only where the test checks the robot's pace). To let a clock run out, call `page.clock.install()` before the page loads and `page.clock.fastForward()` past the limit.
@@ -256,6 +285,7 @@ windows (one private).
 - [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
 - [ ] Each player has the same colour on every screen (see **Player colours** in `ARCHITECTURE.md`): style `.mine` and `.theirs` with `--mine` and `--theirs`, and set `data-you` on the game's root
+- [ ] Sounds, if any, are in `sounds.js` with a role each, and `test/browser/sound-levels.test.js` passes
 - [ ] Original name, text and art; nothing copied from papergames
 - [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
 - [ ] `npm test` passes; `npm run test:browser` passes or is reported as skipped

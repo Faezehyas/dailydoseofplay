@@ -1,8 +1,14 @@
-// Sound effects: synthesized with WebAudio, plus short recorded samples a
-// game can preload. Muting is a per-device setting shared by every game.
+// Every sound on the site plays through here: one audio context, one output
+// and one loudness scale. A game lists its sounds with defineSounds(), and
+// each sound has a role. Every role has one loudness for the whole site, so
+// a die rolled in Ludo is as loud as a piece set down in Chess, and a win
+// tune as loud in every game. Recordings are measured as they load and set
+// to their role. A synthesized sound carries a `trim` that brings it there,
+// which the sound-levels browser test checks for every sound of every game.
+// Muting is a per-device setting shared by every game.
+import { loudness, fromDb } from "./loudness.js";
+
 const KEY = "ddp-sound";
-let ctx = null;
-let bus = null;
 
 export function soundOn() {
   try {
@@ -18,157 +24,74 @@ export function setSound(on) {
   } catch {}
 }
 
+// Each role's loudness in LUFS over 100 ms (see loudness.js).
+export const ROLES = {
+  cue: -34, // a background signal: a timer tick, a shell in the air
+  ui: -29, // your turn, another roll, a move that can't be made
+  action: -24, // the routine move: a die, a piece set down, a hop, a line
+  highlight: -21, // something happened: a capture, a box, a hit, a ladder
+  fanfare: -19, // the big moments: a win, a loss, a sunk ship, a nuke
+};
+
+// How far a sound may land from its role (and the most a sound may set
+// itself apart from its role with `offset`), in dB.
+export const TOLERANCE = 1.5;
+export const MAX_OFFSET = 6;
+
+// The site's output: a soft clipper. Below -1 dBFS it passes sound through
+// untouched; above, when sounds stack, it rounds peaks off rather than let
+// them crack. (A DynamicsCompressor would also turn down sounds that never
+// reach its threshold, which would undo the levels.)
+const HEADROOM = 4; // the clipper takes up to 4x full scale (+12 dB)
+let clipCurve = null;
+function curve() {
+  if (!clipCurve) {
+    const knee = 10 ** (-1 / 20);
+    clipCurve = new Float32Array(8193);
+    for (let i = 0; i < clipCurve.length; i++) {
+      const x = ((i / (clipCurve.length - 1)) * 2 - 1) * HEADROOM;
+      const m = Math.abs(x);
+      clipCurve[i] = Math.sign(x) * (m <= knee ? m : knee + (1 - knee) * Math.tanh((m - knee) / (1 - knee)));
+    }
+  }
+  return clipCurve;
+}
+
+export function output(a) {
+  const pre = a.createGain();
+  pre.gain.value = 1 / HEADROOM;
+  const clip = a.createWaveShaper();
+  clip.curve = curve();
+  pre.connect(clip).connect(a.destination);
+  return pre;
+}
+
+let ctx = null;
+let out = null;
+
 function audio() {
   if (!ctx) {
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
-    // A compressor keeps stacked blasts loud without clipping.
-    bus = ctx.createDynamicsCompressor();
-    bus.threshold.value = -18;
-    bus.ratio.value = 6;
-    const master = ctx.createGain();
-    master.gain.value = 0.8;
-    bus.connect(master).connect(ctx.destination);
+    out = output(ctx);
   }
   if (ctx.state === "suspended") ctx.resume().catch(() => {});
   return ctx;
 }
 
-const buffers = {};
-function noiseBuffer(a, kind) {
-  if (buffers[kind]) return buffers[kind];
-  const len = a.sampleRate * 3;
-  const buf = a.createBuffer(1, len, a.sampleRate);
-  const d = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < len; i++) {
-    const white = Math.random() * 2 - 1;
-    if (kind === "brown") {
-      last = (last + 0.02 * white) / 1.02; // integrated noise: deep rumble
-      d[i] = last * 3.5;
-    } else d[i] = white;
-  }
-  return (buffers[kind] = buf);
-}
-
-function env(a, t, { attack = 0.005, peak, dur }) {
-  const g = a.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(peak, t + attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  return g;
-}
-
-function tone(a, { freq, to = freq, type = "sine", at = 0, dur = 0.15, gain = 0.15, attack = 0.005 }) {
-  const t = a.currentTime + at;
-  const osc = a.createOscillator();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, t);
-  osc.frequency.exponentialRampToValueAtTime(Math.max(1, to), t + dur);
-  osc.connect(env(a, t, { attack, peak: gain, dur })).connect(bus);
-  osc.start(t);
-  osc.stop(t + dur + 0.05);
-  return osc;
-}
-
-function noise(a, { kind = "white", at = 0, dur = 0.3, gain = 0.2, attack = 0.005, type = "lowpass", from = 2000, to = from, q = 0.7 }) {
-  const t = a.currentTime + at;
-  const src = a.createBufferSource();
-  src.buffer = noiseBuffer(a, kind);
-  src.loop = true;
-  const f = a.createBiquadFilter();
-  f.type = type;
-  f.Q.value = q;
-  f.frequency.setValueAtTime(from, t);
-  f.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
-  src.connect(f).connect(env(a, t, { attack, peak: gain, dur })).connect(bus);
-  src.start(t, Math.random() * 2);
-  src.stop(t + dur + 0.05);
-}
-
-// A shell coming in: a muffled launch boom, then rushing air that swells
-// as it nears and cuts off at impact (no cartoon whistle).
-function incoming(a, { at = 0, dur = 0.45, from = 2600, to = 500, gain = 0.32, launch = 0.16 }) {
-  if (launch) noise(a, { at, dur: 0.14, gain: launch, from: 520, to: 110 });
-  noise(a, { at: at + 0.03, dur, gain, type: "bandpass", from, to, q: 1.4, attack: dur * 0.85 });
-  noise(a, { kind: "brown", at: at + 0.03, dur, gain: gain * 0.7, from: 380, to: 120, attack: dur * 0.85 });
-}
-
-// Water: a hollow plop, a spray of hiss, then a few rising bubbles.
-function splash(a, at = 0, size = 1) {
-  tone(a, { freq: 220, to: 70, at, dur: 0.14, gain: 0.4 * size });
-  noise(a, { at, dur: 0.7 * size, gain: 0.5 * size, type: "bandpass", from: 1800, to: 700, q: 0.8, attack: 0.01 });
-  noise(a, { at: at + 0.02, dur: 0.45, gain: 0.18 * size, type: "highpass", from: 5000, to: 3000 });
-  for (let k = 0; k < 4; k++) {
-    tone(a, { freq: 380 + Math.random() * 200, to: 900 + Math.random() * 300, at: at + 0.15 + Math.random() * 0.45, dur: 0.035, gain: 0.06 });
+// Browsers only start audio after a click or key press: get it ready on the
+// first one, on pages that have sounds.
+let listening = false;
+function startOnGesture() {
+  if (listening) return;
+  listening = true;
+  for (const type of ["pointerdown", "keydown"]) {
+    globalThis.addEventListener?.(type, () => soundOn() && audio(), { once: true, capture: true });
   }
 }
 
-// A hit: sharp crack, burning body, low thump.
-function blast(a, at = 0, size = 1) {
-  noise(a, { at, dur: 0.06, gain: 0.35 * size, type: "highpass", from: 1500 });
-  noise(a, { at, dur: 0.7 * size, gain: 0.4 * size, from: 1400, to: 90 });
-  tone(a, { freq: 95, to: 32, at, dur: 0.5 * size, gain: 0.45 * size });
-}
-
-const SOUNDS = {
-  launch: (a) => incoming(a, {}),
-  "launch-big": (a) => incoming(a, { dur: 0.55, from: 2000, to: 350, gain: 0.4, launch: 0.22 }),
-  "launch-rain": (a) => {
-    for (let k = 0; k < 5; k++) incoming(a, { at: k * 0.06, dur: 0.52, from: 2400 + k * 200, to: 600, gain: 0.12, launch: k === 0 ? 0.14 : 0 });
-  },
-  "launch-nuke": (a) => {
-    // A heavy bomb falling: a deep, long roar of air building to impact.
-    incoming(a, { dur: 1.0, from: 1400, to: 160, gain: 0.45, launch: 0.25 });
-    noise(a, { kind: "brown", dur: 1.0, gain: 0.3, from: 200, to: 60, attack: 0.9 });
-  },
-  miss: (a) => splash(a),
-  hit: (a) => blast(a),
-  "hit-big": (a) => {
-    blast(a, 0, 1.4);
-    blast(a, 0.12, 0.8);
-  },
-  sink: (a) => {
-    blast(a, 0, 1.3);
-    SOUNDS.groan(a);
-    splash(a, 0.5, 0.7);
-  },
-  // Hull groaning as it goes under.
-  groan: (a) => {
-    const t = a.currentTime;
-    const groan = a.createOscillator();
-    const f = a.createBiquadFilter();
-    groan.type = "sawtooth";
-    groan.frequency.setValueAtTime(120, t + 0.25);
-    groan.frequency.exponentialRampToValueAtTime(55, t + 1.5);
-    f.type = "lowpass";
-    f.frequency.value = 380;
-    groan.connect(f).connect(env(a, t + 0.25, { attack: 0.2, peak: 0.08, dur: 1.3 })).connect(bus);
-    groan.start(t + 0.25);
-    groan.stop(t + 1.6);
-  },
-  "rain-hit": (a) => blast(a, 0, 0.6),
-  "rain-miss": (a) => splash(a, 0, 0.6),
-  nuke: (a) => {
-    // Detonation: blinding crack, deep blast, sub-bass shock, rolling thunder, debris.
-    noise(a, { dur: 0.12, gain: 0.6, type: "highpass", from: 2500 });
-    noise(a, { kind: "brown", dur: 3.2, gain: 0.9, attack: 0.02, from: 900, to: 60 });
-    tone(a, { freq: 60, to: 22, dur: 2.6, gain: 0.6, attack: 0.03 });
-    tone(a, { freq: 38, to: 18, at: 0.05, dur: 2.2, gain: 0.4, type: "triangle", attack: 0.05 });
-    for (const [at, g] of [[0.45, 0.35], [0.95, 0.25], [1.6, 0.18], [2.3, 0.1]]) {
-      noise(a, { kind: "brown", at, dur: 1.1, gain: g, attack: 0.15, from: 260, to: 70 });
-    }
-    noise(a, { at: 0.3, dur: 2.0, gain: 0.07, type: "bandpass", from: 900, to: 250, q: 0.9, attack: 0.3 });
-  },
-  gift: (a) => [523, 659, 784, 1047].forEach((f, k) => tone(a, { freq: f, type: "triangle", at: k * 0.07, dur: 0.14, gain: 0.1 })),
-  turn: (a) => [660, 880].forEach((f, k) => tone(a, { freq: f, at: k * 0.1, dur: 0.12, gain: 0.07 })),
-  tick: (a) => tone(a, { freq: 1200, dur: 0.04, gain: 0.05, type: "square" }),
-  win: (a) => [523, 659, 784, 1047].forEach((f, k) => tone(a, { freq: f, type: "triangle", at: k * 0.12, dur: 0.22, gain: 0.12 })),
-  lose: (a) => [392, 330, 262].forEach((f, k) => tone(a, { freq: f, type: "triangle", at: k * 0.16, dur: 0.28, gain: 0.1 })),
-};
-
-// ---------- recorded samples ----------
+// ---------- recordings ----------
 // Decoded with an OfflineAudioContext so preloading needs no user gesture;
 // AudioBuffers can be played by any context.
 const decoded = new Map();
@@ -195,39 +118,91 @@ export function preload(urls) {
   );
 }
 
-// Play one of `urls` (picked at random, pitch nudged for variety; `rate` below
-// 1 plays it slower and deeper). Falls back to the synthesized `fallback` sound
-// until the sample is decoded. Returns whether the recording played.
-export function playSample(urls, { gain = 0.6, rate = 1, jitter = 0.06, fallback } = {}) {
-  if (!soundOn()) return false;
-  const list = Array.isArray(urls) ? urls : [urls];
-  const url = list[Math.floor(Math.random() * list.length)];
-  const buf = decoded.get(url);
-  if (!buf) {
-    preload(list);
-    if (fallback) play(fallback);
-    return false;
-  }
-  try {
-    const a = audio();
-    if (!a) return false;
-    const src = a.createBufferSource();
-    src.buffer = buf;
-    src.playbackRate.value = rate * (1 + (Math.random() * 2 - 1) * jitter);
-    const g = a.createGain();
-    g.gain.value = gain;
-    src.connect(g).connect(bus);
-    src.start();
-    return true;
-  } catch {
-    return false;
-  }
+// How loud a recording is at `rate` (played faster, it is higher and shorter).
+const measured = new Map();
+function sampleLoudness(buf, rate) {
+  const key = `${rate}`;
+  let byRate = measured.get(buf);
+  if (!byRate) measured.set(buf, (byRate = new Map()));
+  if (!byRate.has(key)) byRate.set(key, loudness(buf.getChannelData(0), buf.sampleRate * rate));
+  return byRate.get(key);
 }
 
-export function play(name) {
-  if (!soundOn() || !SOUNDS[name]) return;
-  try {
-    const a = audio();
-    if (a) SOUNDS[name](a);
-  } catch {}
+// ---------- a game's sounds ----------
+// `defs` maps each sound's name to:
+//   role     one of ROLES
+//   offset   dB from the role, for a softer layer or a bigger take of a
+//            sound (at most MAX_OFFSET either way); default 0
+//   samples  recording URLs, one picked at random each time. They play at
+//            `rate` (default 1), nudged by up to `jitter` (default 0.06).
+//   synth    (a, out, t, opts) => plays the sound into `out` at time `t`.
+//            With `samples` it is the stand-in until they have loaded.
+//   trim     dB that brings `synth` to its role; the sound-levels test
+//            prints how far off it is.
+// play(name, opts, at) plays a sound now or `at` seconds from now. `opts`
+// goes to `synth`, and `opts.offset` makes one play softer or louder. It
+// returns whether a recording played. render() is for tests.
+export function defineSounds(defs) {
+  for (const [name, def] of Object.entries(defs)) {
+    if (!(def.role in ROLES)) throw new Error(`sound ${name}: unknown role ${def.role}`);
+  }
+  const urls = Object.values(defs).flatMap((d) => d.samples ?? []);
+  preload(urls);
+  startOnGesture();
+
+  // Plays `name` into `dest` at `t`; `variant` picks a recording (an index) or "synth".
+  function start(a, dest, name, opts, t, variant) {
+    const def = defs[name];
+    const db = ROLES[def.role] + (def.offset ?? 0) + (opts.offset ?? 0);
+    const list = def.samples ?? [];
+    const url = variant === "synth" ? null : list[variant ?? Math.floor(Math.random() * list.length)];
+    const buf = url && decoded.get(url);
+    const g = a.createGain();
+    g.connect(dest);
+    if (buf) {
+      const rate = def.rate ?? 1;
+      const src = a.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = rate * (1 + (variant === undefined ? (Math.random() * 2 - 1) * (def.jitter ?? 0.06) : 0));
+      g.gain.value = fromDb(db - sampleLoudness(buf, rate));
+      src.connect(g);
+      src.start(t);
+      return "recording";
+    }
+    if (url) preload(list);
+    if (!def.synth) return null;
+    g.gain.value = fromDb(db - ROLES[def.role] + (def.trim ?? 0));
+    def.synth(a, g, t, opts);
+    return "synth";
+  }
+
+  return {
+    names: Object.keys(defs),
+    defs,
+    play(name, opts = {}, at = 0) {
+      if (!soundOn() || !defs[name]) return false;
+      globalThis.ddpSounds?.push(name); // browser tests count what played
+      try {
+        const a = audio();
+        // Not started yet (no click on this page so far): skip, rather than
+        // queue sounds that would all play at once later.
+        if (!a || a.state !== "running") return false;
+        return start(a, out, name, opts, a.currentTime + 0.005 + at) === "recording";
+      } catch {
+        return false;
+      }
+    },
+    // Renders one sound offline through the site's output, for checking
+    // levels: a recording by index, or "synth". Returns mono samples.
+    async render(name, { variant = "synth", opts = {}, seconds } = {}) {
+      const def = defs[name];
+      if (variant !== "synth") await preload(def.samples);
+      const buf = variant !== "synth" && decoded.get(def.samples[variant]);
+      const sampleRate = 48000;
+      const len = seconds ?? (buf ? buf.duration / (def.rate ?? 1) + 0.3 : 4);
+      const a = new OfflineAudioContext(1, Math.round(sampleRate * len), sampleRate);
+      if (start(a, output(a), name, opts, 0.01, variant) !== (variant === "synth" ? "synth" : "recording")) throw new Error(`${name}: nothing to render`);
+      return { samples: (await a.startRendering()).getChannelData(0), sampleRate };
+    },
+  };
 }

@@ -2,12 +2,12 @@
 // All game logic lives in rules.js / match.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
-import { play, playSample, preload } from "../engine/sound.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
 import * as R from "./rules.js";
 import { mountSettings } from "./settings.js";
+import { play } from "./sounds.js";
 
 const ICON = {
   fire:
@@ -69,21 +69,10 @@ const WEAPON_ICON = {
 const AI_DELAY = 1400;
 // Seconds a shell is in the air before it lands (sound and visuals wait for it).
 const FLIGHT = { shot: 0.45, big: 0.55, rain: 0.6, nuke: 1.0, carpet: 0.6 };
-// Real recordings (CC0, see sounds/LICENSE.txt): heavy objects hitting water,
-// shells exploding on a steel hull, and bigger blasts at the waterline.
-const sounds = (...names) => names.map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
-const SPLASH_HEAVY = sounds("splash-heavy-1", "splash-heavy-2");
-const SPLASH_SMALL = sounds("splash-small-1", "splash-small-2");
-const EXPLOSION = sounds("explosion-hit-1", "explosion-hit-2");
-const BLAST = sounds("explosion-big-1", "explosion-big-2");
 // Rolling booms, one every BOOM_STEP seconds: 7 for missile rain (one per
 // square) and 10 for the carpet bomb (one per square along its line). Each
 // square lands on its boom.
-const BARRAGE = sounds("barrage");
-const CARPET = sounds("carpet-bomb");
 const BOOM_STEP = 0.17;
-const splashHeavy = (gain = 0.7) => playSample(SPLASH_HEAVY, { gain, fallback: "miss" });
-const explode = (gain = 0.65, opts) => playSample(EXPLOSION, { gain, fallback: "hit", ...opts });
 const LAUNCH_SOUND = { shot: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke", carpet: "launch-rain" };
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their shot
 
@@ -115,7 +104,6 @@ function shipName(len, sunkCountOfLen) {
 }
 
 function mountSeaBattle(session, root, shell) {
-  preload([...SPLASH_HEAVY, ...SPLASH_SMALL, ...EXPLOSION, ...BLAST, ...BARRAGE, ...CARPET]);
   const me = session.index;
   const opp = R.other(me);
   const oppName = session.opponent.name;
@@ -779,27 +767,26 @@ function mountSeaBattle(session, root, shell) {
     const hits = events.filter((e) => e.type === "hit");
     if (w === "nuke") {
       play("nuke");
-      playSample(BLAST, { gain: 0.7, rate: 0.5, jitter: 0.03 }); // slowed down: a deep, real roar
+      play("roar");
     } else if (w === "rain" || w === "carpet") {
-      // No pitch jitter: it would pull the booms off their squares.
-      const rolled = w === "rain" ? playSample(BARRAGE, { gain: 0.8, jitter: 0 }) : playSample(CARPET, { gain: 0.85, jitter: 0 });
+      const rolled = play(w);
       events
         .filter((e) => e.type === "hit" || e.type === "miss")
         .forEach((e, k) =>
           setTimeout(() => {
-            if (e.type === "hit") explode(0.4, { rate: 1.15, jitter: 0.12, fallback: "rain-hit" });
-            else if (!rolled) playSample(SPLASH_SMALL, { gain: 0.45, jitter: 0.12, fallback: "rain-miss" });
+            if (e.type === "hit") play("rain-hit");
+            else if (!rolled) play("rain-miss");
           }, boomOf(w, volleyDir[board], e.cell, k) * BOOM_STEP * 1000),
         );
     } else if (w === "big") {
-      if (hits.length && playSample(BLAST, { gain: 0.7, fallback: "hit-big" })) explode(0.4, { fallback: null });
-      else if (!hits.length) splashHeavy(0.85);
-    } else hits.length ? explode() : splashHeavy();
+      if (hits.length && play("blast")) play("hit", { offset: -4 });
+      else if (!hits.length) play("miss", { offset: 2 });
+    } else play(hits.length ? "hit" : "miss");
     if (sunk) {
       // A second, deeper blast as the ship blows apart; it groans and goes under.
       const at = w === "nuke" ? 900 : 250;
-      setTimeout(() => playSample(BLAST, { gain: 0.55, rate: 0.8, fallback: "sink" }) && play("groan"), at);
-      setTimeout(() => splashHeavy(0.45), at + 500);
+      setTimeout(() => play("sink") && play("groan"), at);
+      setTimeout(() => play("miss", { offset: -4 }), at + 500);
     }
     if (events.some((e) => e.type === "gift" && e.by === me)) setTimeout(() => play("gift"), 300);
     if (w === "nuke" || w === "big" || w === "carpet") {
