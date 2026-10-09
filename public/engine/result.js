@@ -3,6 +3,7 @@
 // reason line, an optional node of the game's, Rematch with everyone's votes,
 // and Leave.
 import { el, toast } from "./shell.js";
+import { calm } from "./celebrate.js";
 
 const PLACE = ["1st", "2nd", "3rd", "4th"];
 const listOf = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
@@ -69,10 +70,12 @@ export function resultPanel(session, { onLeave, onShow = () => {}, classes = () 
     if (!node.hidden) return;
     node.hidden = false;
     title.focus({ preventScroll: true });
-    onShow({ winner, stopped });
+    // For celebrate(): someone else's win is "over" when more than two play.
+    onShow({ winner, stopped, outcome: stopped ? null : winner === -1 ? "draw" : winner === me ? "win" : many ? "over" : "loss" });
   }
 
   function hide() {
+    if (!node.hidden) calm();
     node.hidden = true;
   }
 

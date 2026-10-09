@@ -1,6 +1,7 @@
-// Headless-browser test: every sound of every game lands at its role's
-// loudness (engine/sound.js), so no sound is much louder or quieter than the
-// others that do the same job, here or in another game. Each sound is
+// Headless-browser test: every sound of every game, and the engine's result
+// chimes (engine/chimes.js), lands at its role's loudness (engine/sound.js),
+// so no sound is much louder or quieter than the others that do the same
+// job, here or in another game. Each sound is
 // rendered offline through the site's output, every recording and every
 // synthesized stand-in, and measured as the ear hears it (engine/loudness.js).
 // Random parts are seeded and averaged, so the result is the same every run.
@@ -17,10 +18,11 @@ const PUBLIC = new URL("../../public/", import.meta.url);
 const GAMES = readdirSync(PUBLIC, { withFileTypes: true })
   .filter((d) => d.isDirectory() && existsSync(new URL(`${d.name}/sounds.js`, PUBLIC)))
   .map((d) => d.name);
+const SOURCES = [...GAMES.map((g) => [g, `/${g}/sounds.js`]), ["engine", "/engine/chimes.js"]];
 
-async function measure(page, game) {
-  return page.evaluate(async (game) => {
-    const { sounds } = await import(`/${game}/sounds.js`);
+async function measure(page, url) {
+  return page.evaluate(async (url) => {
+    const { sounds } = await import(url);
     const { ROLES } = await import("/engine/sound.js");
     const { loudness } = await import("/engine/loudness.js");
     const random = Math.random;
@@ -53,7 +55,7 @@ async function measure(page, game) {
       Math.random = random;
     }
     return rows;
-  }, game);
+  }, url);
 }
 
 test("every game's sounds play at their role's loudness", { skip: !pw && "Playwright not installed", timeout: 300_000 }, async (t) => {
@@ -72,8 +74,8 @@ test("every game's sounds play at their role's loudness", { skip: !pw && "Playwr
 
   const off = [];
   const all = {};
-  for (const game of GAMES) {
-    const rows = (all[game] = await measure(page, game));
+  for (const [game, url] of SOURCES) {
+    const rows = (all[game] = await measure(page, url));
     assert.ok(rows.length, `${game} has sounds`);
     for (const r of rows) {
       const what = `${game}/${r.name} (${r.variant === "synth" ? "synthesized" : `recording ${r.variant + 1}`})`;

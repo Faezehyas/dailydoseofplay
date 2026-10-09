@@ -6,6 +6,7 @@ import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, dimensions, colorOf, isTimed, timeLeft, landing, EMPTY, DRAW } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { settings } from "./settings.js";
@@ -79,7 +80,10 @@ function mountConnect4(session, root, shell) {
   const board = el("div", { class: "c4-board", id: "c4-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "c4-config", id: "c4-config" });
   const note = el("p", { class: "c4-note", id: "c4-note" });
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "plastic", highlight: (match.state.line || []).map((i) => cells[i]), board }),
+  });
   let columns = [];
   let cells = [];
 
