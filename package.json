@@ -2,6 +2,7 @@
   "name": "dailydoseofplay",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Free, no-login browser games: Node signaling on Wasmer Edge, gameplay over WebRTC DataChannels",
   "type": "module",
   "engines": { "node": ">=22" },
