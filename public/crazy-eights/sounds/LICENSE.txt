@@ -1,0 +1,17 @@
+Card recordings: Creative Commons CC0 1.0 (public domain).
+Source: "Casino Audio" (version 1.1) by Kenney Vleugels, https://kenney.nl/assets/casino-audio
+Each one cut from its file at the first sound, trimmed, faded out and converted to mono MP3.
+
+shuffle-1.mp3  <- card-shuffle.ogg, 0.17-1.67 s
+shuffle-2.mp3  <- card-shuffle.ogg, 1.45-2.95 s
+deal-1.mp3     <- card-slide-1.ogg, first 0.30 s
+deal-2.mp3     <- card-slide-3.ogg, first 0.30 s
+deal-3.mp3     <- card-slide-6.ogg, first 0.30 s
+play-1.mp3     <- card-place-1.ogg, first 0.42 s
+play-2.mp3     <- card-place-2.ogg, 0.14-0.50 s
+play-3.mp3     <- card-place-3.ogg, 0.45-0.87 s
+draw-1.mp3     <- card-shove-1.ogg, first 0.60 s
+draw-2.mp3     <- card-shove-3.ogg, first 0.58 s
+gather.mp3     <- card-fan-1.ogg, first 0.70 s
+
+Every other Crazy Eights sound is synthesized in sounds.js.
