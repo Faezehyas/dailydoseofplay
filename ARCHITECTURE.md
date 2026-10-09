@@ -191,7 +191,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 |---|---|
 | `shell.js` | Header with light/dark and sound toggles, nickname in `localStorage`, toasts, a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid (see **Colours and contrast**), and the game page column (see **Page column**) |
+| `theme.css` | Design tokens for light and dark, buttons, cards, lobby, home grid and its loading tiles (see **Colours and contrast**), and the game page column (see **Page column**) |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |

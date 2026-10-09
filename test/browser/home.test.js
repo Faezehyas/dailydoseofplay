@@ -1,6 +1,7 @@
-// Headless-browser test: every game tile on the home page is the same size,
+// Headless-browser tests: every game tile on the home page is the same size,
 // whatever its description's length, and a phone screen doesn't scroll
-// sideways. Skips if Playwright is missing.
+// sideways; placeholders hold the tiles' places while the list loads, and a
+// failed load offers Retry. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -44,8 +45,8 @@ test("home page tiles are all the same size", { skip: !pw && "Playwright not ins
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     page.on("pageerror", (e) => errors.push(`${width}: ${e.message}`));
     await page.goto(`${srv.base}/`);
-    await page.locator(".game-card").nth(games.length - 1).waitFor();
-    const cards = await page.locator(".game-card").evaluateAll((els) =>
+    await page.locator(".game-card[data-slug]").nth(games.length - 1).waitFor();
+    const cards = await page.locator(".game-card[data-slug]").evaluateAll((els) =>
       els.map((card) => {
         const box = card.getBoundingClientRect();
         const p = card.querySelector("p");
@@ -73,5 +74,91 @@ test("home page tiles are all the same size", { skip: !pw && "Playwright not ins
     await page.screenshot({ path: `${ARTIFACTS}/home-${width}.png`, fullPage: true });
     await page.close();
   }
+  assert.deepEqual(errors, []);
+});
+
+// Holds every games.json request until release() is called (or fails it),
+// so the test can look at the page while the list is still loading.
+async function holdGames(page, { fail = false } = {}) {
+  let release;
+  const released = new Promise((r) => (release = r));
+  await page.unrouteAll();
+  await page.route("**/games.json", async (route) => {
+    await released;
+    if (fail) await route.fulfill({ status: 500, body: "" });
+    else await route.continue();
+  });
+  return release;
+}
+
+function footerTop(page) {
+  return page.evaluate(() => document.querySelector(".site-footer").getBoundingClientRect().top + scrollY);
+}
+
+function tileHeights(page, selector) {
+  return page.locator(selector).evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+}
+
+test("home page shows placeholders while loading and a Retry button on failure", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+  mkdirSync(ARTIFACTS, { recursive: true });
+  const srv = await startServer();
+  const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
+  t.after(async () => {
+    await browser.close();
+    await srv.close();
+  });
+  const errors = [];
+
+  // A wide font stands in for the fallback fonts on Linux and Windows, where a
+  // long game name could otherwise wrap and make its tile taller.
+  for (const [width, font] of [[1280], [360], [768, "monospace"]]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 } });
+    page.on("pageerror", (e) => errors.push(`${width}: ${e.message}`));
+
+    // Slow list: placeholders first, then real tiles in the same places.
+    let release = await holdGames(page);
+    await page.goto(`${srv.base}/`);
+    if (font) await page.addStyleTag({ content: `body { font-family: ${font}; }` });
+    const placeholders = page.locator(".game-card.placeholder");
+    assert.equal(await placeholders.count(), games.length, `${width} px: one placeholder per game`);
+    assert.equal(await page.locator("#games > li[aria-hidden='true']").count(), games.length, `${width} px: placeholders are hidden from screen readers`);
+    assert.equal(await placeholders.first().locator(".game-icon").evaluate((e) => getComputedStyle(e).animationName), "shimmer");
+    const before = { footer: await footerTop(page), tiles: await tileHeights(page, ".game-card.placeholder") };
+    await page.screenshot({ path: `${ARTIFACTS}/home-loading-${width}.png`, fullPage: true });
+    release();
+    await page.locator(".game-card[data-slug]").nth(games.length - 1).waitFor();
+    assert.equal(await placeholders.count(), 0, `${width} px: placeholders are gone`);
+    const after = { footer: await footerTop(page), tiles: await tileHeights(page, ".game-card[data-slug]") };
+    assert.ok(Math.abs(after.footer - before.footer) <= 2, `${width} px: footer moved from ${before.footer} to ${after.footer}`);
+    for (const [i, h] of after.tiles.entries()) {
+      assert.ok(Math.abs(h - before.tiles[i]) <= 2, `${width} px: tile ${i} is ${h} px, its placeholder ${before.tiles[i]} px`);
+    }
+
+    // Failed list: an error notice with Retry; a retry that works shows the tiles.
+    release = await holdGames(page, { fail: true });
+    await page.reload();
+    release();
+    const retry = page.getByRole("button", { name: "Retry" });
+    await retry.waitFor();
+    assert.match(await page.locator("#games [role='alert']").innerText(), /Couldn't load the game list/);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width} px: no horizontal scroll`);
+    await page.screenshot({ path: `${ARTIFACTS}/home-error-${width}.png`, fullPage: true });
+    release = await holdGames(page);
+    await retry.click();
+    assert.equal(await placeholders.count(), games.length, `${width} px: placeholders return while retrying`);
+    release();
+    await page.locator(".game-card[data-slug]").nth(games.length - 1).waitFor();
+    assert.equal(await retry.count(), 0);
+    assert.equal(await page.evaluate(() => document.activeElement.matches(".game-card")), true, `${width} px: focus moves to the first tile`);
+    await page.close();
+  }
+
+  // Reduced motion: the placeholders hold still.
+  const page = await browser.newPage({ reducedMotion: "reduce" });
+  const release = await holdGames(page);
+  await page.goto(`${srv.base}/`);
+  assert.equal(await page.locator(".game-card.placeholder .game-icon").first().evaluate((e) => getComputedStyle(e).animationName), "none");
+  release();
+  await page.close();
   assert.deepEqual(errors, []);
 });
