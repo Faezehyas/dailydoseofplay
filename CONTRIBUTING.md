@@ -10,6 +10,7 @@ WebRTC. Read `ARCHITECTURE.md` once before your first change.
 - **Language:** plain JavaScript only. Node ES modules on the server; browser JS, HTML and CSS in `public/`. No TypeScript, no frameworks, no build step, no bundler.
 - **Dependencies:** `ws` is the only one. Do not add more.
 - **Originality:** use original names, art, text and sounds. Copy papergames' rules and flow only, never their logo, art, sounds or wording.
+- **License:** contributions are accepted under the repo's [MIT License](LICENSE). A third-party asset needs a license compatible with it, credited in the game's folder the way each `sounds/LICENSE.txt` credits its recordings.
 - **No accounts:** no logins, tournaments, leaderboards, ads, analytics or random matchmaking. The nickname stays in `localStorage`.
 - **No secrets:** no tokens or keys in the repo. Deploys happen through Wasmer's GitHub integration on every push to `main`.
 - **Server:** a new game must not need changes under `server/`. If it seems to, stop and explain why in the PR.
