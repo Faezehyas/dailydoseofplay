@@ -673,7 +673,7 @@ most two to a row; under 600 px they sit in a 2×2 grid beside Leave over a
 slimmer score, so four fit a 360 px phone. A pill and its score read
 `--seat` and `--seat-text`, which are `--mine` and `--theirs` unless the game
 gives each seat a class of its own that sets them (Chutes and Ladders `p0`
-to `p3`, Ludo its board colours).
+to `p3`, Ludo its board colours, Crazy Eights `p-0` to `p-3`).
 
 **Result panel.** Every game shows its result the same way, in a panel
 built by `resultPanel()` in `result.js` and pinned to the bottom of the
@@ -1686,7 +1686,8 @@ to follow that glows when an 8 named it, and the direction of play when an
 ace can turn it. Your hand is fanned at the bottom and sorted by suit; a
 hand too big for the row overlaps more, then scrolls inside its own row.
 Each player keeps one colour by seat everywhere it shows (coral, teal,
-violet, amber: pills, seats, score, log, standings).
+violet, amber: the player bar, seats, log, standings). In the player bar a
+pill's badge is a dot in that colour and its note is the cards in hand.
 
 **Card art** (`art.js`). Inline SVG drawn in code: suit pips, large corner
 indices, the classic pip layouts, aces in a dotted ring, and original court

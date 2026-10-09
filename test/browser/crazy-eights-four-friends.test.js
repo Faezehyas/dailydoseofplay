@@ -62,7 +62,7 @@ test("four friends play Crazy Eights in four browsers, with every hand hidden an
     // The next player sits on your left, then across, then on your right; colours follow the seat everywhere.
     const seatsShown = await p.locator(".ce-seat").evaluateAll((els) => els.map((e) => [Number(e.dataset.seat), [...e.classList].find((c) => c.startsWith("pos-"))]));
     assert.deepEqual(seatsShown, [[(seat + 1) % 4, "pos-left"], [(seat + 2) % 4, "pos-top"], [(seat + 3) % 4, "pos-right"]]);
-    assert.equal(await p.locator(".ce-players .who.p-1").innerText().then((s) => s.split("\n")[0]), seat === 1 ? "Bo (you)" : "Bo");
+    assert.equal(await p.locator(".pb-who.p-1").innerText().then((s) => s.split("\n")[0]), seat === 1 ? "Bo (you)" : "Bo");
     assert.equal(await p.locator(".ce-seat.p-1, .ce-me.p-1").count(), 1);
   }
   assert.ok(await noHorizontalScroll(friends[0]), "four players fit a 360 px phone");

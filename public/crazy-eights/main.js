@@ -8,6 +8,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { CardMatch } from "../engine/card-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, MAX_PLAYERS, SUIT_SIGNS, RANK_NAMES, suitOf, rankOf, points, cardName, toFollow, isEight, canDraw, canPass, playable } from "./rules.js";
 import { chooseMove, startRobot, timeoutMove } from "./robot.js";
 import { settings } from "./settings.js";
@@ -149,19 +150,8 @@ function mountGame(session, root, shell) {
   const offMsg = session.onMessage((msg, from) => (msg.t === "setup" ? from === 0 && onSetup(msg) : route(msg, from)));
 
   // ---------- layout ----------
-  const pills = around.map((p) => {
-    const where = el("small", { class: "where mono" });
-    const node = el(
-      "span",
-      { class: `who p-${p}`, dataset: { seat: p } },
-      el("span", { class: "dot", "aria-hidden": "true" }),
-      el("span", { class: "label" }, el("span", { class: "name" }, p === me ? myName : session.players[p].name), where),
-    );
-    return { node, where };
-  });
-  const players = el("div", { class: `ce-players ${count > 2 ? "many" : ""}` }, count === 2 ? [pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node] : pills.map((p) => p.node));
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "ce-score", id: "ce-score", "aria-label": "Wins" });
+  const bar = playerBar(session, { onLeave: () => shell.leave(), classes: (p) => `p-${p}` });
+  bar.update({ badges: seats.map(() => el("span", { class: "dot", "aria-hidden": "true" })) });
   const status = el("p", { class: "ce-status", id: "ce-status", role: "status", "aria-live": "polite" });
 
   // Opponents round the table: the next player on your left, then across, then on your right.
@@ -225,8 +215,7 @@ function mountGame(session, root, shell) {
     "div",
     { class: "crazy-eights", dataset: { you: me === 0 ? "a" : me === 1 ? "b" : "", seat: me } },
     symbolHost,
-    el("div", { class: "ce-top" }, players, leaveBtn),
-    scoreBox,
+    bar.node,
     status,
     el("div", { class: "ce-main" }, tableWrap, el("div", { class: "ce-side" }, el("div", { class: "ce-actions" }, el("div", { class: "ce-buttons" }, drawBtn, passBtn), timer, hint), logList)),
     configLine,
@@ -915,11 +904,6 @@ function mountGame(session, root, shell) {
   }
 
   // ---------- render ----------
-  function renderScore() {
-    const item = (p) => el("div", { class: `p-${p} ${p === me ? "mine" : ""}` }, el("dt", {}, p === me ? "You" : nameOf(p)), el("dd", {}, String(score[p])));
-    scoreBox.replaceChildren(...around.map(item));
-  }
-
   function statusText() {
     if (ended) return "The game has ended.";
     if (!match) return "Getting the room's settings…";
@@ -962,13 +946,9 @@ function mountGame(session, root, shell) {
     rootBox.classList.toggle("four-colour", four());
     const d = decision();
     const turnOf = current?.player ?? (phase === "playing" ? st?.turn : undefined);
-    for (const [i, p] of around.entries()) {
-      pills[i].node.classList.toggle("active", turnOf === p && phase === "playing");
-      pills[i].where.textContent = view && st ? where(p) : "";
-    }
+    bar.update({ turn: phase === "playing" ? turnOf : -1, notes: seats.map((p) => (view && st ? where(p) : "")), score: { wins: score } });
     for (const o of opps) o.node.classList.toggle("active", turnOf === o.p && phase === "playing");
     meArea.classList.toggle("active", turnOf === me && phase === "playing");
-    renderScore();
     status.textContent = statusText();
     status.className = `ce-status ${d ? `p-${d.player}` : ""} ${d?.player === me ? "mine" : ""}`;
     if (view) {

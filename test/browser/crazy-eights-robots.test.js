@@ -59,7 +59,7 @@ test("Crazy Eights against three robots on a 360 px phone: deal, sounds, mute, k
   await page.locator("#ce-busy:not([hidden])").waitFor();
   await page.screenshot({ path: `${ARTIFACTS}/ce-10-robot-shuffling.png` });
   await wait(page, () => window.ddp.match?.phase === "playing", undefined, 60_000);
-  assert.match(await page.locator(".ce-players").innerText(), /Cleo[\s\S]*Robot 1[\s\S]*Robot 2[\s\S]*Robot 3/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot 1[\s\S]*Robot 2[\s\S]*Robot 3/);
   assert.equal(await page.locator("#ce-config").innerText(), "draw until you can play · draw only when nothing plays · no action cards · 15 s to move · Hard robots");
   assert.equal(await page.locator(".crazy-eights.four-colour").count(), 1, "the four-colour deck is on");
   assert.ok(await noHorizontalScroll(page));

@@ -54,11 +54,11 @@ test("two friends play Crazy Eights on the host's settings through the invite li
   await guest.locator("#ce-config").filter({ hasText: "action cards on" }).waitFor();
   assert.equal(await guest.locator("#ce-config").innerText(), "draw until you can play · draw only when nothing plays · action cards on");
   assert.equal(await host.locator("#ce-config").innerText(), await guest.locator("#ce-config").innerText(), "the host's settings reach the friend, not the friend's own");
-  assert.match(await host.locator(".ce-players").innerText(), /Ada \(you\)[\s\S]*Bo/);
-  assert.match(await guest.locator(".ce-players").innerText(), /Bo \(you\)[\s\S]*Ada/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada \(you\)[\s\S]*Bo/);
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo \(you\)[\s\S]*Ada/);
   // Seat colours are the same on both screens: Ada coral (seat 0), Bo teal (seat 1).
   for (const p of [host, guest]) {
-    assert.equal(await p.locator(".ce-players .who.p-0").innerText().then((s) => s.split("\n")[0]), p === host ? "Ada (you)" : "Ada");
+    assert.equal(await p.locator(".pb-who.p-0").innerText().then((s) => s.split("\n")[0]), p === host ? "Ada (you)" : "Ada");
     assert.equal(await p.locator(".ce-seat.p-1, .ce-me.p-1").count(), 1);
   }
   assert.equal((await state(host)).first, 0, "the room says the host goes first");
@@ -112,8 +112,8 @@ test("two friends play Crazy Eights on the host's settings through the invite li
   const second = await finish();
   const wins = [0, 1].map((p) => [first, second].filter((st) => st.winner === p).length);
   for (const p of [host, guest]) {
-    assert.equal(await p.locator("#ce-score .p-0 dd").innerText(), String(wins[0]), "the score carries across the rematch");
-    assert.equal(await p.locator("#ce-score .p-1 dd").innerText(), String(wins[1]));
+    assert.equal(await p.locator("#score .p-0 dd").innerText(), String(wins[0]), "the score carries across the rematch");
+    assert.equal(await p.locator("#score .p-1 dd").innerText(), String(wins[1]));
   }
 
   // A third game, where Bo's browser never sends its key and Bo leaves during the audit.
