@@ -352,7 +352,7 @@ windows (one private).
 | `public/engine/turn-match.js` | `TurnMatch` and `startTurnRobot()` for open-information turn games |
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
-| `public/engine/shell.js` | Header, theme toggle, nickname, `el()`, `toast()` |
+| `public/engine/shell.js` | Header, footer, theme toggle, nickname, `el()`, `toast()` |
 | `public/engine/settings.js` | `gameSettings()`: a game's settings, shown in the lobby card |
 | `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
 | `public/engine/result.js` | `resultPanel()`: the game-over panel with the result, Rematch and Leave, in every game |
