@@ -62,7 +62,8 @@ public/<slug>/
 ```
 
 Keep `index.html`'s `<section id="lobby">` and `<section id="game" hidden>`;
-the engine renders into them. Shared styles (`.card`, `.btn`, `.btn.small`,
+the engine renders into them. Keep them in its `<main>` too: the header's
+"Skip to content" link jumps there. Shared styles (`.card`, `.btn`, `.btn.small`,
 `.rules` for the "How to play" panel, `.rematch-status`, `.overlay`,
 `.spinner`) live in `/engine/theme.css`. `style.css` holds only what is
 specific to your game.

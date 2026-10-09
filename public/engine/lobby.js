@@ -178,10 +178,13 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
           : `Send this link to up to ${maxPlayers - 1} friends. Start when everyone is in; a full room starts by itself.`,
         " Someone who types the code instead has to be let in by you.",
       ),
+      // Screen readers get the code from the label, spaced so each letter is
+      // read on its own; the big code below is for the eyes.
+      el("p", { class: "room-code-label" }, "Room code", el("span", { class: "visually-hidden" }, ` ${[...room.code].join(" ")}`)),
       // One span per letter, so the letters can settle in one by one (theme.css).
       el(
         "div",
-        { class: "room-code mono", id: "room-code", "aria-label": `Room code ${room.code}` },
+        { class: "room-code mono", id: "room-code", "aria-hidden": "true" },
         [...room.code].map((c, i) => el("span", { style: `--i: ${i}` }, c)),
       ),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
