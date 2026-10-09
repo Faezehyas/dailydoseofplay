@@ -49,6 +49,28 @@ function readText(file) {
   return new Promise((resolve, reject) => fs.readFile(file, "utf8", (err, text) => (err ? reject(err) : resolve(text))));
 }
 
+// Strong ETag from the bytes: FNV-1a 64-bit as two 32-bit halves, so no node:crypto.
+function etagOf(data) {
+  let hi = 0xcbf29ce4;
+  let lo = 0x84222325;
+  for (const byte of data) {
+    lo = (lo ^ byte) >>> 0;
+    // h * 0x100000001b3 = h * 0x1b3 + (h << 40), mod 2^64.
+    const low = lo * 0x1b3;
+    hi = (Math.imul(hi, 0x1b3) + Math.floor(low / 0x100000000) + (lo << 8)) >>> 0;
+    lo = low >>> 0;
+  }
+  return `"${hi.toString(16).padStart(8, "0")}${lo.toString(16).padStart(8, "0")}"`;
+}
+
+// If-None-Match is "*" or a list of tags; it compares weakly, so a proxy's W/ prefix still matches.
+function etagMatches(header, etag) {
+  return String(header || "").split(",").some((tag) => {
+    tag = tag.trim();
+    return tag === "*" || tag.replace(/^W\//, "") === etag;
+  });
+}
+
 // Path of a request target, or null when it can't be parsed (e.g. "//[").
 function pathOf(rawUrl) {
   try {
@@ -115,14 +137,21 @@ export async function createApp({
   const notFoundPage = path.join(publicDir, "404.html");
 
   // Plain fs.readFile: EdgeJS is not upstream Node, so stay on proven APIs.
+  // The ETag is hashed on every request, so an edited file is never served stale.
   function sendFile(req, res, file) {
     fs.readFile(file, (err, data) => {
       if (err) return notFound(req, res);
+      const etag = etagOf(data);
+      if (etagMatches(req.headers["if-none-match"], etag)) {
+        res.writeHead(304, { ...SECURITY_HEADERS, ETag: etag, "Cache-Control": "no-cache" });
+        return res.end();
+      }
       res.writeHead(200, {
         ...SECURITY_HEADERS,
         "Content-Type": MIME[path.extname(file)] || "application/octet-stream",
         "Content-Length": data.length,
         "Cache-Control": "no-cache",
+        ETag: etag,
       });
       res.end(req.method === "HEAD" ? undefined : data);
     });
