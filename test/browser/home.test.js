@@ -152,7 +152,7 @@ test("home page shows placeholders while loading and a Retry button on failure",
     release();
     await page.locator(".game-card[data-slug]").nth(games.length - 1).waitFor();
     assert.equal(await retry.count(), 0);
-    assert.equal(await page.evaluate(() => document.activeElement.matches(".game-card")), true, `${width} px: focus moves to the first tile`);
+    assert.equal(await page.evaluate(() => document.activeElement.matches(".game-card h2 a")), true, `${width} px: focus moves to the first tile`);
     await page.close();
   }
 

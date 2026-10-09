@@ -12,18 +12,25 @@ function card(game, last) {
     icon.append(el("span", { class: "monogram", "aria-hidden": "true" }, initials));
   }
   if (last) icon.append(el("span", { class: "last-played" }, "Last played"));
+  const lobby = `/${game.slug}/`;
   const body = [
     icon,
-    el("h2", {}, game.name),
+    // Links can't nest, so the name's link stretches over the tile (theme.css).
+    el("h2", {}, ready ? el("a", { href: lobby }, game.name) : game.name),
     el("p", {}, game.description),
     el("div", { class: "game-meta" }, el("span", {}, game.players), el("span", { class: ready ? "badge" : "badge soon" }, ready ? "Play" : "Coming soon")),
+    ready &&
+      el(
+        "div",
+        { class: "quick-play" },
+        el("a", { class: "btn primary small", href: `${lobby}?friend=1`, "aria-label": `Play friends at ${game.name}` }, "Play friends"),
+        el("a", { class: "btn small", href: `${lobby}?robot=1`, "aria-label": `Play the robot at ${game.name}` }, "Play the robot"),
+      ),
   ];
   return el(
     "li",
     {},
-    ready
-      ? el("a", { class: "card game-card", href: `/${game.slug}/`, dataset: { slug: game.slug } }, ...body)
-      : el("div", { class: "card game-card soon", "aria-disabled": "true", dataset: { slug: game.slug } }, ...body),
+    el("div", { class: ready ? "card game-card" : "card game-card soon", "aria-disabled": !ready && "true", dataset: { slug: game.slug } }, ...body),
   );
 }
 
