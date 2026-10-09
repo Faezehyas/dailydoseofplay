@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-bg">
+<style>.pv-bg .bg{fill:var(--surface-2)}
+.pv-bg .frame{fill:var(--control-border)}
+.pv-bg .felt{fill:var(--surface)}
+.pv-bg .pt1{fill:var(--border)}
+.pv-bg .pt2{fill:var(--water-line)}
+.pv-bg .man{fill:currentColor;stroke:var(--surface);stroke-width:1.2}
+.pv-bg .slide{animation-duration:.6s}
+.pv-bg .die{fill:var(--surface);stroke:var(--text);stroke-width:1.2}
+.pv-bg .pip{fill:var(--text)}
+.pv-bg .gone{animation-duration:.15s}
+.pv-bg .fade{animation-duration:.15s}
+.pv-bg .roll{transform-box:fill-box;transform-origin:center;animation-name:pv-bg-roll;animation-duration:.8s}
+@keyframes pv-bg-roll{from{opacity:0;transform:translate(60px,-40px) rotate(-560deg)}}</style>
+<rect class="bg" width="320" height="200"/>
+<rect class="frame" x="22" y="28" width="276" height="164" rx="6"/>
+<rect class="felt" x="30" y="34" width="120" height="152"/>
+<rect class="felt" x="170" y="34" width="120" height="152"/>
+<path class="pt1" d="M270 186l10-66l10 66zM230 186l10-66l10 66zM190 186l10-66l10 66zM130 186l10-66l10 66zM90 186l10-66l10 66zM50 186l10-66l10 66zM30 34l10 66l10-66zM70 34l10 66l10-66zM110 34l10 66l10-66zM170 34l10 66l10-66zM210 34l10 66l10-66zM250 34l10 66l10-66z"/>
+<path class="pt2" d="M250 186l10-66l10 66zM210 186l10-66l10 66zM170 186l10-66l10 66zM110 186l10-66l10 66zM70 186l10-66l10 66zM30 186l10-66l10 66zM50 34l10 66l10-66zM90 34l10 66l10-66zM130 34l10 66l10-66zM190 34l10 66l10-66zM230 34l10 66l10-66zM270 34l10 66l10-66z"/>
+<circle class="a man" cx="180" cy="177" r="8"/>
+<circle class="a man" cx="180" cy="163" r="8"/>
+<circle class="a man" cx="180" cy="149" r="8"/>
+<circle class="a man" cx="180" cy="135" r="8"/>
+<g transform="translate(200 163)"><circle class="a man slide" r="8" style="--d:2.2s;--x:-20px;--y:-42px"/></g>
+<circle class="a man" cx="120" cy="177" r="8"/>
+<circle class="a man" cx="120" cy="163" r="8"/>
+<g transform="translate(200 177)"><circle class="a man slide" r="8" style="--d:1.5s;--x:-80px;--y:-28px"/></g>
+<circle class="a man" cx="40" cy="43" r="8"/>
+<circle class="a man" cx="40" cy="57" r="8"/>
+<circle class="a man" cx="40" cy="71" r="8"/>
+<circle class="a man" cx="40" cy="85" r="8"/>
+<circle class="a man" cx="40" cy="99" r="8"/>
+<circle class="a man" cx="280" cy="43" r="8"/>
+<circle class="a man" cx="280" cy="57" r="8"/>
+<circle class="b man" cx="280" cy="177" r="8"/>
+<circle class="b man" cx="280" cy="163" r="8"/>
+<circle class="b man" cx="40" cy="177" r="8"/>
+<circle class="b man" cx="40" cy="163" r="8"/>
+<circle class="b man" cx="40" cy="149" r="8"/>
+<circle class="b man" cx="40" cy="135" r="8"/>
+<circle class="b man" cx="40" cy="121" r="8"/>
+<circle class="b man" cx="120" cy="43" r="8"/>
+<circle class="b man" cx="120" cy="57" r="8"/>
+<circle class="b man" cx="120" cy="71" r="8"/>
+<circle class="b man" cx="180" cy="43" r="8"/>
+<circle class="b man" cx="180" cy="57" r="8"/>
+<circle class="b man" cx="180" cy="71" r="8"/>
+<circle class="b man" cx="180" cy="85" r="8"/>
+<circle class="b man" cx="180" cy="99" r="8"/>
+<g transform="translate(210 110)"><g class="roll" style="--d:0.3s"><rect class="die" x="-9" y="-9" width="18" height="18" rx="4"/><g class="gone" style="--d:0.9s"><circle class="pip" cx="-4" cy="-4" r="1.7"/><circle class="pip" cx="4" cy="-4" r="1.7"/><circle class="pip" cx="0" cy="0" r="1.7"/><circle class="pip" cx="-4" cy="4" r="1.7"/><circle class="pip" cx="4" cy="4" r="1.7"/></g><g class="fade" style="--d:0.9s"><circle class="pip" cx="-4" cy="-4" r="1.7"/><circle class="pip" cx="0" cy="0" r="1.7"/><circle class="pip" cx="4" cy="4" r="1.7"/></g></g></g>
+<g transform="translate(240 110)"><g class="roll" style="--d:0.38s"><rect class="die" x="-9" y="-9" width="18" height="18" rx="4"/><g class="gone" style="--d:0.98s"><circle class="pip" cx="-4" cy="-4.5" r="1.7"/><circle class="pip" cx="4" cy="-4.5" r="1.7"/><circle class="pip" cx="-4" cy="0" r="1.7"/><circle class="pip" cx="4" cy="0" r="1.7"/><circle class="pip" cx="-4" cy="4.5" r="1.7"/><circle class="pip" cx="4" cy="4.5" r="1.7"/></g><g class="fade" style="--d:0.98s"><circle class="pip" cx="0" cy="0" r="1.7"/></g></g></g>
+<g class="a"><rect class="tag" x="250" y="6" width="30" height="14" rx="7"/><circle cx="258" cy="13" r="4" fill="currentColor"/><rect class="name" x="265" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="284" y="6" width="30" height="14" rx="7"/><circle cx="292" cy="13" r="4" fill="currentColor"/><rect class="name" x="299" y="11.5" width="10" height="3" rx="1.5"/></g>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:0s;--l:3s"/>
+<rect class="lit b stay" x="282" y="4" width="34" height="18" rx="9" style="--d:3s"/>
+</svg>

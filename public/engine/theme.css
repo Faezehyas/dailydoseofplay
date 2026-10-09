@@ -1195,6 +1195,165 @@ input::placeholder {
   object-fit: cover;
 }
 
+/* A tile's preview (<slug>/preview.svg, 320 x 200), which home.js swaps in for
+   the icon. Its animations start paused, run once from home.js and hold their
+   last frame; each piece waits --d, and a player tag stays lit for --l. The
+   classes below are the moves a preview can use; it adds its own keyframes,
+   named after its game, for anything else. */
+.game-icon .tile-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.tile-preview * {
+  animation-delay: var(--d, 0s);
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: both;
+  animation-play-state: paused;
+}
+
+/* Seat colours: the first player is coral and the second teal, as in a game
+   (see "Player colours"); four-player games add gold and violet. */
+.tile-preview .a {
+  color: var(--accent);
+}
+
+.tile-preview .b {
+  color: var(--accent-2);
+}
+
+.tile-preview .c {
+  color: var(--hit-2);
+}
+
+.tile-preview .d {
+  color: var(--gift);
+}
+
+.tile-preview .tag {
+  fill: var(--surface);
+  stroke: var(--border);
+}
+
+.tile-preview .name {
+  fill: var(--muted);
+}
+
+/* Lights a player tag while it is their turn; .stay keeps it lit. */
+.tile-preview .lit {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  animation-name: pv-lit;
+  animation-duration: var(--l, 0.5s);
+}
+
+.tile-preview .lit.stay {
+  animation-name: pv-fade;
+}
+
+/* Transforms on the moves below turn around the piece itself, not the view. */
+.tile-preview .pop,
+.tile-preview .gone,
+.tile-preview .draw {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.tile-preview .pop {
+  animation-name: pv-pop;
+  animation-timing-function: var(--ease-spring);
+}
+
+.tile-preview .fade {
+  animation-name: pv-fade;
+}
+
+.tile-preview .gone {
+  animation-name: pv-gone;
+}
+
+/* Grows a line from its start; draw it left to right and rotate its group. */
+.tile-preview .draw {
+  transform-origin: left center;
+  animation-name: pv-draw;
+}
+
+/* Moves a piece to where it is drawn from --x, --y away. */
+.tile-preview .slide {
+  animation-name: pv-slide;
+  animation-duration: 0.45s;
+}
+
+/* Drops a piece in from --y above, with a small bounce. */
+.tile-preview .fall {
+  animation-name: pv-fall;
+  animation-duration: 0.5s;
+}
+
+@keyframes pv-lit {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+}
+
+@keyframes pv-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes pv-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pv-gone {
+  to {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes pv-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes pv-slide {
+  from {
+    transform: translate(var(--x, 0), var(--y, 0));
+  }
+}
+
+@keyframes pv-fall {
+  from {
+    opacity: 0;
+    transform: translateY(var(--y));
+    animation-timing-function: ease-in;
+  }
+  10% {
+    opacity: 1;
+  }
+  65% {
+    transform: none;
+    animation-timing-function: ease-out;
+  }
+  82% {
+    transform: translateY(-4px);
+    animation-timing-function: ease-in;
+  }
+}
+
 /* Over the picture, so the tile stays the size of the others. */
 .last-played {
   position: absolute;
@@ -1357,8 +1516,8 @@ input.mono {
    - nothing loops forever except the home hero's scene, and it pauses off
      screen and in a hidden tab;
    - everything stops under prefers-reduced-motion;
-   - no motion starts without a user action, except the room code settling
-     and the hero's scene.
+   - no motion starts without a user action, except the room code settling,
+     the hero's scene and, on a touch screen, a tile's preview.
    Loading indicators (.spinner, the home page's loading tiles) are the one
    exception: they run only while something loads.
    Timings come from --dur-fast, --dur-med and --dur-slow, easing from

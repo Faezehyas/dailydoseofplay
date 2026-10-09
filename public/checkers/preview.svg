@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-checkers">
+<style>.pv-checkers .bg{fill:var(--surface-2)}
+.pv-checkers .light{fill:var(--surface)}
+.pv-checkers .dark{fill:var(--control-border)}
+.pv-checkers use{stroke:var(--surface)}
+.pv-checkers .crown{fill:var(--hit-2);stroke:var(--text);stroke-width:.8;stroke-linejoin:round}
+.pv-checkers .jump{animation-name:pv-checkers-jump;animation-duration:.5s}
+@keyframes pv-checkers-jump{from{transform:translate(var(--x),var(--y))}50%{transform:translate(calc(var(--x)/2),calc(var(--y)/2)) scale(1.35)}}</style>
+<defs><g id="pv-checkers-man"><circle r="8" fill="currentColor" stroke="none"/><circle r="5" fill="none" stroke-width="1.2" opacity=".6"/></g></defs>
+<rect class="bg" width="320" height="200"/>
+<rect class="light" x="80" y="32" width="160" height="160"/>
+<path class="dark" d="M100 32h20v20h-20zM140 32h20v20h-20zM180 32h20v20h-20zM220 32h20v20h-20zM80 52h20v20h-20zM120 52h20v20h-20zM160 52h20v20h-20zM200 52h20v20h-20zM100 72h20v20h-20zM140 72h20v20h-20zM180 72h20v20h-20zM220 72h20v20h-20zM80 92h20v20h-20zM120 92h20v20h-20zM160 92h20v20h-20zM200 92h20v20h-20zM100 112h20v20h-20zM140 112h20v20h-20zM180 112h20v20h-20zM220 112h20v20h-20zM80 132h20v20h-20zM120 132h20v20h-20zM160 132h20v20h-20zM200 132h20v20h-20zM100 152h20v20h-20zM140 152h20v20h-20zM180 152h20v20h-20zM220 152h20v20h-20zM80 172h20v20h-20zM120 172h20v20h-20zM160 172h20v20h-20zM200 172h20v20h-20z"/>
+<g transform="translate(90 182)"><use href="#pv-checkers-man" class="a"/></g>
+<g transform="translate(130 182)"><use href="#pv-checkers-man" class="a"/></g>
+<g transform="translate(110 162)"><use href="#pv-checkers-man" class="a"/></g>
+<g transform="translate(170 142)"><use href="#pv-checkers-man" class="a"/></g>
+<g transform="translate(190 162)"><use href="#pv-checkers-man" class="a"/></g>
+<g transform="translate(210 182)"><use href="#pv-checkers-man" class="a"/></g>
+<g transform="translate(230 162)"><use href="#pv-checkers-man" class="a"/></g>
+<g transform="translate(110 42)"><use href="#pv-checkers-man" class="b"/></g>
+<g transform="translate(190 42)"><use href="#pv-checkers-man" class="b"/></g>
+<g transform="translate(210 62)"><use href="#pv-checkers-man" class="b"/></g>
+<g transform="translate(230 82)"><use href="#pv-checkers-man" class="b"/></g>
+<g transform="translate(130 62)"><use href="#pv-checkers-man" class="b"/></g>
+<g transform="translate(170 102)"><g class="gone" style="--d:1.85s"><g class="slide" style="--d:0.9s;--x:-20px;--y:-20px"><use href="#pv-checkers-man" class="b"/></g></g></g>
+<g transform="translate(170 62)"><g class="gone" style="--d:2.45s"><use href="#pv-checkers-man" class="b"/></g></g>
+<g transform="translate(150 42)"><g class="jump" style="--d:2.1s;--x:40px;--y:40px"><g class="jump" style="--d:1.5s;--x:-40px;--y:40px"><g class="slide" style="--d:0.3s;--x:-20px;--y:20px"><use href="#pv-checkers-man" class="a"/><path class="crown pop" d="M-5.5 3h11l1.5-7-4 3-2.5-5-2.5 5-4-3z" style="--d:2.75s"/></g></g></g></g>
+<g class="a"><rect class="tag" x="250" y="6" width="30" height="14" rx="7"/><circle cx="258" cy="13" r="4" fill="currentColor"/><rect class="name" x="265" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="284" y="6" width="30" height="14" rx="7"/><circle cx="292" cy="13" r="4" fill="currentColor"/><rect class="name" x="299" y="11.5" width="10" height="3" rx="1.5"/></g>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:0s;--l:0.7s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:0.7s;--l:0.7s"/>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:1.4s;--l:1.7s"/>
+<rect class="lit b stay" x="282" y="4" width="34" height="18" rx="9" style="--d:3.1s"/>
+</svg>

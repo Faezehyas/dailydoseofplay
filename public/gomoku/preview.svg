@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-gomoku">
+<style>.pv-gomoku .bg{fill:var(--surface-2)}
+.pv-gomoku .board{fill:var(--surface);stroke:var(--border)}
+.pv-gomoku .grid{fill:none;stroke:var(--control-border);stroke-width:1}
+.pv-gomoku .win{stroke:var(--text);stroke-width:3;stroke-linecap:round;opacity:.7}
+.pv-gomoku .draw{animation-duration:.45s}</style>
+<rect class="bg" width="320" height="200"/>
+<rect class="board" x="70" y="34" width="180" height="164" rx="6"/>
+<path class="grid" d="M80 44V188M96 44V188M112 44V188M128 44V188M144 44V188M160 44V188M176 44V188M192 44V188M208 44V188M224 44V188M240 44V188M80 44H240M80 60H240M80 76H240M80 92H240M80 108H240M80 124H240M80 140H240M80 156H240M80 172H240M80 188H240"/>
+<g class="a"><g transform="translate(160 108)"><circle class="pop" r="6.5" fill="currentColor" style="--d:0.3s"/></g></g>
+<g class="b"><g transform="translate(160 124)"><circle class="pop" r="6.5" fill="currentColor" style="--d:0.68s"/></g></g>
+<g class="a"><g transform="translate(176 108)"><circle class="pop" r="6.5" fill="currentColor" style="--d:1.06s"/></g></g>
+<g class="b"><g transform="translate(176 124)"><circle class="pop" r="6.5" fill="currentColor" style="--d:1.44s"/></g></g>
+<g class="a"><g transform="translate(144 108)"><circle class="pop" r="6.5" fill="currentColor" style="--d:1.82s"/></g></g>
+<g class="b"><g transform="translate(192 124)"><circle class="pop" r="6.5" fill="currentColor" style="--d:2.2s"/></g></g>
+<g class="a"><g transform="translate(192 108)"><circle class="pop" r="6.5" fill="currentColor" style="--d:2.58s"/></g></g>
+<g class="b"><g transform="translate(128 108)"><circle class="pop" r="6.5" fill="currentColor" style="--d:2.96s"/></g></g>
+<g class="a"><g transform="translate(208 108)"><circle class="pop" r="6.5" fill="currentColor" style="--d:3.34s"/></g></g>
+<g transform="translate(135 108)"><path class="win draw" d="M0 0h82" style="--d:3.75s"/></g>
+<g class="a"><rect class="tag" x="250" y="6" width="30" height="14" rx="7"/><circle cx="258" cy="13" r="4" fill="currentColor"/><rect class="name" x="265" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="284" y="6" width="30" height="14" rx="7"/><circle cx="292" cy="13" r="4" fill="currentColor"/><rect class="name" x="299" y="11.5" width="10" height="3" rx="1.5"/></g>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:0s;--l:0.38s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:0.38s;--l:0.38s"/>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:0.76s;--l:0.38s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:1.14s;--l:0.38s"/>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:1.52s;--l:0.38s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:1.9s;--l:0.38s"/>
+<rect class="lit a" x="248" y="4" width="34" height="18" rx="9" style="--d:2.28s;--l:0.38s"/>
+<rect class="lit b" x="282" y="4" width="34" height="18" rx="9" style="--d:2.66s;--l:0.38s"/>
+<rect class="lit a stay" x="248" y="4" width="34" height="18" rx="9" style="--d:3.04s"/>
+</svg>

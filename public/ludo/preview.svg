@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-ludo">
+<style>.pv-ludo .bg{fill:var(--surface-2)}
+.pv-ludo .board{fill:var(--surface);stroke:var(--border)}
+.pv-ludo .yard,.pv-ludo .start{fill:currentColor}
+.pv-ludo .pad{fill:var(--surface)}
+.pv-ludo .track{fill:var(--surface);stroke:var(--control-border)}
+.pv-ludo .tk{stroke:var(--text);stroke-width:.8;stroke-opacity:.5}
+.pv-ludo .die{fill:var(--surface);stroke:var(--text);stroke-width:1.4}
+.pv-ludo .pip{fill:var(--text)}
+.pv-ludo .pip .gone,.pv-ludo .pip .fade{animation-duration:.15s}
+.pv-ludo .roll{transform-box:fill-box;transform-origin:center;animation-name:pv-ludo-roll;animation-duration:.65s}
+.pv-ludo .hop{animation-name:pv-ludo-hop;animation-duration:.5s}
+.pv-ludo .home{animation-name:pv-ludo-hop;animation-duration:.55s}
+@keyframes pv-ludo-roll{from{transform:rotate(-360deg)}50%{transform:rotate(-120deg) scale(1.25)}}
+@keyframes pv-ludo-hop{from{transform:translate(var(--x),var(--y))}50%{transform:translate(calc(var(--x)/2),calc(var(--y)/2 - 14px))}}</style>
+<rect class="bg" width="320" height="200"/>
+<rect class="board" x="14" y="26" width="292" height="166" rx="8"/>
+<g class="d"><rect class="yard" x="20" y="32" width="64" height="64" rx="6"/><rect class="pad" x="28" y="40" width="48" height="48" rx="5"/></g>
+<g class="c"><rect class="yard" x="236" y="32" width="64" height="64" rx="6"/><rect class="pad" x="244" y="40" width="48" height="48" rx="5"/></g>
+<g class="a"><rect class="yard" x="20" y="122" width="64" height="64" rx="6"/><rect class="pad" x="28" y="130" width="48" height="48" rx="5"/></g>
+<g class="b"><rect class="yard" x="236" y="122" width="64" height="64" rx="6"/><rect class="pad" x="244" y="130" width="48" height="48" rx="5"/></g>
+<path class="track" d="M92 108h16v16h-16zM108 108h16v16h-16zM124 108h16v16h-16zM140 108h16v16h-16zM156 108h16v16h-16zM172 108h16v16h-16zM188 108h16v16h-16zM204 108h16v16h-16z"/>
+<g class="a"><rect class="start" x="92" y="108" width="16" height="16"/></g>
+<g class="c"><g transform="translate(256 56)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="c"><g transform="translate(280 56)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="c"><g transform="translate(256 80)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="c"><g transform="translate(280 80)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="d"><g transform="translate(40 56)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="d"><g transform="translate(64 56)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="d"><g transform="translate(40 80)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="d"><g transform="translate(64 80)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="a"><g transform="translate(64 146)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="a"><g transform="translate(40 170)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="a"><g transform="translate(64 170)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="b"><g transform="translate(280 146)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="b"><g transform="translate(256 170)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="b"><g transform="translate(280 170)"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g>
+<g class="b"><g transform="translate(256 146)"><g class="home" style="--d:3.05s;--x:-108px;--y:-26px"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g></g>
+<g class="a"><g transform="translate(148 120)"><g class="hop" style="--d:2.5s;--x:-48px;--y:0px"><g class="hop" style="--d:1.15s;--x:-60px;--y:26px"><path d="M-5.5 0a5.5 2 0 0 0 11 0c0-4-3-5.5-3-8.5a3.4 3.4 0 1 0-5 0c0 3-3 4.5-3 8.5z" fill="currentColor" class="tk"/></g></g></g></g>
+<g transform="translate(160 66)"><g class="roll" style="--d:0.2s"><g class="roll" style="--d:1.65s"><rect class="die" x="-11" y="-11" width="22" height="22" rx="5"/><g class="pip"><g class="gone" style="--d:0.85s"><circle cx="0" cy="0" r="1.9"/></g><g class="gone" style="--d:2.3s"><g class="fade" style="--d:0.85s"><circle cx="-4.5" cy="-5" r="1.9"/><circle cx="4.5" cy="-5" r="1.9"/><circle cx="-4.5" cy="0" r="1.9"/><circle cx="4.5" cy="0" r="1.9"/><circle cx="-4.5" cy="5" r="1.9"/><circle cx="4.5" cy="5" r="1.9"/></g></g><g class="fade" style="--d:2.3s"><circle cx="-4.5" cy="-4.5" r="1.9"/><circle cx="0" cy="0" r="1.9"/><circle cx="4.5" cy="4.5" r="1.9"/></g></g></g></g></g>
+<g class="a"><rect class="tag" x="182" y="6" width="30" height="14" rx="7"/><circle cx="190" cy="13" r="4" fill="currentColor"/><rect class="name" x="197" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="b"><rect class="tag" x="216" y="6" width="30" height="14" rx="7"/><circle cx="224" cy="13" r="4" fill="currentColor"/><rect class="name" x="231" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="c"><rect class="tag" x="250" y="6" width="30" height="14" rx="7"/><circle cx="258" cy="13" r="4" fill="currentColor"/><rect class="name" x="265" y="11.5" width="10" height="3" rx="1.5"/></g>
+<g class="d"><rect class="tag" x="284" y="6" width="30" height="14" rx="7"/><circle cx="292" cy="13" r="4" fill="currentColor"/><rect class="name" x="299" y="11.5" width="10" height="3" rx="1.5"/></g>
+<rect class="lit a" x="180" y="4" width="34" height="18" rx="9" style="--d:0s;--l:3.6s"/>
+<rect class="lit b stay" x="214" y="4" width="34" height="18" rx="9" style="--d:3.6s"/>
+</svg>

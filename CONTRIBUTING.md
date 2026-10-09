@@ -56,6 +56,7 @@ public/<slug>/
 ├── robot.js         move choice (+ startRobot when not using startTurnRobot)
 ├── sounds.js        optional: the game's sounds, played through the engine (step 5b)
 ├── icon.svg         original 16:10 card art (viewBox 0 0 320 200), no external refs
+├── preview.svg      optional: the home tile's animated preview (step 5c)
 ├── rules.test.js    rules unit tests
 ├── robot.test.js    robot unit tests (+ a full robot-vs-robot game)
 └── match.test.js    protocol test: two peers play a full game (optional file; may live in robot.test.js)
@@ -222,6 +223,18 @@ Give each sound the role that matches its job: `cue`, `ui`, `action`,
 `highlight` or `fanfare` (see **Sound levels** in `ARCHITECTURE.md`). Then run
 `node --test test/browser/sound-levels.test.js`: it measures every sound and,
 for a synthesized one that is off, prints the `trim` to set.
+
+### 5c. Preview (optional)
+
+`preview.svg` is a 3–5 second animation of a few moves that the home tile plays
+on hover (see **Tile previews** in `ARCHITECTURE.md`; `public/tic-tac-toe/preview.svg`
+is the shortest to copy). Without one the tile keeps its icon.
+
+- Root: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-<short name>">`, under 8 KB, no scripts, images or external refs.
+- Colours only from tokens, in the file's `<style>`; start every selector with your `.pv-…` class, and keyframes and ids with your game's name, since the style applies to the whole home page.
+- Players: the seat classes `.a` to `.d` set `currentColor`. Draw the player tags top right and light them in turn with `.lit` (`--d` start, `--l` length; `.stay` for the last).
+- Moves: give a piece `.pop`, `.fade`, `.gone`, `.draw`, `.slide` (from `--x`, `--y`) or `.fall` (from `--y`) and its start time `--d`, or your own keyframes. Animate only transform and opacity, and put a moving piece in a `<g transform="…">` rather than giving it a `transform` of its own.
+- Check it: hover the tile in light and dark, and run `npm test` (it checks the file) and `node --test test/browser/home-previews.test.js` (it checks the length).
 
 ### 6. Register it
 
