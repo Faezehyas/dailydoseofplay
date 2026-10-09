@@ -1,9 +1,9 @@
-// Home page: one card per entry in games.json.
-import { initShell, el, $ } from "/engine/shell.js";
+// Home page: one card per entry in games.json, the last game played first.
+import { initShell, el, $, getLastGame } from "/engine/shell.js";
 
 initShell();
 
-function card(game) {
+function card(game, last) {
   const ready = game.status === "ready";
   const icon = el("div", { class: "game-icon" });
   if (ready) icon.append(el("img", { src: `/${game.slug}/icon.svg`, alt: "", loading: "lazy" }));
@@ -11,6 +11,7 @@ function card(game) {
     const initials = game.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3);
     icon.append(el("span", { class: "monogram", "aria-hidden": "true" }, initials));
   }
+  if (last) icon.append(el("span", { class: "last-played" }, "Last played"));
   const body = [
     icon,
     el("h2", {}, game.name),
@@ -38,7 +39,10 @@ async function load(retrying = false) {
     const res = await fetch("/games.json", { cache: "no-cache" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { games } = await res.json();
-    list.replaceChildren(...games.map(card));
+    const slug = getLastGame();
+    const last = games.find((g) => g.slug === slug && g.status === "ready");
+    const ordered = last ? [last, ...games.filter((g) => g !== last)] : games;
+    list.replaceChildren(...ordered.map((g) => card(g, g === last)));
   } catch {
     list.replaceChildren(
       el(
