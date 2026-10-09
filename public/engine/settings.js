@@ -1,13 +1,13 @@
 // A game's settings: groups of segmented options (clocks, board size, …),
 // remembered on this device. The lobby shows them inside its card, folded to
-// a one-line summary, and the summary again on the host's waiting screen.
+// a summary of chips, and the summary again on the host's waiting screen.
 // In a friend game the room creator's settings apply to everyone: the game
 // sends them to its guests when the match is set up.
 import { el } from "./shell.js";
 
 // groups: [{ name, legend, options: [[value, label, hint?], …], robot?, summary? }]
 // robot: the group only applies to robot games. summary(value, label, config)
-// is the group's part of the summary line (default: the label; "" leaves it out).
+// is the text of the group's chip in the summary (default: the label; "" leaves it out).
 // normalize(raw) returns a complete, valid config (defaults for anything else).
 export function gameSettings({ key, prefix, groups, normalize, hint }) {
   let config = load();
@@ -23,17 +23,17 @@ export function gameSettings({ key, prefix, groups, normalize, hint }) {
       localStorage.setItem(key, JSON.stringify(config));
     } catch {}
   }
-  // The summary line, one span per part so a part never breaks. withRobot:
-  // false leaves out what only applies to robot games.
+  // The summary: a chip per choice (robot-only ones with a teal dot), with
+  // commas between them for screen readers. withRobot: false leaves those out.
   function summary(withRobot = true) {
     const parts = groups
       .filter((g) => withRobot || !g.robot)
-      .map(({ name, options, summary: part }) => {
+      .map(({ name, options, robot, summary: part }) => {
         const label = options.find(([value]) => value === config[name])?.[1] ?? "";
-        return part ? part(config[name], label, config) : label;
+        return { text: part ? part(config[name], label, config) : label, robot };
       })
-      .filter(Boolean);
-    return parts.flatMap((text, i) => [i ? " · " : "", el("span", { class: "settings-part" }, text)]);
+      .filter((p) => p.text);
+    return parts.flatMap(({ text, robot }, i) => [i ? el("span", { class: "sr-only" }, ", ") : "", el("span", { class: robot ? "chip robot" : "chip" }, text)]);
   }
   // The lobby's home screen: the summary, which opens to the options.
   function panel() {
@@ -43,7 +43,7 @@ export function gameSettings({ key, prefix, groups, normalize, hint }) {
       el(
         "fieldset",
         { class: "settings-group" },
-        el("legend", {}, legend, robot && el("small", { class: "robot-only" }, "vs robot only")),
+        el("legend", {}, legend, robot && el("small", { class: "chip robot robot-only" }, "vs robot only")),
         el(
           "div",
           { class: "seg-options" },
@@ -62,7 +62,7 @@ export function gameSettings({ key, prefix, groups, normalize, hint }) {
     const details = el(
       "details",
       { class: "settings", id: `${prefix}-settings` },
-      el("summary", {}, el("span", { class: "sr-only" }, "Game settings: "), line, change),
+      el("summary", {}, el("span", { class: "settings-title" }, "Game settings"), change, line),
       el("div", { class: "settings-body" }, ...fieldsets, hint && el("p", { class: "hint" }, hint)),
     );
     details.addEventListener("toggle", () => (change.textContent = details.open ? "Done" : "Change"));

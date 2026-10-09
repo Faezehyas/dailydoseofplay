@@ -173,9 +173,9 @@ export const settings = gameSettings({
   normalize: normalizeConfig, // raw (or null) -> a complete, valid config
   hint: "In a friend game, the settings of whoever creates the room apply to both players.",
   groups: [
-    // summary(value, label, config): this group's part of the summary line ("" leaves it out).
+    // summary(value, label, config): the text of this group's chip in the summary ("" leaves it out).
     { name: "moveSeconds", legend: "Time per move", options: [[10, "10 s"], [0, "No limit"]], summary: (v, l) => (v ? `${l} a move` : "No move limit") },
-    // robot: true tags the group "vs robot only" and keeps it off the waiting screen.
+    // robot: true tags the group "vs robot only", gives its chip a teal dot and keeps it off the waiting screen.
     { name: "level", legend: "Robot level", robot: true, options: [["easy", "Easy"], ["hard", "Hard"]], summary: (v, l) => `${l} robot` },
   ],
 });

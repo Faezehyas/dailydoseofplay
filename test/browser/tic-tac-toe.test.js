@@ -62,11 +62,12 @@ test("two friends play Tic Tac Toe on the host's settings through the invite lin
   await host.goto(`${srv.base}/tic-tac-toe/`);
   await pick(host, "size", 5);
   await pick(host, "first", "host");
-  assert.equal(await host.locator("#ttt-settings .settings-line").innerText(), "5 × 5 · 30 s a move · 2 min each · You go first", "the summary follows the choice");
+  const chosen = ["5 × 5", "30 s a move", "2 min each", "You go first"];
+  assert.deepEqual(await host.locator("#ttt-settings .settings-line .chip").allInnerTexts(), chosen, "the summary follows the choice");
   await host.click("#play-friend");
   assert.ok(await host.locator("#ttt-settings").isHidden(), "settings are only on the home screen");
   await host.locator("#room-code").waitFor();
-  assert.equal(await host.locator("#room-settings").innerText(), "Settings: 5 × 5 · 30 s a move · 2 min each · You go first", "the waiting screen shows the room's settings");
+  assert.deepEqual(await host.locator("#room-settings .chip").allInnerTexts(), chosen, "the waiting screen shows the room's settings");
   const invite = await host.locator("#invite-link").inputValue();
   const code = (await host.locator("#room-code").innerText()).trim();
   assert.match(invite, new RegExp(`/tic-tac-toe/\\?room=${code}&key=[\\w-]{22}$`));

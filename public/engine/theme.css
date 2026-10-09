@@ -1613,18 +1613,18 @@ input.mono {
 }
 
 /* ---------- game settings (lobby card, engine/settings.js) ---------- */
-/* Folded to a summary line; it opens to the options. */
+/* Folded to a summary (its choices as chips); it opens to the options. */
 .settings {
   margin: 12px 0 0;
   text-align: left;
 }
 
 .settings > summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 6px 12px;
+  gap: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--control-border);
   border-radius: 10px;
   font-size: 0.9rem;
@@ -1641,18 +1641,35 @@ input.mono {
   outline-offset: 2px;
 }
 
-.settings-line {
-  flex: 1;
-  min-width: 0;
-}
-
-.settings-part {
-  white-space: nowrap;
+.settings-title {
+  font-weight: 700;
 }
 
 .settings-change {
   font-weight: 700;
   color: var(--accent-text);
+}
+
+.settings-line {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.settings-line .chip {
+  padding: 3px 10px;
+  background: var(--surface-2);
+}
+
+/* Only choices that apply against robots carry a dot, a teal one. */
+.settings-line .chip:not(.robot)::before {
+  display: none;
+}
+
+.chip.robot {
+  --dot: var(--accent-2);
 }
 
 .settings-body {
@@ -1661,12 +1678,21 @@ input.mono {
 
 .robot-only {
   margin-left: 6px;
-  font-weight: 600;
-  color: var(--muted);
+  vertical-align: 1px;
 }
 
 .room-settings {
-  font-size: 0.9rem;
+  margin: 16px 0 12px;
+}
+
+.room-settings-label {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.room-settings .settings-line {
+  justify-content: center;
 }
 
 .settings-group {

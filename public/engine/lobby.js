@@ -251,7 +251,13 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
         [...room.code].map((c, i) => el("span", { style: `--i: ${i}` }, c)),
       ),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
-      settings && el("p", { class: "room-settings", id: "room-settings" }, el("strong", {}, "Settings: "), settings.summary(false)),
+      settings &&
+        el(
+          "div",
+          { class: "room-settings", id: "room-settings" },
+          el("p", { class: "room-settings-label" }, "Game settings"),
+          el("p", { class: "settings-line" }, settings.summary(false)),
+        ),
       el("ul", { class: "roster", id: "roster", "aria-label": "Players", hidden: duel }),
       el("p", { class: "waiting", id: "lobby-status" }),
       !duel && el("button", { class: "btn primary", type: "button", id: "start-game", disabled: true, onclick: () => begin(room) }, "Start game"),
