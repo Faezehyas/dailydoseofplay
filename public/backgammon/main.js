@@ -3,7 +3,7 @@
 import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
-import { el, toast } from "../engine/shell.js";
+import { el, toast, reducedMotion } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { celebrate } from "../engine/celebrate.js";
@@ -31,7 +31,7 @@ const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const TOP = [13, 14, 15, 16, 17, 18, "bar-top", 19, 20, 21, 22, 23, 24, "off-top"];
 const BOTTOM = [12, 11, 10, 9, 8, 7, BAR, 6, 5, 4, 3, 2, 1, OFF];
 
-const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const still = reducedMotion();
 
 function robotChoice(level) {
   return (state, me, rng, ms) => {

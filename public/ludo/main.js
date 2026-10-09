@@ -5,7 +5,7 @@
 import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
-import { el, toast, setTabAlert } from "../engine/shell.js";
+import { el, toast, setTabAlert, reducedMotion } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { celebrate } from "../engine/celebrate.js";
@@ -26,7 +26,7 @@ const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const PLACE = ["", "1st", "2nd", "3rd", "4th"];
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
-const still = () => reduced.matches;
+const still = reducedMotion;
 
 // Robot games: robots wait for the screen to finish replaying, and hurry once
 // you are home. The view sets these.

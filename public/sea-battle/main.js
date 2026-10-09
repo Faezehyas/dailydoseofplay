@@ -1,7 +1,7 @@
 // Sea Battle page: mounts the engine shell and renders a match.
 // All game logic lives in rules.js / match.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
-import { el, toast, setTabAlert } from "../engine/shell.js";
+import { el, toast, setTabAlert, reducedMotion } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { celebrate } from "../engine/celebrate.js";
@@ -427,7 +427,7 @@ function mountSeaBattle(session, root, shell) {
     if (innerWidth >= 760) return;
     const r = view.board.getBoundingClientRect();
     if (r.top >= 0 && r.bottom <= innerHeight) return;
-    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const smooth = !reducedMotion();
     view.wrap.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "nearest" });
   }
 

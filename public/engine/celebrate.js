@@ -5,7 +5,7 @@
 // pulses the player pills; "over" (someone else won, with more than two
 // playing) lights up the winner's pieces quietly. With reduced motion only
 // the colours change (see "result moment" in theme.css).
-import { el } from "./shell.js";
+import { el, reducedMotion } from "./shell.js";
 import { sounds, chime } from "./chimes.js";
 
 let undo = [];
@@ -31,7 +31,7 @@ export function celebrate({ outcome, flavour, highlight = [], anchor = document.
   });
   if (outcome === "loss") mark(board, "celebrate-dim");
   if (outcome === "draw") document.querySelectorAll(".player-bar .pb-who").forEach((pill) => mark(pill, "celebrate-pulse"));
-  if (outcome === "win" && anchor && !matchMedia("(prefers-reduced-motion: reduce)").matches) burst(anchor, lit.length);
+  if (outcome === "win" && anchor && !reducedMotion()) burst(anchor, lit.length);
 }
 
 // Three sets of the logo's four dots, rising from the top of `anchor` once

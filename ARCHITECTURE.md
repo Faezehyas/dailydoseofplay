@@ -98,6 +98,7 @@ flowchart TB
     e_chimes["chimes.js"]
     e_confirm["confirm.js"]
     e_settings["settings.js"]
+    e_prefs["prefs.js"]
     e_names["names.js"]
     e_robot_pace["robot-pace.js"]
     e_sound["sound.js"]
@@ -171,9 +172,10 @@ flowchart TB
   e_session --> e_names
   e_settings --> e_shell
   e_shell --> e_names
-  e_shell --> e_sound
+  e_shell --> e_prefs
   e_signaling --> e_channel
   e_sound --> e_loudness
+  e_sound --> e_prefs
   e_turn_match --> e_channel
   e_turn_match --> e_fair
   e_turn_match --> e_robot_pace
@@ -366,9 +368,10 @@ a blocked name over WebRTC either. Nicknames are never logged.
 
 | Module | Job |
 |---|---|
-| `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`), the footer every page ends with (how games run, then links to this file, the repository and the privacy page; more links join `FOOTER_LINKS`), nickname in `localStorage`, toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper, and `askBeforeLeaving()`, the hook for an "Ask before leaving" setting (always yes today) |
+| `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`) next to the gear that opens the settings panel (see **Settings**), the footer every page ends with (how games run, then links to this file, the repository and the privacy page; more links join `FOOTER_LINKS`), nickname in `localStorage` and the nickname field (`nicknameField()`, in the lobby and the panel), `segGroup()` (a group of segmented options), the theme and animations on `<html>` (`data-theme`, `data-motion`) and `reducedMotion()`, toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper, and `askBeforeLeaving()`, the panel's "Leaving a game with friends" |
+| `prefs.js` | The general settings (see **Settings**): `getPrefs()`, `setPrefs(patch)`, `onPrefsChange(fn)`, and `normalizePrefs()` and `loadPrefs(storage)`, which moves the old `ddp-theme` and `ddp-sound` into `ddp-settings`. No DOM; runs in node too. |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), the moves the tiles' previews use (see **Tile previews**) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar, the result panel, the result moment, the confirm dialog and `.text-page` (the privacy page's reading column) |
+| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), the moves the tiles' previews use (see **Tile previews**) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar, the result panel, the result moment, the confirm dialog, the settings panel and `.text-page` (the privacy page's reading column) |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
@@ -378,15 +381,15 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
 | `robot-pace.js` | `robotPause(ms)`: every robot's pause before it moves goes through it, so browser tests can speed robots up by setting `globalThis.ddpRobotPace` (1 for players) |
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
-| `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), the "Play with a friend" / "Play vs robot" / join-by-code UI with a quiet line under the Play buttons that games connect browsers directly, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. It hands the game a `shell` with `leave()` and `setInProgress(on)` (see **Leaving**). With a game's `settings` it shows them inside the home screen's card, between the nickname and the Play buttons, and their summary on the host's waiting screen, so friends see the rules before the game starts. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column. |
+| `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), the "Play with a friend" / "Play vs robot" / join-by-code UI with a quiet line under the Play buttons that games connect browsers directly, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. It hands the game a `shell` with `leave()` and `setInProgress(on)` (see **Leaving**). With a game's `settings` it shows them inside the home screen's card, between the nickname and the Play buttons, and their summary on the host's waiting screen, so friends see the rules before the game starts; it passes them to the settings panel and locks them while a game is on. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
 | `result.js` | `resultPanel(session, { onLeave, onShow, classes })`: the game-over panel of every game, with Rematch and Leave (see **Result panel**). |
 | `celebrate.js` | `celebrate({ outcome, flavour, highlight, anchor, board })`: the result moment a game plays from the panel's `onShow`, and `calm()`, which the panel calls when it hides (see **Result moment**). |
 | `chimes.js` | The result chimes: the site's jingle for each outcome in each game's timbre, through `sound.js` (see **Result moment**). No DOM. |
 | `confirm.js` | `confirmDialog({ title, text, yes, no })`: a yes-or-no question in a modal `<dialog>` styled like the site. Focus moves to Cancel, Esc or Cancel says no, and focus returns to where it was (Leave). Resolves to `true` for yes. |
-| `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a group marked `robot` is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary. `get()` is the current config, which the game sends to its guests (`setup`). |
-| `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
+| `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a "device" group (`scope: "device"`, or `robot: true`) is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary, like a "view" group. `form()` is the options themselves, shown in the lobby card and in the settings panel's "This game" tab, and each copy follows changes made in the other; `lock(on)`, from the lobby, disables all but the "view" options while a game is on. `get()` is the current config, which the game sends to its guests (`setup`). |
+| `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute and volume (a master gain after the output) from `prefs.js`, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
 | `loudness.js` | `loudness(samples, sampleRate)`: how loud a sound is to the ear, in LUFS (K-weighted, loudest 100 ms). No DOM; runs in node too. |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
@@ -500,8 +503,9 @@ stopped; while it is on in a friend game, `shell.leave()` opens
 `confirmDialog()`: "Leave the game? Bo will be told you left." with two
 players, "Leave the game? It ends for everyone." with more. Cancel keeps
 playing. Robot games, finished matches and a game that never calls
-`setInProgress` leave at once, and so does everyone once `askBeforeLeaving()`
-in `shell.js` says no. The browser's Back (or a phone's back gesture) is
+`setInProgress` leave at once, and so does a player who set "Leaving a game
+with friends" to "Leave at once" in the settings panel (`askBeforeLeaving()`
+in `shell.js`). The browser's Back (or a phone's back gesture) is
 Leave too: a game gets a history entry of its own when it starts, so Back
 returns to the lobby, asking first in the same cases; Back while the question
 is open closes it, like Esc. Closing or reloading the tab in those cases gets the
@@ -546,6 +550,43 @@ game receives messages through `session.onMessage((msg, fromSeat) => …)`,
 which buffers until a handler is attached. The handshake's protocol version is
 2; a page from before groups gets "a different version of this page".
 
+**Settings.** The gear at the right of every page's header opens one panel,
+a modal `<dialog>` built by `shell.js`: focus moves to its Done button, and
+Esc, Done or (during a game) the browser's Back closes it and returns focus
+to the gear. Arrow keys, Home and End move between its two tabs:
+
+- **General**, this device's preferences for every page: nickname
+  (`ddp-name`), theme (System, Light or Dark), sound on or off and its volume,
+  animations (Follow system, Reduced or Full) and "Leaving a game with
+  friends" (Ask first or Leave at once, see **Leaving**). Each applies at once.
+  `prefs.js` keeps them together in `ddp-settings`; on the first read it moves
+  the older `ddp-theme` and `ddp-sound` keys there. `onPrefsChange(fn)` hears
+  every change: the place to sync them to an account once there are accounts.
+- **This game**, on a game page: the game's settings, the same options
+  (`form()` in `settings.js`) as in the lobby card. A game gives each group a
+  scope. **room** options (clocks, board size, who starts, house rules) go to
+  the other players as before; **device** options (the robots' level and
+  number) only matter against robots; **view** options (Chutes and Ladders'
+  spinner) are this player's alone. While a game is on, room and device options
+  are locked, with a note: a session keeps the settings its `setup` sent,
+  rematches included, so a change applies from the next game started in the
+  lobby. View options stay open and apply at once: the game reads them with
+  `get()` when it needs them.
+
+The header keeps its quick theme and sound toggles beside the gear: at 360 px
+the brand and three buttons still fit (6 px to spare), and muting mid-game
+stays one tap.
+
+Animations: `shell.js` sets `<html data-motion>` to `reduce` or `full` from
+the setting, or from `prefers-reduced-motion` while it follows the system.
+`theme.css` and the games' styles use it instead of the media query: motion
+that plays only in full sits under `:where(:root[data-motion="full"])` (the
+result moment, the hero scene, the room code), and
+`:where(:root[data-motion="reduce"])` stops the rest; `:where()` keeps each
+rule's specificity. Scripts ask `reducedMotion()`: the result moment, the home
+tiles' previews and every game's own animations. Where this file says "with
+`prefers-reduced-motion`", that means with reduced animations.
+
 **Colours and contrast.** The shared colours are tokens in `theme.css`, defined for
 light and dark, and both themes meet WCAG 2.2 AA: 4.5:1 for text and 3:1 for
 the edge of a control. Coral (`--accent`) and teal (`--accent-2`) are fills:
@@ -571,7 +612,7 @@ Transitions use `--dur-fast`, `--dur-med` or `--dur-slow` and `--ease-out` or
 `--ease-spring`. The rules, at the top of the motion section in `theme.css`:
 animate only transform and opacity; nothing loops forever except the home
 hero's scene and a tile's preview while it is hovered, focused or, on a touch
-screen, in view; everything stops under `prefers-reduced-motion`; no motion starts
+screen, in view; everything stops when animations are reduced (see **Settings**); no motion starts
 without a user action, except the room code, whose letters settle in one by
 one (350 ms) when the waiting room opens, the result moment when a match
 ends (see **Result moment**), the hero's scene, and a tile's preview on a
@@ -750,7 +791,7 @@ checks that no game opens its own audio context or output.
 |---|---|
 | `index.html` | Page with `#lobby` and `#game` sections and the rules |
 | `main.js` | `startGameShell({ slug, title, layout, settings, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; the lobby's tagline is the game's `description` there (a `tagline` option still overrides it); `layout` picks the page column (see **Page column**). |
-| `settings.js` | Optional: the game's settings, `export const settings = gameSettings({ key, prefix, groups, normalize, hint })`, passed to `startGameShell()` and read with `settings.get()` |
+| `settings.js` | Optional: the game's settings, `export const settings = gameSettings({ key, prefix, groups, normalize, hint })`, passed to `startGameShell()` and read with `settings.get()`. Each group has a `scope`: `"room"` (the default), `"device"` or `"view"` (see **Settings**). |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
 | `match.js` | Only for games with hidden information: one player's protocol state machine. Other games use `engine/turn-match.js`. |
 | `sounds.js` | Optional: the game's sounds, `export const sounds = defineSounds({...})` with a role for each (see **Sound levels**), and the `play` helpers `main.js` calls. The only file that imports `engine/sound.js`. |
@@ -1149,8 +1190,9 @@ the square a pawn stops on counts.
 where it is, the classic rule; `bounce`: the extra steps walk back from 100,
 and the square reached can be a chute; `any`: reaching 100 wins), whether a 6
 spins again (a winning 6 still ends the game), and who starts. The spinner
-mode (tap, or spin by itself) is per player and never sent: it only decides
-when that player's own browser sends its spin. Each spin is one shared draw;
+mode (tap, or spin by itself) is per player and never sent (a "view"
+setting, which can change mid-game): it only decides when that player's own
+browser sends its spin. Each spin is one shared draw;
 `DRAWS` is 1024, and `rules.test.js` checks that 600 seeded games stay under it.
 
 **Motion.** The match state never waits for the screen. Each spin event is
