@@ -1,49 +1,39 @@
 # Daily Dose of Play
 
-Free, no-login classic games for two, in the browser. Send a link to a friend
-or play the robot. The gameplay and flow follow papergames.io; names, art,
-text and code are original.
+Free classic games for 2 to 4 players, in the browser. No sign-up and nothing
+to install: send a link to friends or play the robot. Once everyone is in,
+the game runs browser to browser; the server only introduces the players.
 
-**Games:**
+**Play now:** https://www.dailydoseofplay.com
 
-- Sea Battle: Battleship rules, with gifts and special weapons; optional shot and game clocks.
-- Tic Tac Toe: 3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks.
-- Connect 4: drop discs and line up four, on a 7×6 board or bigger; optional clocks; an Easy, Medium or Hard robot.
-- Gomoku: five in a row on a 15×15 board; optional move and game clocks.
-- Chess: standard rules with castling, en passant and promotion; optional clocks; a robot with three levels.
-- Checkers: English draughts on 8×8, with forced captures, multi-jumps and kings; optional clocks; an Easy, Medium or Hard robot.
-- Backgammon: race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels.
-- Chutes and Ladders: the classic 100-square board with a 1–6 spinner, for 2 to 4 players; climb the ladders, slide down the chutes; house rules for the finish and for a 6.
-- Dots and Boxes: join the dots on a 3×3 to 6×6 board; closing a box earns another line; optional clocks; an Easy, Medium or Hard robot that plays the chains properly.
-- Ludo: the classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send rivals back to their yard, and race four tokens home; house rules for three 6s, blocks and capture bonuses, play on for places, a move timer, and 1–3 robots at three levels.
+## Games
 
-More are coming, one at a time; see [GAMES.md](GAMES.md).
+- [Sea Battle](https://www.dailydoseofplay.com/sea-battle/): Battleship rules, with gifts and special weapons; optional shot and game clocks.
+- [Tic Tac Toe](https://www.dailydoseofplay.com/tic-tac-toe/): 3×3 with three in a row, or 5×5 with four in a row; optional move and game clocks.
+- [Connect 4](https://www.dailydoseofplay.com/connect-4/): drop discs and line up four, on a 7×6 board or bigger; optional clocks; an Easy, Medium or Hard robot.
+- [Gomoku](https://www.dailydoseofplay.com/gomoku/): five in a row on a 15×15 board; optional move and game clocks.
+- [Chess](https://www.dailydoseofplay.com/chess/): standard rules with castling, en passant and promotion; optional clocks; a robot with three levels.
+- [Checkers](https://www.dailydoseofplay.com/checkers/): English draughts on 8×8, with forced captures, multi-jumps and kings; optional clocks; an Easy, Medium or Hard robot.
+- [Backgammon](https://www.dailydoseofplay.com/backgammon/): race fifteen checkers home and bear them off; shared dice, optional turn and game clocks, a robot at three levels.
+- [Chutes and Ladders](https://www.dailydoseofplay.com/chutes-and-ladders/): the classic 100-square board with a 1–6 spinner, for 2 to 4 players; climb the ladders, slide down the chutes; house rules for the finish and for a 6.
+- [Dots and Boxes](https://www.dailydoseofplay.com/dots-and-boxes/): join the dots on a 3×3 to 6×6 board; closing a box earns another line; optional clocks; an Easy, Medium or Hard robot that plays the chains properly.
+- [Ludo](https://www.dailydoseofplay.com/ludo/): the classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send rivals back to their yard, and race four tokens home; house rules for three 6s, blocks and capture bonuses, play on for places, a move timer, and 1–3 robots at three levels.
 
-- **Live:** https://www.dailydoseofplay.com (also at https://dailydoseofplay.wasmer.app; see [Domains](#domains))
-- **How it works:** [ARCHITECTURE.md](ARCHITECTURE.md)
-- **Adding a game:** [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Security:** report a vulnerability privately, as described in [SECURITY.md](SECURITY.md)
+More are coming; [GAMES.md](GAMES.md) has the backlog. Found a security
+problem? Report it privately, as [SECURITY.md](SECURITY.md) describes.
 
-## Run locally
+## Play locally
 
-Requires Node 22 or newer.
+You need Node 22 or newer.
 
 ```bash
+git clone https://github.com/Faezehyas/dailydoseofplay.git
+cd dailydoseofplay
 npm install
 npm start                 # http://localhost:8080  (PORT=3000 npm start to change)
 ```
 
-- Home: http://localhost:8080/
-- Sea Battle: http://localhost:8080/sea-battle/
-- Tic Tac Toe: http://localhost:8080/tic-tac-toe/
-- Connect 4: http://localhost:8080/connect-4/
-- Gomoku: http://localhost:8080/gomoku/
-- Chess: http://localhost:8080/chess/
-- Checkers: http://localhost:8080/checkers/
-- Backgammon: http://localhost:8080/backgammon/
-- Chutes and Ladders: http://localhost:8080/chutes-and-ladders/
-- Dots and Boxes: http://localhost:8080/dots-and-boxes/
-- Ludo: http://localhost:8080/ludo/
+- Each game lives at `/<slug>/`, e.g. http://localhost:8080/ludo/. The slugs are in [public/games.json](public/games.json).
 - Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?friend=1` creates a room for friends at once (the home page's **Play friends**); `/<game>/?room=CODE&key=KEY` (the invite link) joins a room. Without `key`, the room's host has to let you in.
 - Health: http://localhost:8080/healthz
 
@@ -62,7 +52,7 @@ Wrong room codes are rate limited per client address (5 a minute). The
 address is the first one in `X-Forwarded-For`, else the socket's; set
 `CLIENT_IP_HEADER` to read another header, e.g. `CLIENT_IP_HEADER=X-Real-IP npm start`.
 
-## Run with Anybuild
+### Run with Anybuild
 
 [Anybuild](https://github.com/wasmerio/anybuild) finds the Node app on its
 own, runs `npm install` and starts the server. Install it with
@@ -80,6 +70,27 @@ anybuild . --start --runner=wasmer    # the same inside Wasmer's runtime, as in 
 
 Tested with Anybuild 0.33.0 and Wasmer 7.5.0.
 
+## Add a game in five steps
+
+A game is one folder in `public/` plus one line in `public/games.json`. You
+don't touch the server.
+
+1. **Claim it.** Pick a game from [GAMES.md](GAMES.md) that isn't ticked yet, or suggest a new one. Open an [issue](https://github.com/Faezehyas/dailydoseofplay/issues/new) saying which game you'll build, so two people don't build the same one.
+2. **Copy the closest game.** Most games have no hidden information and use the shared turn engine: start from Tic Tac Toe or Connect 4, or from Ludo or Chutes and Ladders for dice and up to 4 players. Hidden cards or ships follow Sea Battle.
+3. **Write the rules and their tests.** `rules.js` is pure: no page, network or timers, and an illegal move throws. Cover it in `rules.test.js`.
+4. **Build the view and the robot.** `main.js` draws the board, `robot.js` picks moves, `icon.svg` is the home page card. Use your own names, art and text.
+5. **Open a PR.** Work on a branch such as `feat/<slug>`, run the tests, and open a PR titled `feat: add <Name>`.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the full recipe and the checklist.
+[ARCHITECTURE.md](ARCHITECTURE.md) explains how rooms, WebRTC and fair play
+work.
+
+## How PRs are reviewed
+
+- **The checklist.** Reviewers go through the checklist at the end of [CONTRIBUTING.md](CONTRIBUTING.md#checklist-before-opening-the-pr): pure, tested rules; a robot that finishes its games; a friend match with rematch; no hidden information on the wire; 360 px wide in light and dark; original art and text; no new dependencies and no server changes.
+- **CI.** Every PR runs `npm test`, a dependency audit and the browser tests in Chromium ([.github/workflows/test.yml](.github/workflows/test.yml)). They must pass.
+- **Timing.** A review usually comes within a few days. Once the PR is merged, the game goes live on the site.
+
 ## Tests
 
 ```bash
@@ -91,7 +102,7 @@ The browser test needs Playwright (`npm i -g playwright && npx playwright
 install chromium`). It skips itself when Playwright is not found. Screenshots
 go to `test-artifacts/`.
 
-## Layout
+## Project layout
 
 ```
 server/            Node server: static files, /ws signaling, /healthz
@@ -99,67 +110,12 @@ public/
   index.html       home page (cards from games.json)
   games.json       game registry
   engine/          shared browser engine: lobby, signaling client, WebRTC, sessions, fair play, UI shell
-  sea-battle/      Sea Battle: rules, protocol, robot, view, tests
-  tic-tac-toe/     Tic Tac Toe: rules, robot, view, tests (TurnMatch protocol)
-  connect-4/       Connect 4: rules, robot, view, tests (TurnMatch protocol)
-  gomoku/          Gomoku: rules, robot, view, tests (TurnMatch protocol)
-  chess/           Chess: rules, robot, view, tests (TurnMatch protocol)
-  checkers/        Checkers: rules, robot, view, tests (TurnMatch protocol)
-  backgammon/      Backgammon: rules, robot, view, tests (TurnMatch with shared dice)
-  chutes-and-ladders/  Chutes and Ladders: rules, view, sounds, tests (TurnMatch with shared spins)
-  dots-and-boxes/  Dots and Boxes: rules, robot, view, sounds, tests (TurnMatch)
+  <slug>/          one folder per game: page, rules, robot, view, sounds, tests
+  privacy/         privacy page
 test/              integration and browser tests
+docs/              deploying
 app.yaml           Wasmer Edge app config (name dailydoseofplay, owner faezeh_yass)
 ```
-
-## Deploy on Wasmer Edge (one-time setup)
-
-Deploys run through Wasmer's GitHub integration: every push to `main`
-deploys. The repo holds no tokens or secrets, and nothing needs to be
-configured besides the steps below. Wasmer's dashboard labels may change
-slightly over time; the flow is the same.
-
-1. **Merge the PR into `main`.**
-2. **Sign in** at https://wasmer.io with the account that owns the `faezeh_yass` namespace.
-3. **Create the app from the repository.**
-   - In the dashboard choose **Deploy / Import from GitHub** (https://wasmer.io/new).
-   - When asked, install or authorize the **Wasmer GitHub app** for the `Faezehyas` account. Granting access to just `dailydoseofplay` is enough.
-   - Pick `Faezehyas/dailydoseofplay` and set the production branch to **`main`**.
-   - Leave build settings empty. Wasmer reads `app.yaml` (name `dailydoseofplay`, owner `faezeh_yass`, region `fr-roub1`, a `/healthz` health check) and detects Node from `package.json` (`npm start`).
-   - Click **Deploy**.
-
-   If the dashboard only offers to connect Git to an **existing** app: deploy once from a checkout of `main`: install the CLI (`curl https://get.wasmer.io -sSfL | sh`, see https://docs.wasmer.io/install), run `wasmer login`, then `wasmer deploy --build-remote --non-interactive`. Then open the app in the dashboard → **Settings → Git** → choose **GitHub** → select `Faezehyas/dailydoseofplay` and branch `main` → **Save**. If the CLI writes `app_id` and `annotations:` into `app.yaml`, commit that change.
-4. **Check the first build.** The log should show `Packaging project directory (N files…)` with N in the dozens (if N is 1 or 2 the upload was empty) and `Detected Node.js provider`. Then open https://dailydoseofplay.wasmer.app/healthz, which should return `{"ok":true,…}`.
-5. **Alias `dailydoseofplay.wasmer.app`.** Every Wasmer app gets `<app-name>.wasmer.app`, and the app name is `dailydoseofplay`, so this URL is assigned automatically if no one else holds it. Check the URL shown on the app's dashboard page.
-   - If it shows a suffixed URL (e.g. `dailydoseofplay-faezeh_yass.wasmer.app`), open the app → **Settings → Domains**, type `dailydoseofplay.wasmer.app`, click **Add** and follow the prompt.
-   - If Wasmer refuses it, another account owns that alias. Keep the suffixed URL; the custom domain (next step) works either way.
-6. **Add the custom domain.** Open the app → **Settings → Domains**, type `dailydoseofplay.com`, choose the option that adds `www.dailydoseofplay.com` and redirects the root domain to it, tick **Make this domain the default once verified**, and click **Add**.
-   - Wasmer lists the DNS records to create. Add them at GoDaddy, which holds the domain: **Domain Portfolio** → `dailydoseofplay.com` → **DNS** → **DNS Records** → **Add New Record**. Today that is an `A` record for `@` and a `CNAME` for `www`, both pointing at Wasmer; copy the exact values from Wasmer's dialog.
-   - Delete any `AAAA` record for `@` or `www`: Wasmer's docs say a stale one breaks verification.
-   - Wait until Wasmer shows the domain as verified. It issues and renews the HTTPS certificate itself.
-7. **Make the root redirect permanent (optional).** Wasmer only serves a root domain by redirecting it to `www`, and it answers with a temporary `307`. For a permanent `301`, let GoDaddy answer for the root instead:
-   1. At GoDaddy: **Domain Portfolio** → `dailydoseofplay.com` → **DNS** → **Forwarding** → **Add Forwarding** → **Domain**.
-   2. Choose `https://`, enter `www.dailydoseofplay.com`, choose **Permanent (301)**, and click **Save**. GoDaddy replaces and locks the `@` A record; leave the `www` CNAME pointing at Wasmer.
-   3. Once DNS has updated (up to an hour, sometimes 48), run `curl -sI 'https://dailydoseofplay.com/ludo/?robot=1'`. Expect `301` and `location: https://www.dailydoseofplay.com/ludo/?robot=1`.
-   4. If the check shows a certificate error, or the location drops `/ludo/?robot=1`, undo it: delete the forwarding, then put back the `@` A record from Wasmer's **Settings → Domains**.
-   5. Wasmer may now mark `dailydoseofplay.com` as unverified. That is expected; keep the `www.dailydoseofplay.com` entry as it is.
-8. **Smoke-test production.** Open the site in two browsers, play a friend match via the invite link, and play a robot game.
-
-From then on, merging a PR into `main` deploys it. To roll back, pick an
-earlier version on the app's **Versions** page.
-
-## Domains
-
-| Address | What it does |
-|---|---|
-| https://www.dailydoseofplay.com | The site. |
-| https://dailydoseofplay.com | Redirects to `www`, keeping the path and query (step 7 above says who answers and with which code). |
-| https://dailydoseofplay.wasmer.app | Wasmer's own address for the app. It serves the same site and keeps working, which helps when the custom domain has trouble. |
-| `http://` on any of them | `308` to `https://` (Wasmer's default `force_https`). |
-
-Domains are set in Wasmer's dashboard, not in `app.yaml`, and the `/healthz`
-check doesn't depend on the domain. The lobby socket accepts pages from all
-three addresses (`SITE_ORIGINS` in `server/app.js`).
 
 ## Known limitations
 
@@ -167,10 +123,17 @@ three addresses (`SITE_ORIGINS` in `server/app.js`).
 - **Rooms live in server memory.** The app is pinned to one region to keep rooms on one set of instances. A friend's join could still in theory land on a different instance.
 - **Fair play is checked after the game, not refereed live.** A modified client could lie during play; the lie is detected at the end, and stalling or leaving is not prevented.
 
-## License
+## Credits and license
+
+- Made by [Faezeh Yass](https://github.com/Faezehyas). Chutes and Ladders, Dots and Boxes, Ludo and rooms for up to 4 players came from [M.Amin Rayej](https://github.com/maminrayej). Everyone who has helped is on the [contributors page](https://github.com/Faezehyas/dailydoseofplay/graphs/contributors).
+- The gameplay and flow follow papergames.io; names, art, text and code are original.
 
 The code and the original art (game icons and boards) are under the
 [MIT License](LICENSE). Two kinds of files keep their own terms:
 
 - **Recorded sounds** are third-party CC0 recordings, credited in each game's `sounds/LICENSE.txt`.
 - **Fonts** are under the SIL Open Font License, see `public/engine/fonts/LICENSE.txt`.
+
+## Deploying
+
+The owner's Wasmer Edge setup and the site's domains are in [docs/deploy.md](docs/deploy.md).
