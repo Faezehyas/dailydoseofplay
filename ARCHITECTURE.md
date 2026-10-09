@@ -127,7 +127,6 @@ flowchart TB
   g_rules --> e_rng
   g_rules --> e_turn_match
   g_settings --> e_settings
-  g_settings --> e_shell
   g_settings --> g_robot
   g_settings --> g_rules
   g_sounds --> e_sound
