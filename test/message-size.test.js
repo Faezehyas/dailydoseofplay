@@ -97,6 +97,13 @@ const GAMES = {
     const choose = (st, me, rng) => chooseMove(st, me, rng, { level: "easy" });
     return { config, players: 4, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
   },
+  "crazy-eights": async () => {
+    const { makeRules, DEFAULT_CONFIG } = await import("../public/crazy-eights/rules.js");
+    const { chooseMove, startRobot } = await import("../public/crazy-eights/robot.js");
+    const config = { ...DEFAULT_CONFIG, actions: true, moveSeconds: 60 };
+    const choose = (st, me, rng, face) => chooseMove(st, me, rng, face, { level: "easy" });
+    return { config, players: 4, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
+  },
   "dots-and-boxes": async () => {
     const { makeRules, DEFAULT_CONFIG } = await import("../public/dots-and-boxes/rules.js");
     const { startRobot } = await import("../public/dots-and-boxes/robot.js");

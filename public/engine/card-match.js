@@ -128,6 +128,7 @@ export class CardMatch extends Emitter {
     this.busy = "keys"; // "keys" | "shuffling" | "dealing" | "auditing" | null
     this.state = null;
     this.verdict = null; // after the audit: { ok, reason?, seat? }
+    this.audited = null; // every slot's face, once the audit has passed
     this.working = false;
     this.slots = []; // { card, owner, open, face, shares: [by seat], gone }
     this.log = []; // { player, move } for the audit
@@ -145,9 +146,9 @@ export class CardMatch extends Emitter {
     return this.phase === "playing" && this.state.turn === this.me && !this.working;
   }
 
-  // The face of a slot, if I know it (open to all, or dealt to me).
+  // The face of a slot, if I know it: open to all, dealt to me, or any card once the audit has passed.
   face(slot) {
-    return this.slots[slot]?.face ?? null;
+    return this.slots[slot]?.face ?? this.audited?.[slot] ?? null;
   }
 
   // Validate locally, then send and apply. Illegal moves emit "invalid".
@@ -507,18 +508,21 @@ export class CardMatch extends Emitter {
     this.send({ t: "audit", key: toBase64(this.key.secret) });
     const secrets = [];
     for (let s = 0; s < this.players; s++) secrets[s] = s === this.me ? this.key.secret : await this.#wait(`audit:${s}`);
-    this.verdict = await this.#judge(secrets);
+    const faces = [];
+    this.verdict = await this.#judge(secrets, faces);
+    if (this.verdict.ok) this.audited = faces;
     this.busy = null;
     this.emit("verified", this.verdict);
   }
 
-  async #judge(secrets) {
+  // Fills `faces` with every slot's face once the keys check out.
+  async #judge(secrets, faces) {
     for (let s = 0; s < this.players; s++) {
       if (s !== this.me && !(await this.#job("checkSecret", secrets[s], this.contexts[s], this.pks[s]))) return { ok: false, reason: "revealed a key that isn't the one they played with", seat: s };
     }
     const unknown = this.slots.flatMap((slot, id) => (slot.face === null ? [id] : []));
     const found = await this.#job("faces", this.joint, secrets, unknown.map((id) => this.slots[id].card));
-    const faces = this.slots.map((slot) => slot.face);
+    faces.push(...this.slots.map((slot) => slot.face));
     unknown.forEach((id, i) => (faces[id] = found[i]));
     const first = faces.slice(0, this.rules.deckSize);
     if (new Set(first).size !== first.length || first.some((f) => !(f >= 0 && f < this.rules.deckSize))) return { ok: false, reason: "the deck wasn't one full deck" };

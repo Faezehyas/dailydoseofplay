@@ -197,9 +197,10 @@ startGameShell({
 **Card games.** Use `CardMatch` from `../engine/card-match.js` the same way
 (`new CardMatch({ send, me, players, rules, m })`). While `match.busy` is set
 ("keys", "shuffling", "dealing" or "auditing") the deck is working, so show
-it. `match.face(slot)` is a card's face if you may see it, else `null`. After
-"over", a "verified" event brings `match.verdict`: show "Fair play verified"
-or what didn't add up, as Sea Battle does. If the session ends while
+it. `match.face(slot)` is a card's face if you may see it (every card once
+the audit has passed), else `null`. After "over", a "verified" event
+brings `match.verdict`: show "Fair play verified" or what didn't add up, as
+Sea Battle does. If the session ends while
 `match.busy` is "auditing", say the game couldn't be verified. A rematch can
 start before the verdict arrives, so keep listening to the old match for it.
 An "abort" carries `{ reason, seat, about }`: put the name of `seat` (who

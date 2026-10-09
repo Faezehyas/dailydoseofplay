@@ -65,11 +65,28 @@ test("four players: the same, with a bigger deck", async () => {
     assert.deepEqual(m.state, matches[0].state);
     assertNoLeaks(m);
   }
-  // Each player saw their own cards and nobody else's.
+  // Each player saw their own cards and nobody else's (until the audit, which shows them all).
   const hands = matches[0].state.hands;
   for (const m of matches) {
-    for (const [seat, hand] of hands.entries()) for (const slot of hand) assert.equal(m.face(slot) !== null, seat === m.me);
+    for (const [seat, hand] of hands.entries()) for (const slot of hand) assert.equal(m.slots[slot].face !== null, seat === m.me);
   }
+});
+
+test("once the audit passes, every seat can read every card; a failed audit shows nothing more", async () => {
+  const { matches } = await play({ players: 3, rules: makeRules({ deckSize: 15, maxTurns: 12 }) });
+  for (const m of matches) {
+    assert.deepEqual(m.verdict, { ok: true });
+    assertNoLeaks(m); // the faces it played with are still only its own and the open ones
+    for (const [seat, hand] of m.state.hands.entries()) for (const slot of hand) assert.notEqual(m.face(slot), null, `seat ${m.me} reads seat ${seat}'s slot ${slot}`);
+    const live = m.slots.flatMap((s, id) => (s.gone ? [] : [m.face(id)]));
+    assert.deepEqual(live.sort((a, b) => a - b), [...Array(15).keys()]);
+  }
+  const { matches: failed } = await play({ before: (s) => tap(s[1], (msg) => (msg.t === "audit" ? { ...msg, key: toBase64(new Uint8Array(32).fill(9)) } : msg)) });
+  assert.equal(failed[0].verdict.ok, false);
+  assert.equal(failed[0].audited, null);
+  const hidden = failed[0].slots.flatMap((s, id) => (s.face === null ? [id] : []));
+  assert.ok(hidden.length > 0);
+  for (const slot of hidden) assert.equal(failed[0].face(slot), null, `slot ${slot} stays hidden`);
 });
 
 test("the audit catches a rule only the full deck can check: drawing while holding a card that plays", async () => {
