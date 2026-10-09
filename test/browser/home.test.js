@@ -109,13 +109,16 @@ test("home page shows placeholders while loading and a Retry button on failure",
   });
   const errors = [];
 
-  for (const width of [1280, 360]) {
+  // A wide font stands in for the fallback fonts on Linux and Windows, where a
+  // long game name could otherwise wrap and make its tile taller.
+  for (const [width, font] of [[1280], [360], [768, "monospace"]]) {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     page.on("pageerror", (e) => errors.push(`${width}: ${e.message}`));
 
     // Slow list: placeholders first, then real tiles in the same places.
     let release = await holdGames(page);
     await page.goto(`${srv.base}/`);
+    if (font) await page.addStyleTag({ content: `body { font-family: ${font}; }` });
     const placeholders = page.locator(".game-card.placeholder");
     assert.equal(await placeholders.count(), games.length, `${width} px: one placeholder per game`);
     assert.equal(await page.locator("#games > li[aria-hidden='true']").count(), games.length, `${width} px: placeholders are hidden from screen readers`);

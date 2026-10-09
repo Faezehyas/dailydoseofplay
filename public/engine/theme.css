@@ -646,6 +646,7 @@ input::placeholder {
 
 .game-card {
   position: relative;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -658,9 +659,14 @@ a.game-card:hover {
   transform: translateY(-3px);
 }
 
+/* One line, so a wide fallback font can't make one tile taller than its
+   loading placeholder; the full name stays in the DOM. */
 .game-card h2 {
   font-size: 1.2rem;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .game-card p {
