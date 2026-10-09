@@ -1,7 +1,7 @@
 // Headless-browser test for the security headers: under connect-src 'self'
 // the lobby still reaches /ws, and the Permissions-Policy still lets the
-// invite link be copied and shared. Runs Chromium's new headless mode, the one
-// with navigator.share. Skips if Playwright is missing.
+// invite link be copied and shared. Runs Chromium's new headless mode, which
+// has navigator.share on macOS and Windows. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -61,10 +61,13 @@ test("the lobby reaches /ws, and the invite link copies and shares, under the se
   await page.locator("#toast.show", { hasText: "Invite link copied" }).waitFor();
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), invite);
 
-  await page.getByRole("button", { name: "Share", exact: true }).click();
-  await page.waitForFunction(() => window.shareResult);
-  await page.waitForTimeout(500);
-  assert.notEqual(await page.evaluate(() => window.shareResult), "NotAllowedError");
+  // Chromium on Linux has no navigator.share, so the lobby shows no Share button there.
+  if (await page.evaluate(() => "share" in navigator)) {
+    await page.getByRole("button", { name: "Share", exact: true }).click();
+    await page.waitForFunction(() => window.shareResult);
+    await page.waitForTimeout(500);
+    assert.notEqual(await page.evaluate(() => window.shareResult), "NotAllowedError");
+  } else t.diagnostic("no navigator.share in this browser: Share not checked");
 
   assert.deepEqual(errors, []);
 });
