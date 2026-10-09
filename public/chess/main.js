@@ -28,7 +28,7 @@ import {
   ROOK_HOP,
 } from "./rules.js";
 import { startRobot } from "./robot.js";
-import { mountSettings, LEVEL_NAMES } from "./settings.js";
+import { settings, LEVEL_NAMES } from "./settings.js";
 import { playMove } from "./sounds.js";
 
 const ROBOT_SEARCH_MS = 250; // search cap, so a slow phone still answers quickly
@@ -57,11 +57,11 @@ const SHAPES = {
 const pieceSvg = (piece) => `<svg viewBox="6 3 88 88" class="pc ${colorOf(piece) ? "b" : "w"}" aria-hidden="true">${SHAPES[typeOf(piece)]}${BASE}</svg>`;
 const pieceName = (piece) => `${COLOR_NAMES[colorOf(piece)].toLowerCase()} ${PIECE_NAMES[typeOf(piece)]}`;
 
-const settings = mountSettings(document.getElementById("chess-settings"), document.getElementById("lobby"));
 startGameShell({
   slug: "chess",
   title: "Chess",
   layout: "narrow",
+  settings,
   createRobot(session) {
     const config = settings.get();
     return startRobot(session, { rules: makeRules(config), level: config.level, timeMs: ROBOT_SEARCH_MS });

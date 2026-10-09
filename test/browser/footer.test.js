@@ -1,7 +1,8 @@
-// Headless-browser test: the home page, every game page and the 404 page end
-// with the same footer, below <main>, with its line on how games run and its
-// links to "How it works" and the GitHub repository, at 360 px in light and
-// 1280 px in dark, with no sideways scroll. Skips if Playwright is missing.
+// Headless-browser test: the home page, every game page, the privacy page and
+// the 404 page end with the same footer, below <main>, with its line on how
+// games run and its links to "How it works", the GitHub repository and the
+// privacy page, at 360 px in light and 1280 px in dark, with no sideways
+// scroll. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -36,7 +37,7 @@ const SCREENS = [
   { width: 360, height: 640, colorScheme: "light" },
   { width: 1280, height: 800, colorScheme: "dark" },
 ];
-const PAGES = [{ name: "home", url: "/" }, ...games.map((g) => ({ name: g.slug, url: `/${g.slug}/` })), { name: "404", url: "/no-such-page/" }];
+const PAGES = [{ name: "home", url: "/" }, ...games.map((g) => ({ name: g.slug, url: `/${g.slug}/` })), { name: "privacy", url: "/privacy/" }, { name: "404", url: "/no-such-page/" }];
 
 for (const { width, height, colorScheme } of SCREENS) {
   test(`at ${width} px every page ends with the footer and its links`, { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
@@ -59,6 +60,7 @@ for (const { width, height, colorScheme } of SCREENS) {
       assert.match(await footer.innerText(), /run directly between your browsers\. Nothing to install/, `${name}: the footer says how games run`);
       assert.equal(await footer.getByRole("link", { name: "How it works" }).getAttribute("href"), `${REPO}/blob/main/ARCHITECTURE.md`, `${name}: "How it works" link`);
       assert.equal(await footer.getByRole("link", { name: "GitHub" }).getAttribute("href"), REPO, `${name}: GitHub link`);
+      assert.equal(await footer.getByRole("link", { name: "Privacy" }).getAttribute("href"), "/privacy/", `${name}: Privacy link`);
       assert.match(await page.locator("body").ariaSnapshot(), /^- contentinfo:/m, `${name}: the footer is a contentinfo landmark`);
       const layout = await page.evaluate(() => ({
         footerTop: document.querySelector(".site-footer").getBoundingClientRect().top,

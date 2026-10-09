@@ -37,8 +37,15 @@ test("two friends play Ludo on the host's house rules through the invite link, t
   await pick(host, "blocks", true);
   await pick(host, "captureBonus", true);
   await pick(host, "first", "host");
+  assert.equal(await host.locator("#ld-settings legend .robot-only").count(), 2, "robot level and count are marked as robot-only");
+  assert.deepEqual(await host.locator("#ld-settings .settings-line .chip.robot").allInnerTexts(), ["Easy robot", "3 robots"], "robot-only choices are marked in the summary");
   await host.click("#play-friend");
   await host.locator("#room-code").waitFor();
+  assert.deepEqual(
+    await host.locator("#room-settings .chip").allInnerTexts(),
+    ["Blocks", "A capture rolls again", "Play for places", "You go first", "No move limit"],
+    "the waiting screen leaves out what only applies to robots",
+  );
   const invite = await host.locator("#invite-link").inputValue();
   assert.match(invite, /\/ludo\/\?room=[A-Z0-9]{4}&key=[\w-]{22}$/);
 

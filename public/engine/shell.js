@@ -6,10 +6,11 @@ import { cleanName } from "./names.js";
 const THEME_KEY = "ddp-theme";
 const NAME_KEY = "ddp-name";
 const REPO = "https://github.com/Faezehyas/dailydoseofplay";
-// The footer's links, in order. A Privacy page gets its link here.
+// The footer's links, in order.
 const FOOTER_LINKS = [
   ["How it works", `${REPO}/blob/main/ARCHITECTURE.md`],
   ["GitHub", REPO],
+  ["Privacy", "/privacy/"],
 ];
 
 export const $ = (sel, root = document) => root.querySelector(sel);
@@ -129,7 +130,7 @@ export function initShell({ title } = {}) {
     el(
       "footer",
       { class: "site-footer" },
-      el("p", {}, "Games run directly between your browsers. Nothing to install, nothing stored but your nickname."),
+      el("p", {}, "Games run directly between your browsers. Nothing to install, no account: your nickname and settings are kept only on your device."),
       el("ul", { class: "footer-links" }, FOOTER_LINKS.map(([text, href]) => el("li", {}, el("a", { href }, text)))),
     ),
   );

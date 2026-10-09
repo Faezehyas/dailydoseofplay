@@ -23,7 +23,11 @@ export const pw = await loadPlaywright();
 export const AUTO_SPIN_DELAY = 700; // as in main.js
 export const wait = (page, fn, arg, timeout = 20_000) => page.waitForFunction(fn, arg, { timeout });
 export const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-export const pick = (page, name, value) => page.click(`#cl-settings label:has(input[name="cl-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+export async function pick(page, name, value) {
+  if (!(await page.locator("#cl-settings[open]").count())) await page.click("#cl-settings > summary");
+  await page.click(`#cl-settings label:has(input[name="cl-${name}"][value="${value}"])`);
+}
 export const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 export const state = (page) => page.evaluate(() => window.ddp.match.state);
 // Each player's colour on this screen, by name, as the theme token their pill

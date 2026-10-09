@@ -32,7 +32,7 @@ const GAMES = JSON.parse(readFileSync(new URL("../../public/games.json", import.
 // The column at 1280 px: the lobby is always narrow.
 const WIDTHS = { narrow: 520, medium: 640, wide: 980 };
 
-// Edges of every visible view (lobby card, settings, the game's own box) and of the rules panel.
+// Edges of every visible view (lobby card, the game's own box) and of the rules panel.
 const measure = (page) =>
   page.evaluate(() => {
     const box = (node) => {
@@ -40,7 +40,7 @@ const measure = (page) =>
       return { name: node.id || node.className, left: r.left, right: r.right, width: r.width };
     };
     const shown = (node) => node.getClientRects().length > 0;
-    const views = [...document.querySelectorAll("#lobby > .card, .page > section.card, #game > :not(.overlay)")].filter(shown);
+    const views = [...document.querySelectorAll("#lobby > .card, #game > :not(.overlay)")].filter(shown);
     const { view, layout } = document.querySelector(".page").dataset;
     return { view, layout, views: views.map(box), rules: box(document.querySelector(".rules")), scroll: document.documentElement.scrollWidth, inner: innerWidth };
   });
@@ -74,7 +74,7 @@ for (const width of [1280, 360]) {
       const lobby = await measure(page);
       assert.equal(lobby.view, "lobby");
       assert.ok(Object.hasOwn(WIDTHS, lobby.layout), `${game.slug}: unknown layout "${lobby.layout}"`);
-      assert.ok(lobby.views.length >= 2, `${game.slug}: the lobby and its settings show`);
+      assert.ok(await page.locator(".lobby-card .settings").isVisible(), `${game.slug}: the settings show inside the lobby card`);
       assertColumn(lobby, `${game.slug} lobby`, column("narrow"));
 
       await page.click("#play-robot");

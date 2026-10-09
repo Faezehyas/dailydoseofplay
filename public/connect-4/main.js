@@ -8,18 +8,17 @@ import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, dimensions, colorOf, isTimed, timeLeft, landing, EMPTY, DRAW } from "./rules.js";
 import { chooseMove } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 
 const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
 const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 
-const settings = mountSettings(document.getElementById("c4-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "connect-4",
   title: "Connect 4",
   layout: "narrow",
+  settings,
   createRobot: (session) => {
     const config = settings.get();
     return startTurnRobot(session, {

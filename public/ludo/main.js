@@ -10,7 +10,7 @@ import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, distinctMoves, legalMoves, colorsFor, COLORS, MAX_PLAYERS, YARD, HOME, LAST_LOOP, TOKENS } from "./rules.js";
 import { chooseMove, startRobot } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 import { s, r1, U, SIZE, rotator, spotOf, pawnArt, pawnDefs, boardArt, markSvg, markPath, starPath, dieFace, yardCentre } from "./art.js";
 
@@ -24,7 +24,6 @@ const COLOR_NAME = { red: "Red", green: "Green", yellow: "Yellow", blue: "Blue" 
 const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const PLACE = ["", "1st", "2nd", "3rd", "4th"];
 
-const settings = mountSettings(document.getElementById("ld-settings"), document.getElementById("lobby"));
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const still = () => reduced.matches;
 
@@ -37,6 +36,7 @@ startGameShell({
   slug: "ludo",
   title: "Ludo",
   layout: "wide",
+  settings,
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,
   robots: () => settings.get().robots,
