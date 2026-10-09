@@ -85,6 +85,7 @@ flowchart TB
     e_channel["channel.js"]
     e_shell["shell.js"]
     e_players["players.js"]
+    e_result["result.js"]
     e_settings["settings.js"]
     e_names["names.js"]
     e_robot_pace["robot-pace.js"]
@@ -105,6 +106,7 @@ flowchart TB
   p_home --> e_shell
   p_main --> e_lobby
   p_main --> e_players
+  p_main --> e_result
   p_main --> e_session
   p_main --> e_shell
   p_main --> e_turn_match
@@ -140,6 +142,7 @@ flowchart TB
   e_lobby --> e_shell
   e_peer --> e_channel
   e_players --> e_shell
+  e_result --> e_shell
   e_room --> e_channel
   e_room --> e_group
   e_room --> e_peer
