@@ -191,6 +191,7 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
+  font-weight: 600;
   line-height: 1.2;
   margin: 0 0 0.5em;
 }
@@ -660,8 +661,10 @@ input::placeholder {
   padding: 4px 0 0;
 }
 
+/* The slogan keeps the display font's full weight; other headings use 600. */
 .hero h1 {
   margin: 0 0 4px;
+  font-weight: 700;
   font-size: clamp(1.6rem, 5vw, 2.6rem);
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -739,11 +742,9 @@ input::placeholder {
 }
 
 /* One line, so a wide fallback font can't make one tile taller than its
-   loading placeholder; the full name stays in the DOM. A step lighter than
-   the page headings, so names read as labels. */
+   loading placeholder; the full name stays in the DOM. */
 .game-card h2 {
   font-size: 1.25rem;
-  font-weight: 600;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
