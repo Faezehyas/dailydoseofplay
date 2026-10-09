@@ -155,11 +155,11 @@ Tested with Anybuild 0.33.0 and Wasmer 7.5.0.
 A game is one folder in `public/` plus one line in `public/games.json`. You
 don't touch the server.
 
-1. **Claim it.** Pick a game from [GAMES.md](GAMES.md) that isn't ticked yet, or suggest a new one. Open an [issue](https://github.com/Faezehyas/dailydoseofplay/issues/new) saying which game you'll build, so two people don't build the same one.
+1. **Claim it.** Pick an open game from "Up next" in [GAMES.md](GAMES.md), or suggest a new one, and open a [Game proposal](https://github.com/Faezehyas/dailydoseofplay/issues/new?template=game-proposal.yml) issue. Once a maintainer labels it `accepted` and assigns you, open a draft PR within a week, or the claim lapses. This way two people don't build the same game.
 2. **Copy the closest game.** Most games have no hidden information and use the shared turn engine: start from Tic Tac Toe or Connect 4, or from Ludo or Chutes and Ladders for dice and up to 4 players. Hidden cards or ships follow Sea Battle.
 3. **Write the rules and their tests.** `rules.js` is pure: no page, network or timers, and an illegal move throws. Cover it in `rules.test.js`.
 4. **Build the view and the robot.** `main.js` draws the board, `robot.js` picks moves, `icon.svg` is the home page card. Use your own names, art and text.
-5. **Open a PR.** Work on a branch such as `feat/<slug>`, run the tests, and open a PR titled `feat: add <Name>`.
+5. **Open a PR.** Work on a branch such as `feat/<slug>` and open a draft PR titled `feat: add <Name>` early. Run the tests, then mark it ready for review. One game per PR.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the full recipe and the checklist.
 [ARCHITECTURE.md](ARCHITECTURE.md) explains how rooms, WebRTC and fair play

@@ -37,17 +37,25 @@ installed globally, the test finds it through `npm root -g`, or set
 ## Recipe: add a game
 
 The goal is **one folder plus one registry entry**. Work through the steps in
-order. `<slug>` is lowercase with dashes, e.g. `tic-tac-toe`. Use the slug that
-already exists in `public/games.json`.
+order. `<slug>` is lowercase with dashes, e.g. `tic-tac-toe`, and not yet
+used in `public/games.json`.
 
-### 1. Pick the game
+### 1. Pick and claim the game
 
-Take the first unchecked game in `GAMES.md`. Write down its papergames rules:
-board, turn order, win and draw conditions, and any special rules. Decide two
-things, because they choose your protocol:
+Pick a game from "Up next" in [GAMES.md](GAMES.md), or one that isn't listed,
+and claim it before you write code:
 
-- **Hidden information?** (cards, hidden ships) → follow `public/sea-battle/match.js` (commitments and reveal-and-audit).
-- **No hidden information?** (all board games in the backlog) → use `public/engine/turn-match.js`. Randomness such as dice goes through `rules.needsRandom()`, so it is drawn jointly by all peers.
+1. Open a [Game proposal](https://github.com/Faezehyas/dailydoseofplay/issues/new?template=game-proposal.yml) issue: the game, its players, a link to its rules, the protocol (below), a robot idea and your plan for original art.
+2. A maintainer labels it `accepted`, assigns it to you and marks the game claimed in `GAMES.md`. Wait for that, so two people don't build the same game.
+3. Open a draft PR that links the issue within a week of the go-ahead. If none is open by then, the claim lapses and the game is open to anyone again.
+4. One game per PR. If the game needs engine work, that comes first, in a PR of its own.
+
+Write down the rules from the source you linked: board, turn order, win and
+draw conditions, and any special rules. Decide two things, because they choose
+your protocol:
+
+- **Hidden information?** (cards, hidden ships, a secret code, or both players choosing at once) → follow `public/sea-battle/match.js` (commitments and reveal-and-audit).
+- **No hidden information?** (most board games) → use `public/engine/turn-match.js`. Randomness such as dice goes through `rules.needsRandom()`, so it is drawn jointly by all peers.
 
 ### 2. Create the folder
 
@@ -286,10 +294,12 @@ is the shortest to copy). Without one the tile keeps its icon.
 
 ### 6. Register it
 
-In `public/games.json`, set the game's entry to `"status": "ready"` (add an
-entry if the game isn't listed, and copy one more placeholder tile into
-`public/index.html`'s `#games` list so the home page doesn't jump as it
-loads). Fields: `slug`, `name`, `status`, `players`,
+Games aren't listed ahead of time, so add your game's entry to the end of
+`public/games.json` with `"status": "ready"`, and copy one more placeholder
+tile into `public/index.html`'s `#games` list so the home page doesn't jump as
+it loads. An entry with `"status": "soon"` still works: its home tile is greyed
+out with a "Coming soon" badge and no links, while the server treats the game
+like any other. Use it only if a maintainer asks. Fields: `slug`, `name`, `status`, `players`,
 `maxPlayers` (2, or the same `maxPlayers` you pass to `startGameShell()` for a game with more players), and a one-sentence original `description`. The home tile and
 the lobby both show it. The server reads `games.json` once at startup, so
 restart `npm start` after editing it, or creating a room will fail with `bad_game`.
@@ -331,13 +341,13 @@ windows (one private).
 
 ### 9. Update the docs and open the PR
 
-- In `GAMES.md`, tick the game.
+- In `GAMES.md`, move the game from "Up next" to "Shipped".
 - In `README.md`, add the game to the list.
 - If you changed anything in `public/engine/`, update `ARCHITECTURE.md` too. Avoid engine changes unless the game cannot work without them; if you must, keep them backward compatible and run Sea Battle's tests.
-- Work on a branch, e.g. `feat/<slug>`, commit with Conventional Commits, and open one PR titled `feat: add <Name>`.
+- Work on a branch, e.g. `feat/<slug>`, commit with Conventional Commits, and open one PR titled `feat: add <Name>`. Open it as a draft early (see step 1) and mark it ready for review when the checklist below is done.
 - The PR body needs:
-  - a summary;
-  - a rules summary with any deviation from papergames;
+  - a summary and the proposal issue it closes (`Closes #<number>`);
+  - a rules summary with any deviation from the rules source;
   - the protocol choice (TurnMatch or custom) and why;
   - known limitations;
   - a manual test checklist (step 8).
@@ -361,7 +371,7 @@ windows (one private).
 - [ ] A new `localStorage` key (such as the settings panel's `key`) is listed on `public/privacy/index.html`
 - [ ] Sounds, if any, are in `sounds.js` with a role each, and `test/browser/sound-levels.test.js` passes
 - [ ] Original name, text and art; nothing copied from papergames
-- [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
+- [ ] `games.json` entry added as `ready`; the game moved to "Shipped" in `GAMES.md`; README updated
 - [ ] `npm test` passes; `npm run test:browser` passes or is reported as skipped
 - [ ] No new dependencies, no build step, nothing changed under `server/`, no secrets
 - [ ] Every commit message follows Conventional Commits
