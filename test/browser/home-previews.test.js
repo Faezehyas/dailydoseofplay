@@ -48,6 +48,10 @@ function preview(page, slug) {
   }, slug);
 }
 
+// Started: some animations still running and none waiting to start. A short
+// one may already be over when a busy machine gets round to looking.
+const started = (shown) => shown.states.includes("running") && !shown.states.includes("paused");
+
 const tileSize = (page, slug) => page.locator(`.game-card[data-slug="${slug}"]`).evaluate((e) => [e.offsetWidth, e.offsetHeight]);
 
 async function openHome(browser, srv, errors, options = {}) {
@@ -78,12 +82,15 @@ test("hovering or focusing a tile plays its game's preview", { skip: !pw && "Pla
 
       for (const { slug } of ready) {
         const tile = page.locator(`.game-card[data-slug="${slug}"]`);
+        // The mouse waits in the gutter, so scrolling doesn't slide a tile under it.
+        await page.mouse.move(0, 0);
         await tile.scrollIntoViewIfNeeded();
+        assert.equal(await preview(page, slug), null, `${slug}: no preview before its hover`);
         const before = await tileSize(page, slug);
         await tile.hover();
         await tile.locator("svg.tile-preview").waitFor();
         const shown = await preview(page, slug);
-        assert.deepEqual(shown.states, ["running"], `${slug} at ${width} px ${colorScheme}: the preview plays`);
+        assert.ok(started(shown), `${slug} at ${width} px ${colorScheme}: the preview plays (${shown.states})`);
         assert.ok(shown.end >= 3000 && shown.end <= 5000, `${slug}: the preview lasts ${shown.end} ms`);
         assert.equal(shown.hidden, "true", `${slug}: the preview is decorative`);
         assert.equal(await tile.locator(".game-icon img").count(), 0, `${slug}: the preview replaced the icon`);
@@ -102,7 +109,7 @@ test("hovering or focusing a tile plays its game's preview", { skip: !pw && "Pla
       await page.screenshot({ path: `${ARTIFACTS}/home-previews-${width}-${colorScheme}.png` });
       await page.mouse.move(0, 0);
       await page.locator(`.game-card[data-slug="${slug}"]`).hover();
-      assert.deepEqual((await preview(page, slug)).states, ["running"], "the preview plays again on the next hover");
+      assert.ok(started(await preview(page, slug)), "the preview plays again on the next hover");
       await page.close();
     }
   }
@@ -112,7 +119,7 @@ test("hovering or focusing a tile plays its game's preview", { skip: !pw && "Pla
   const first = await page.locator(".game-card[data-slug]").first().getAttribute("data-slug");
   for (let i = 0; i < 20 && !(await page.evaluate(() => !!document.activeElement.closest(".game-card"))); i++) await page.keyboard.press("Tab");
   await page.locator(`.game-card[data-slug="${first}"] svg.tile-preview`).waitFor();
-  assert.deepEqual((await preview(page, first)).states, ["running"], "focusing a tile with Tab plays its preview");
+  assert.ok(started(await preview(page, first)), "focusing a tile with Tab plays its preview");
   await page.close();
   assert.deepEqual(errors, []);
 });
@@ -132,7 +139,7 @@ test("previews play once in view on a touch screen and never with reduced motion
   assert.equal(await preview(phone, last), null, "a tile below the screen waits");
   await phone.locator(`.game-card[data-slug="${last}"]`).scrollIntoViewIfNeeded();
   await phone.locator(`.game-card[data-slug="${last}"] svg.tile-preview`).waitFor();
-  assert.deepEqual((await preview(phone, last)).states, ["running"], "it plays once it is in view");
+  assert.ok(started(await preview(phone, last)), "it plays once it is in view");
   await phone.close();
 
   // Reduced motion: hovering and focusing leave the icons alone.
