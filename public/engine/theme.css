@@ -187,6 +187,22 @@ a {
   display: none !important;
 }
 
+/* Read out by screen readers, not shown. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The lobby moves focus to a view's heading (lobby.js); it isn't a control, so no ring. */
+h1[tabindex="-1"]:focus,
+h2[tabindex="-1"]:focus {
+  outline: none;
+}
+
 h1,
 h2,
 h3 {
@@ -603,14 +619,15 @@ input::placeholder {
   text-align: center;
 }
 
-/* Top of the screen, so it never covers a game board on a phone. Centred with
-   auto margins rather than left: 50%, so it can use the full width between the
-   16px gutters, and a 20-letter nickname wraps instead of running off screen. */
+/* Just below the 60px header (and the notch), clear of the sound and theme
+   buttons and above a game board on a phone. Centred with auto margins rather
+   than left: 50%, so it can use the full width between the 16px gutters, and a
+   20-letter nickname wraps instead of running off screen. */
 .toast {
   position: fixed;
   left: 16px;
   right: 16px;
-  top: 12px;
+  top: calc(env(safe-area-inset-top, 0px) + 64px);
   width: fit-content;
   margin-inline: auto;
   transform: translateY(-30px);
