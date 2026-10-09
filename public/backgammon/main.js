@@ -117,7 +117,7 @@ function mountBackgammon(session, root, shell) {
       el("span", { class: "swatch", "aria-hidden": "true" }),
       el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : oppName), pips),
     );
-    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"}`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
+    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
     return { node, pips, clock };
   });
   const players = el("div", { class: "bg-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
@@ -126,7 +126,7 @@ function mountBackgammon(session, root, shell) {
   const status = el("p", { class: "bg-status", id: "bg-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "bg-movebar", "aria-hidden": "true" }, moveBarFill);
-  const moveLeft = el("span", { class: "move-left", id: "bg-move-left", role: "timer", "aria-label": "Time left for this turn" });
+  const moveLeft = el("span", { class: "move-left mono", id: "bg-move-left", role: "timer", "aria-label": "Time left for this turn" });
   const clocks = el("div", { class: "bg-clocks", id: "bg-clocks", hidden: true }, pills[0].clock, el("div", { class: "move" }, moveBar, moveLeft), pills[1].clock);
   const board = el("div", { class: "bg-board", id: "bg-board", role: "group", "aria-label": "Board" });
   const diceBox = el("div", { class: "bg-dice", id: "bg-dice", "aria-label": "Dice" });

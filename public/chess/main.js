@@ -111,7 +111,7 @@ function mountChess(session, root, shell) {
   const pills = [me, opp].map((player) => {
     const dot = el("span", { class: "pill-color", "aria-label": "colour not decided" });
     const node = el("span", { class: `who ${player === me ? "me" : ""}` }, dot, el("span", { class: "name" }, player === me ? myName : oppName));
-    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"}`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
+    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
     const taken = el("div", { class: `chess-taken ${player === me ? "mine" : "theirs"}`, "aria-label": player === me ? "Pieces you captured" : `Pieces ${oppName} captured` });
     return { node, dot, clock, taken };
   });
@@ -121,7 +121,7 @@ function mountChess(session, root, shell) {
   const status = el("p", { class: "chess-status", id: "chess-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "chess-movebar", "aria-hidden": "true" }, moveBarFill);
-  const moveLeft = el("span", { class: "move-left", id: "chess-move-left", role: "timer", "aria-label": "Time left for this move" });
+  const moveLeft = el("span", { class: "move-left mono", id: "chess-move-left", role: "timer", "aria-label": "Time left for this move" });
   const clocks = el("div", { class: "chess-clocks", id: "chess-clocks", hidden: true }, pills[0].clock, el("div", { class: "move" }, moveBar, moveLeft), pills[1].clock);
   const board = el("div", { class: "chess-board", id: "chess-board", role: "group", "aria-label": "Chessboard" });
   const promoBox = el("div", { class: "chess-promo", id: "chess-promo", role: "dialog", "aria-label": "Promote your pawn", hidden: true });

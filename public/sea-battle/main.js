@@ -140,9 +140,9 @@ function mountSeaBattle(session, root, shell) {
   const players = el("div", { class: "sb-players" });
   const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: confirmLeave }, "Leave");
   const top = el("div", { class: "sb-top" }, players, leaveBtn);
-  const clock = el("span", { class: "sb-clock", id: "sb-clock", role: "timer", hidden: true, "aria-live": "off" });
-  const myClock = el("span", { class: "game-clock mine", id: "clock-me", role: "timer", "aria-label": "Your clock", hidden: true });
-  const oppClock = el("span", { class: "game-clock", id: "clock-opp", role: "timer", "aria-label": `${oppName}'s clock`, hidden: true });
+  const clock = el("span", { class: "sb-clock mono", id: "sb-clock", role: "timer", hidden: true, "aria-live": "off" });
+  const myClock = el("span", { class: "game-clock mine mono", id: "clock-me", role: "timer", "aria-label": "Your clock", hidden: true });
+  const oppClock = el("span", { class: "game-clock mono", id: "clock-opp", role: "timer", "aria-label": `${oppName}'s clock`, hidden: true });
   const configLine = el("p", { class: "sb-config", id: "sb-config" });
 
   const ownBoard = createBoard("Your fleet", false);

@@ -79,7 +79,7 @@ function mountGomoku(session, root, shell) {
   const pills = [me, opp].map((player) => {
     const stone = el("span", { class: "pill-stone", dataset: { v: "" } });
     const node = el("span", { class: `who ${player === me ? "me" : ""}` }, stone, el("span", { class: "name" }, player === me ? myName : oppName));
-    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"}`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
+    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
     return { node, stone, clock };
   });
   const players = el("div", { class: "gmk-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
@@ -88,7 +88,7 @@ function mountGomoku(session, root, shell) {
   const status = el("p", { class: "gmk-status", id: "gmk-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "gmk-movebar", "aria-hidden": "true" }, moveBarFill);
-  const moveLeft = el("span", { class: "move-left", id: "gmk-move-left", role: "timer", "aria-label": "Time left for this move" });
+  const moveLeft = el("span", { class: "move-left mono", id: "gmk-move-left", role: "timer", "aria-label": "Time left for this move" });
   const clocks = el("div", { class: "gmk-clocks", id: "gmk-clocks", hidden: true }, pills[0].clock, el("div", { class: "move" }, moveBar, moveLeft), pills[1].clock);
   const cells = Array.from({ length: SIZE * SIZE }, (_, i) =>
     el("button", { type: "button", class: "gmk-cell", tabindex: i === focusCell ? "0" : "-1", dataset: { i, v: "" }, "aria-label": `${pointName(i)}, empty` }),

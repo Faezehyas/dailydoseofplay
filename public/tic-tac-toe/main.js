@@ -69,7 +69,7 @@ function mountTicTacToe(session, root, shell) {
   const pills = [me, opp].map((player) => {
     const mark = el("span", { class: "pill-mark" }, "?");
     const node = el("span", { class: `who ${player === me ? "me" : ""}` }, mark, el("span", { class: "name" }, player === me ? myName : oppName));
-    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"}`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
+    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
     return { node, mark, clock };
   });
   const players = el("div", { class: "ttt-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
@@ -78,7 +78,7 @@ function mountTicTacToe(session, root, shell) {
   const status = el("p", { class: "ttt-status", id: "ttt-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "ttt-movebar", "aria-hidden": "true" }, moveBarFill);
-  const moveLeft = el("span", { class: "move-left", id: "ttt-move-left", role: "timer", "aria-label": "Time left for this move" });
+  const moveLeft = el("span", { class: "move-left mono", id: "ttt-move-left", role: "timer", "aria-label": "Time left for this move" });
   const clocks = el("div", { class: "ttt-clocks", id: "ttt-clocks", hidden: true }, pills[0].clock, el("div", { class: "move" }, moveBar, moveLeft), pills[1].clock);
   const board = el("div", { class: "ttt-board", id: "ttt-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "ttt-config", id: "ttt-config" });

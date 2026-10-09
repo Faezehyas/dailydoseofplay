@@ -153,7 +153,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
 
   function showWaiting(room) {
     const link = `${location.origin}/${slug}/?room=${room.code}&key=${encodeURIComponent(room.key)}`;
-    const linkInput = el("input", { id: "invite-link", type: "text", readonly: true, value: link, "aria-label": "Invite link" });
+    const linkInput = el("input", { id: "invite-link", class: "mono", type: "text", readonly: true, value: link, "aria-label": "Invite link" });
     linkInput.addEventListener("focus", () => linkInput.select());
     const copyBtn = el("button", {
       class: "btn primary",
@@ -178,7 +178,12 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
           : `Send this link to up to ${maxPlayers - 1} friends. Start when everyone is in; a full room starts by itself.`,
         " Someone who types the code instead has to be let in by you.",
       ),
-      el("div", { class: "room-code", id: "room-code", "aria-label": `Room code ${room.code}` }, room.code),
+      // One span per letter, so the letters can settle in one by one (theme.css).
+      el(
+        "div",
+        { class: "room-code mono", id: "room-code", "aria-label": `Room code ${room.code}` },
+        [...room.code].map((c, i) => el("span", { style: `--i: ${i}` }, c)),
+      ),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
       el("ul", { class: "roster", id: "roster", "aria-label": "Players", hidden: duel }),
       el("p", { class: "waiting", id: "lobby-status" }, el("span", { class: "spinner" }), duel ? "Waiting for your friend to join…" : "Waiting for friends to join…"),
@@ -229,9 +234,9 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     );
   }
 
-  function setStatus(text) {
+  function setStatus(...text) {
     const node = $("#lobby-status");
-    if (node) node.replaceChildren(el("span", { class: "spinner" }), text);
+    if (node) node.replaceChildren(el("span", { class: "spinner" }), ...text);
   }
 
   function showFailure(text, retry = host) {
@@ -337,7 +342,8 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       } else if (duel) {
         setStatus("Connected! Starting the game…");
       } else {
-        setStatus(`Connected! Waiting for ${host} to start${players ? ` (${players.length} players in)` : ""}…`);
+        const count = players ? [" (", el("span", { class: "mono" }, `${players.length} players in`), ")"] : [];
+        setStatus(`Connected! Waiting for ${host} to start`, ...count, "…");
       }
     });
     let session;
