@@ -491,7 +491,10 @@ stopped; while it is on in a friend game, `shell.leave()` opens
 players, "Leave the game? It ends for everyone." with more. Cancel keeps
 playing. Robot games, finished matches and a game that never calls
 `setInProgress` leave at once, and so does everyone once `askBeforeLeaving()`
-in `shell.js` says no.
+in `shell.js` says no. The browser's Back (or a phone's back gesture) is
+Leave too: a game gets a history entry of its own when it starts, so Back
+returns to the lobby, asking first in the same cases; Back while the question
+is open closes it, like Esc.
 
 **Message size.** `JSON.parse` blocks the tab, so a modified client could
 freeze other players' tabs with huge messages. Every link therefore checks a
@@ -593,7 +596,7 @@ box keeps whatever width it sets, and its rules panel matches the column.
 **Player bar.** Every game shows the same bar above its board, built by
 `playerBar()` in `players.js` and styled in `theme.css`: a pill per player
 (you first, "(you)" after your name, then the others in seat order), a ring
-on whoever's turn it is, and Leave (`id="leave"`) at the top right. Under it
+on whoever's turn it is, and Leave (`id="leave"`, outlined, with an exit arrow) at the top right. Under it
 the score (`#score`) shows wins per player and, for games whose score has a
 `draws` field, a Draws box (Dots and Boxes adds it with the first draw,
 since only some boards can be drawn). The game creates it once and calls

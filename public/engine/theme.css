@@ -806,6 +806,23 @@ input::placeholder {
   margin-left: 8px;
 }
 
+/* Leave looks like a button on every board: an outline and an exit arrow. */
+.pb-leave {
+  gap: 6px;
+  border-color: var(--control-border);
+  background: var(--surface);
+}
+
+.pb-leave svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* Each name keeps its full width when it fits; long names share what's left. */
 .pb-players {
   display: grid;

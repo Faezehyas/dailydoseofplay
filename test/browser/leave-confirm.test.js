@@ -1,7 +1,7 @@
-// Headless-browser test for leaving a game: in a live friend match Leave asks
-// first in the site's dialog (Cancel or Esc keeps playing, Leave ends it for
-// the others); robot games and finished matches leave at once. Skips if
-// Playwright is missing.
+// Headless-browser test for leaving a game: in a live friend match Leave, or
+// the browser's Back, asks first in the site's dialog (Cancel, Esc or Back
+// keeps playing, Leave ends it for the others); robot games and finished
+// matches leave at once. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -46,8 +46,9 @@ async function setup(t) {
 
 const focused = (page) => page.evaluate(() => document.activeElement?.id);
 const phase = (page) => page.evaluate(() => window.ddp.match.phase);
+const back = (page) => page.goBack({ waitUntil: "commit" });
 
-test("in a live friend game, Leave asks first: Cancel or Esc keeps playing, Leave ends it for the friend", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
+test("in a live friend game, Leave or Back asks first: Cancel, Esc or Back keeps playing, Leave ends it for the friend", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   const { open, room, errors } = await setup(t);
   const host = await open("Ada", { colorScheme: "dark" });
   const guest = await open("Bo", { viewport: { width: 360, height: 740 }, hasTouch: true, colorScheme: "light" });
@@ -78,15 +79,23 @@ test("in a live friend game, Leave asks first: Cancel or Esc keeps playing, Leav
   assert.equal(await focused(host), "leave");
   assert.equal(await phase(host), "playing");
 
+  // Back asks the same question; Back again closes it and the game goes on.
+  await back(host);
+  await host.locator("dialog#confirm").waitFor();
+  await back(host);
+  await host.locator("dialog#confirm").waitFor({ state: "detached" });
+  assert.equal(await phase(host), "playing");
+
   // Leave → Leave: the host is back in the lobby and the friend is told.
   await host.click("#leave");
   await host.click("#confirm-yes");
   await host.locator("#play-friend").waitFor();
+  await host.waitForFunction(() => history.state === null, null, { timeout: 5_000 });
   await guest.locator("#ended", { hasText: "Ada left the game." }).waitFor({ timeout: 20_000 });
   assert.deepEqual(errors, []);
 });
 
-test("a finished friend match and a robot game leave at once", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
+test("a finished friend match and a robot game leave at once, by Leave or Back", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   const { srv, open, room, errors } = await setup(t);
   const host = await open("Ada");
   const guest = await open("Bo");
@@ -105,6 +114,12 @@ test("a finished friend match and a robot game leave at once", { skip: !pw && "P
   await solo.goto(`${srv.base}/tic-tac-toe/?robot=1`);
   await wait(solo, () => window.ddp.match?.phase === "playing");
   await solo.click("#leave");
+  await solo.locator("#play-friend").waitFor();
+  assert.equal(await solo.locator("dialog").count(), 0);
+  // Back from a robot game returns to the lobby at once too.
+  await solo.click("#play-robot");
+  await wait(solo, () => window.ddp.match?.phase === "playing");
+  await back(solo);
   await solo.locator("#play-friend").waitFor();
   assert.equal(await solo.locator("dialog").count(), 0);
   assert.deepEqual(errors, []);

@@ -6,6 +6,9 @@
 // seat (see "player bar" in theme.css).
 import { el } from "./shell.js";
 
+// An arrow out of a door, so Leave reads as a way out at a glance.
+const LEAVE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/></svg>';
+
 export function playerBar(session, { onLeave, classes = () => "" }) {
   const me = session.index;
   const order = [me, ...session.others.map((p) => p.seat)];
@@ -27,7 +30,8 @@ export function playerBar(session, { onLeave, classes = () => "" }) {
   const draws = box("draws", "Draws");
   const duel = order.length === 2;
   const players = el("div", { class: "pb-players" }, duel ? [pills[0].node, el("span", { class: "pb-vs" }, "vs"), pills[1].node] : pills.map((p) => p.node));
-  const leave = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: onLeave }, "Leave");
+  const leave = el("button", { class: "btn small pb-leave", type: "button", id: "leave", onclick: onLeave }, "Leave");
+  leave.insertAdjacentHTML("afterbegin", LEAVE_ICON);
   const scoreBox = el("dl", { class: "pb-score", id: "score", "aria-label": "Score" }, wins.map((w) => w.node));
   const node = el("div", { class: `player-bar ${duel ? "" : "many"}` }, el("div", { class: "pb-top" }, players, leave), scoreBox);
 
