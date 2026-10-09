@@ -72,7 +72,6 @@ test("a 4-seat room reads out who joins and keeps focus after Accept", { skip: !
   const cy = await open("Cy");
   await cy.goto(`${srv.base}/ludo/`);
   await cy.locator("#join-code").fill(code);
-  await press(cy, cy.locator("#join-code"));
   await host.locator("#lobby-progress", { hasText: "Cy wants to join" }).waitFor();
   await press(host, host.getByRole("button", { name: "Accept" }));
   await host.locator("#lobby-progress", { hasText: "Cy joined" }).waitFor();
