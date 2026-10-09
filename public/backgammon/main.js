@@ -750,6 +750,7 @@ function mountBackgammon(session, root, shell) {
     if (destroyed) return;
     const st = match?.state;
     const phase = match?.phase || "setup";
+    shell.setInProgress(phase !== "over" && phase !== "aborted");
     const pos = shownPos();
     root.querySelector(".backgammon").dataset.phase = phase;
     // Coral is whoever moves first this match, on every screen.

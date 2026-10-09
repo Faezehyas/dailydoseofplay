@@ -4,7 +4,10 @@
 //
 //   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout, settings })
 //
-// onSession(session, root) mounts the game in `root` and returns { destroy }.
+// onSession(session, root, shell) mounts the game in `root` and returns { destroy }.
+// shell.leave() goes back to the lobby; while the game says a friend match is
+// on (shell.setInProgress(true)), it asks first. The browser's Back does the same,
+// and closing or reloading the tab gets the browser's own prompt.
 // createRobot(session) drives one robot seat over an in-memory group; robots
 // is how many seats (a number, or a function read when a robot game starts).
 // maxPlayers must match the game's entry in games.json (the server enforces it).
@@ -14,7 +17,8 @@
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
 // settings is the game's gameSettings() (settings.js): the home screen shows
 // them inside the lobby card, and the host's waiting screen their summary.
-import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
+import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert, askBeforeLeaving } from "./shell.js";
+import { confirmDialog } from "./confirm.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
 
@@ -70,7 +74,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   if (page) page.dataset.layout = LAYOUTS.includes(layout) ? layout : "wide";
   showView("lobby");
   const duel = maxPlayers === 2;
-  const state = { room: null, session: null, game: null, robot: null, robots: [], attempt: 0 };
+  const state = { room: null, session: null, game: null, mustAsk: () => false, leave: null, robot: null, robots: [], attempt: 0 };
   window.ddp = state; // handy for debugging and browser tests
 
   const params = new URLSearchParams(location.search);
@@ -474,13 +478,27 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     lobbyRoot.hidden = true;
     gameRoot.hidden = false;
     gameRoot.replaceChildren();
-    state.game = onSession(session, gameRoot, { leave: () => leaveGame() });
+    // The game has a history entry of its own, so Back leaves it as Leave does.
+    history.pushState({ game: slug }, "");
+    let inProgress = false;
+    state.mustAsk = () => inProgress && session.mode === "friend" && askBeforeLeaving();
+    state.leave = async () => {
+      if (state.mustAsk() && !(await confirmLeave(session))) return;
+      leaveGame();
+    };
+    state.game = onSession(session, gameRoot, { leave: state.leave, setInProgress: (on) => (inProgress = on) });
     session.on("end", (reason, seat) => {
+      inProgress = false;
       if (reason === "self") return;
       const who = session.players[seat]?.name ?? session.opponent.name;
       if (reason === "message_too_big") return showEnded(ERRORS.message_too_big);
       showEnded(reason === "left" ? `${who} left the game.` : `The connection to ${who} was lost.`);
     });
+  }
+
+  function confirmLeave(session) {
+    const text = session.players.length === 2 ? `${session.opponent.name} will be told you left.` : "It ends for everyone.";
+    return confirmDialog({ title: "Leave the game?", text, yes: "Leave" });
   }
 
   function showEnded(text) {
@@ -502,6 +520,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   function leaveGame(message) {
     const session = state.session;
     state.session = null;
+    if (history.state?.game === slug) history.back();
     session?.leave();
     state.game?.destroy?.();
     state.game = null;
@@ -512,6 +531,23 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   }
 
   addEventListener("pagehide", () => state.session?.leave());
+
+  // Closing or reloading the tab mid-match: only the browser's own prompt can ask.
+  addEventListener("beforeunload", (e) => {
+    if (!state.session || !state.mustAsk()) return;
+    e.preventDefault();
+    e.returnValue = true; // older Safari and Chrome
+  });
+
+  // Back during a game: stay on the game's entry and leave as Leave does. Back
+  // while the question is open closes it, like Esc.
+  addEventListener("popstate", () => {
+    if (!state.session) return;
+    history.pushState({ game: slug }, "");
+    const open = $("#confirm");
+    if (open) open.close();
+    else state.leave();
+  });
 
   // ---------- entry ----------
   // Deferred until the game's module has finished loading: onSession may use
