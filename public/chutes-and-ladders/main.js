@@ -6,6 +6,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, cellOf, LADDERS, CHUTES, LAST, SIZE, SPINNER, MAX_PLAYERS } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -33,7 +34,6 @@ const still = () => reduced.matches;
 startGameShell({
   slug: "chutes-and-ladders",
   title: "Chutes and Ladders",
-  tagline: "Spin, hop, climb the ladders and dodge the chutes. First to square 100 wins.",
   layout: "wide",
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,
@@ -421,10 +421,9 @@ function mountGame(session, root, shell) {
   // Colours go by seat, so a player has the same colour on every screen: p0 coral, p1 teal, p2 violet, p3 amber.
   const colorOf = (p) => p;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
   const nameOf = (p) => (p === me ? "You" : session.players[p].name);
   const listOf = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
-  const score = Array(count).fill(0);
+  const score = { wins: Array(count).fill(0) };
   const spinMode = settings.get().spin; // each player's own choice
   let config = null;
   let rules = null;
@@ -447,21 +446,8 @@ function mountGame(session, root, shell) {
   const offMsg = session.onMessage((msg, from) => (msg.t === "setup" ? from === 0 && onSetup(msg) : route(msg, from)));
 
   // ---------- layout ----------
-  const pills = order.map((player) => {
-    const where = el("small", { class: "where" });
-    const node = el(
-      "span",
-      { class: `who p${colorOf(player)}` },
-      el("span", { class: "swatch", "aria-hidden": "true" }),
-      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : session.players[player].name), where),
-    );
-    return { node, where };
-  });
-  const players = duel
-    ? el("div", { class: "cl-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node)
-    : el("div", { class: "cl-players many" }, pills.map((p) => p.node));
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "cl-score", id: "cl-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave(), classes: (p) => `p${colorOf(p)}` });
+  bar.update({ badges: seats.map(() => el("span", { class: "swatch", "aria-hidden": "true" })) });
   const status = el("p", { class: "cl-status", id: "cl-status", role: "status", "aria-live": "polite", dataset: { who: `p${colorOf(me)}` } });
   const board = buildBoard(count);
   const spinnerParts = spinnerArt();
@@ -478,8 +464,7 @@ function mountGame(session, root, shell) {
     el(
       "div",
       { class: "chutes-ladders" },
-      el("div", { class: "cl-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       el(
         "div",
@@ -760,11 +745,6 @@ function mountGame(session, root, shell) {
   }
 
   // ---------- render ----------
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(...order.map((p) => item(p === me ? "You" : nameOf(p), score[p], `${p === me ? "mine" : "theirs"} p${colorOf(p)}`)));
-  }
-
   function statusText() {
     if (!match) return "Getting the room's settings…";
     const st = match.state;
@@ -800,12 +780,11 @@ function mountGame(session, root, shell) {
     const st = match?.state;
     const phase = match?.phase || "setup";
     root.querySelector(".chutes-ladders").dataset.phase = phase;
-    for (const [k, player] of order.entries()) {
-      const { node, where } = pills[k];
-      node.classList.toggle("active", phase === "playing" && (current ? current.player === player : st.turn === player));
-      where.textContent = shown[player] === 0 ? "start" : `square ${shown[player]}`;
-    }
-    renderScore();
+    bar.update({
+      turn: phase !== "playing" ? -1 : current ? current.player : st.turn,
+      notes: shown.map((n) => (n === 0 ? "start" : `square ${n}`)),
+      score,
+    });
     status.textContent = statusText();
     const myTurn = phase === "playing" && st.turn === me && !pending;
     status.classList.toggle("mine", myTurn || current?.player === me);
@@ -917,7 +896,7 @@ function mountGame(session, root, shell) {
     match.on("events", ({ events }) => {
       for (const ev of events) if (ev.type === "spin") enqueue(ev);
     });
-    match.on("over", ({ winner }) => score[winner]++);
+    match.on("over", ({ winner }) => score.wins[winner]++);
     router.start(match);
     render();
   }

@@ -97,11 +97,11 @@ test("two friends play Chess on the host's settings through the invite link, the
   assert.equal(await guest.locator("#chess-config").innerText(), "60 s a move · 5 min each", "the host's settings reach the friend");
   assert.equal(await host.locator("#chess-config").innerText(), await guest.locator("#chess-config").innerText());
   assert.equal(await guest.evaluate(() => window.ddp.match.rules.config.first), "host");
-  assert.match(await host.locator(".chess-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
   // "Ada vs Bo" stays together, centred over the scoreboard.
   const centre = (page, sel) => page.locator(sel).evaluate((n) => { const r = n.getBoundingClientRect(); return r.left + r.width / 2; });
-  assert.ok(Math.abs((await centre(host, ".chess-players")) - (await centre(host, "#chess-score"))) < 2, "the players are centred");
-  assert.match(await guest.locator(".chess-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.ok(Math.abs((await centre(host, ".pb-players")) - (await centre(host, "#score"))) < 2, "the players are centred");
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   assert.equal(await bg(guest), "rgb(18, 21, 28)", "the phone follows its dark OS theme");
@@ -167,8 +167,8 @@ test("two friends play Chess on the host's settings through the invite link, the
   assert.equal(await host.locator("#chess-result").innerText(), "Defeat");
   assert.equal(await host.locator("#chess-detail").innerText(), "Bo checkmated you with Qh4#.");
   assert.equal(await host.locator(".sq.check").count(), 1, "the mated king is marked");
-  assert.match(await host.locator("#chess-score").innerText(), /You\s+0\s+Draws\s+0\s+Bo\s+1/);
-  assert.match(await guest.locator("#chess-score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
+  assert.match(await host.locator("#score").innerText(), /You\s+0\s+Draws\s+0\s+Bo\s+1/);
+  assert.match(await guest.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+\S+\s+0/);
   const clocks = await host.evaluate(() => window.ddp.match.state.clocks);
   assert.ok(clocks.every((ms) => ms < 300_000 && ms > 200_000), `both clocks were spent: ${clocks}`);
   assert.ok(await noHorizontalScroll(guest));
@@ -223,7 +223,7 @@ test("two friends play Chess on the host's settings through the invite link, the
   assert.equal(await host.locator("#chess-result").innerText(), "Victory!");
   assert.equal(await host.locator("#chess-detail").innerText(), "Bo resigned.");
   assert.equal(await guest.locator("#chess-detail").innerText(), "You resigned.");
-  assert.match(await host.locator("#chess-score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
+  assert.match(await host.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
   assert.match(await host.locator("#chess-moves").innerText(), /1\.\s*e4\s*d5[\s\S]*5\.\s*bxa8=N/);
   assert.ok(await noHorizontalScroll(guest));
   await guest.screenshot({ path: `${ARTIFACTS}/chess-4-resign-mobile-dark.png`, fullPage: true });
@@ -261,7 +261,7 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   await page.screenshot({ path: `${ARTIFACTS}/chess-5-settings-mobile.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".chess-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   assert.equal(await page.locator("#chess-config").innerText(), "30 s a move · no game clock · Hard robot");
   assert.equal(await page.evaluate(() => window.ddp.match.state.white), 0, "the room setting says I play White");
   assert.ok(await page.locator("#chess-move-left").isVisible());
@@ -327,7 +327,7 @@ test("Chess vs the robot on a 360 px phone: a full game, then a loss on the move
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
   assert.equal(await page.locator("#chess-result").innerText(), "Defeat");
   assert.equal(await page.locator("#chess-detail").innerText(), "Your clock ran out.");
-  assert.match(await page.locator("#chess-score").innerText(), /Robot\s+[1-2]/);
+  assert.match(await page.locator("#score").innerText(), /Robot\s+[1-2]/);
   await page.screenshot({ path: `${ARTIFACTS}/chess-8-clock-loss-dark.png`, fullPage: true });
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();

@@ -4,6 +4,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import {
   makeRules,
   normalizeConfig,
@@ -59,7 +60,6 @@ const settings = mountSettings(document.getElementById("chess-settings"), docume
 startGameShell({
   slug: "chess",
   title: "Chess",
-  tagline: "Sixty-four squares, two armies, one king to trap. Your move.",
   layout: "narrow",
   createRobot(session) {
     const config = settings.get();
@@ -83,8 +83,7 @@ function mountChess(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0], draws: 0 };
   let config = null;
   let rules = null;
   let match = null;
@@ -110,14 +109,12 @@ function mountChess(session, root, shell) {
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
     const dot = el("span", { class: "pill-color", "aria-label": "colour not decided" });
-    const node = el("span", { class: `who ${player === me ? "me" : ""}` }, dot, el("span", { class: "name" }, player === me ? myName : oppName));
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
     const taken = el("div", { class: `chess-taken ${player === me ? "mine" : "theirs"}`, "aria-label": player === me ? "Pieces you captured" : `Pieces ${oppName} captured` });
-    return { node, dot, clock, taken };
+    return { dot, clock, taken };
   });
-  const players = el("div", { class: "chess-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "chess-score", id: "chess-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: { [me]: pills[0].dot, [opp]: pills[1].dot } });
   const status = el("p", { class: "chess-status", id: "chess-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "chess-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -139,8 +136,7 @@ function mountChess(session, root, shell) {
     el(
       "div",
       { class: "chess" },
-      el("div", { class: "chess-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       pills[1].taken,
@@ -389,10 +385,10 @@ function mountChess(session, root, shell) {
   // ---------- render ----------
   function renderPills() {
     const st = match?.state;
+    bar.update({ turn: match?.phase === "playing" ? st.turn : -1 });
     for (const [k, player] of [me, opp].entries()) {
-      const { node, dot } = pills[k];
+      const { dot } = pills[k];
       const color = st ? colorOfPlayer(st, player) : -1;
-      node.classList.toggle("active", match?.phase === "playing" && st.turn === player);
       dot.dataset.color = color < 0 ? "" : color === WHITE ? "w" : "b";
       dot.setAttribute("aria-label", color < 0 ? "colour not decided" : `plays ${COLOR_NAMES[color]}`);
     }
@@ -413,11 +409,6 @@ function mountChess(session, root, shell) {
       box.innerHTML = types.map((t) => pieceSvg(((color ^ 1) << 3) | t)).join("");
       if (lead > 0) box.append(el("span", { class: "lead" }, `+${lead}`));
     }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item("Draws", score.draws, "draws"), item(oppName, score.them, "theirs"));
   }
 
   function statusText() {
@@ -575,7 +566,7 @@ function mountChess(session, root, shell) {
     root.querySelector(".chess").dataset.you = st ? (st.white === me ? "a" : "b") : "";
     if (phase === "playing" && !squares.length) buildBoard();
     renderPills();
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -667,8 +658,7 @@ function mountChess(session, root, shell) {
     });
     match.on("over", ({ winner }) => {
       if (winner === DRAW) score.draws++;
-      else if (winner === me) score.me++;
-      else score.them++;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();

@@ -44,10 +44,10 @@ test("four friends fill a Chutes and Ladders room and play a full game, then a r
   assert.deepEqual(await Promise.all(pages.map((p) => p.evaluate(() => window.ddp.session.index))), [0, 1, 2, 3]);
   for (const p of pages) {
     assert.equal(await p.locator(".cl-board .pawn").count(), 4, "four pawns on the board");
-    assert.equal(await p.locator(".cl-players .who").count(), 4);
-    assert.equal(await p.locator("#cl-score > div").count(), 4);
+    assert.equal(await p.locator(".pb-who").count(), 4);
+    assert.equal(await p.locator("#score > div").count(), 4);
   }
-  assert.match(await friends[1].locator(".cl-players").innerText(), /Cy \(you\)[\s\S]*Ada[\s\S]*Bo[\s\S]*Di/, "you first, then the others in seat order");
+  assert.match(await friends[1].locator(".pb-players").innerText(), /Cy \(you\)[\s\S]*Ada[\s\S]*Bo[\s\S]*Di/, "you first, then the others in seat order");
   const seen = await Promise.all(pages.map(colours));
   assert.deepEqual(seen[0], { Ada: "--accent --accent", Bo: "--accent-2 --accent-2", Cy: "--cl-p2 --cl-p2", Di: "--cl-p3 --cl-p3" }, "colours go by seat");
   for (const c of seen.slice(1)) assert.deepEqual(c, seen[0], "every screen shows each player in the same colour");

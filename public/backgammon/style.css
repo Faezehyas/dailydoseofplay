@@ -5,109 +5,13 @@
   gap: 10px;
 }
 
-/* "You vs Robot" stays together, centred over the scoreboard, with Leave on
-   the right; the empty first column balances Leave. No grid gap, so on a
-   phone that empty column takes no room from the names. */
-.bg-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
-  align-items: center;
-}
-
-.bg-top > .bg-players {
-  grid-column: 2;
-}
-
-.bg-top > .btn {
-  grid-column: 3;
-  justify-self: end;
-  margin-left: 8px;
-}
-
-/* Each name keeps its full width when it fits; long names share what's left. */
-.bg-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.bg-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.bg-players .who.active {
-  border-color: var(--theirs);
-  box-shadow: 0 0 0 2px var(--theirs) inset;
-}
-
-.bg-players .who.me.active {
-  border-color: var(--mine);
-  box-shadow: 0 0 0 2px var(--mine) inset;
-}
-
-.bg-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bg-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-/* ---------- score ---------- */
-.bg-score {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.bg-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  min-width: 0;
-}
-
-.bg-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bg-score dd {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.bg-score .mine dd {
-  color: var(--mine-text);
-}
-
-.bg-score .theirs dd {
-  color: var(--theirs-text);
+/* Each player's colour, in the player bar. */
+.player-bar .swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--seat);
 }
 
 /* ---------- status ---------- */
@@ -327,38 +231,6 @@
   justify-content: center;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-/* ---------- players ---------- */
-.bg-players .who {
-  gap: 5px;
-  padding: 3px 10px 3px 6px;
-}
-
-.bg-players .swatch {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--mine);
-}
-
-.bg-players .them .swatch {
-  background: var(--theirs);
-}
-
-.bg-players .label {
-  display: grid;
-  min-width: 0;
-  line-height: 1.15;
-}
-
-.bg-players .pips {
-  color: var(--muted);
-  font-weight: 700;
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 /* ---------- board ---------- */

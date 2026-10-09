@@ -2,6 +2,7 @@
 // All game logic lives in rules.js / match.js; this file is view + input.
 import { startGameShell } from "../engine/lobby.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
@@ -81,7 +82,6 @@ const settings = mountSettings(document.getElementById("sb-settings"), document.
 startGameShell({
   slug: "sea-battle",
   title: "Sea Battle",
-  tagline: "Hide your fleet, find theirs. Grab gifts for heavy weapons.",
   layout: "wide",
   createRobot: (session) => startRobot(session, { delay: AI_DELAY, config: settings.get() }),
   onSession: (session, root, shell) => mountSeaBattle(session, root, shell),
@@ -126,7 +126,7 @@ function mountSeaBattle(session, root, shell) {
   let selectedShip = -1;
   let dragging = false;
   let rematchVotes = { me: false, them: false };
-  const score = [0, 0]; // wins per player across rematches
+  const score = { wins: [0, 0] }; // across rematches
   let lastShots = [new Set(), new Set()]; // board -> squares of the latest volley at it
   let lastTurnSeen = -1;
   const landsAt = [0, 0]; // per board: when the shell in flight lands (ms)
@@ -137,9 +137,7 @@ function mountSeaBattle(session, root, shell) {
 
   // ---------- layout ----------
   const status = el("p", { class: "sb-status", id: "sb-status", role: "status", "aria-live": "polite" });
-  const players = el("div", { class: "sb-players" });
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: confirmLeave }, "Leave");
-  const top = el("div", { class: "sb-top" }, players, leaveBtn);
+  const bar = playerBar(session, { onLeave: confirmLeave });
   const clock = el("span", { class: "sb-clock mono", id: "sb-clock", role: "timer", hidden: true, "aria-live": "off" });
   const myClock = el("span", { class: "game-clock mine mono", id: "clock-me", role: "timer", "aria-label": "Your clock", hidden: true });
   const oppClock = el("span", { class: "game-clock mono", id: "clock-opp", role: "timer", "aria-label": `${oppName}'s clock`, hidden: true });
@@ -167,7 +165,7 @@ function mountSeaBattle(session, root, shell) {
     el(
       "div",
       { class: "sea-battle" },
-      top,
+      bar.node,
       el("div", { class: "sb-statusrow" }, status),
       el("div", { class: "sb-clocks" }, myClock, clock, oppClock),
       configLine,
@@ -276,21 +274,7 @@ function mountSeaBattle(session, root, shell) {
     // Coral is whoever shoots first this match, on every screen.
     root.querySelector(".sea-battle").dataset.you = st ? (st.first === me ? "a" : "b") : "";
 
-    players.replaceChildren(
-      el(
-        "span",
-        { class: `who me ${st && st.turn === me && phase === "playing" ? "active" : ""}` },
-        el("span", { class: "name", title: session.me.name }, session.me.name === "You" ? "You" : `${session.me.name} (you)`),
-        el("b", { class: "score", id: "score-me", title: "Wins" }, String(score[me])),
-      ),
-      el("span", { class: "vs" }, "vs"),
-      el(
-        "span",
-        { class: `who ${st && st.turn === opp && phase === "playing" ? "active" : ""}` },
-        el("b", { class: "score", id: "score-opp", title: "Wins" }, String(score[opp])),
-        el("span", { class: "name", title: oppName }, oppName),
-      ),
-    );
+    bar.update({ turn: st && phase === "playing" ? st.turn : -1, score });
 
     // Status line
     let text = "";
@@ -855,7 +839,7 @@ function mountSeaBattle(session, root, shell) {
       if (spawned.some((g) => g.board === opp)) addLog(`A mystery gift popped up in ${oppName}'s waters. Hit it to win a weapon!`, "gift");
     });
     match.on("over", ({ winner, reason }) => {
-      score[winner] += 1;
+      score.wins[winner] += 1;
       const wait = Math.max(0, ...landsAt.map((t) => t - performance.now()));
       const current = match;
       setTimeout(() => {

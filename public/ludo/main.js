@@ -6,6 +6,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, distinctMoves, legalMoves, colorsFor, COLORS, MAX_PLAYERS, YARD, HOME, LAST_LOOP, TOKENS } from "./rules.js";
 import { chooseMove, startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -34,7 +35,6 @@ let hurry = 0; // 0 normal, 1 quick, 2 skip to the end
 startGameShell({
   slug: "ludo",
   title: "Ludo",
-  tagline: "Roll a 6 to come out, knock rivals back to their yard, and race all four tokens home.",
   layout: "wide",
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,
@@ -72,10 +72,9 @@ function mountGame(session, root, shell) {
   const k = (3 - colorOf(me) + 4) % 4;
   const rot = rotator(k);
   const order = [me, ...session.others.map((p) => p.seat)];
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
   const nameOf = (p) => (p === me ? "You" : session.players[p].name);
   const robotGame = session.mode === "robot";
-  const score = Array(count).fill(0);
+  const score = { wins: Array(count).fill(0) };
   let config = null;
   let rules = null;
   let match = null;
@@ -106,19 +105,9 @@ function mountGame(session, root, shell) {
   const offMsg = session.onMessage((msg, from) => (msg.t === "setup" ? from === 0 && onSetup(msg) : route(msg, from)));
 
   // ---------- layout ----------
-  const pills = order.map((player) => {
-    const where = el("small", { class: "where" });
-    const node = el(
-      "span",
-      { class: `who c-${cname(player)}`, dataset: { seat: player } },
-      el("span", { class: "swatch", "aria-hidden": "true" }, markSvg(colorOf(player), 10)),
-      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : session.players[player].name), where),
-    );
-    return { node, where };
-  });
-  const players = el("div", { class: `ld-players ${count > 2 ? "many" : ""}` }, count === 2 ? [pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node] : pills.map((p) => p.node));
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "ld-score", id: "ld-score", "aria-label": "Wins" });
+  const wheres = seats.map(() => el("span", { class: "where" }));
+  const bar = playerBar(session, { onLeave: () => shell.leave(), classes: (p) => `c-${cname(p)}` });
+  bar.update({ badges: seats.map((p) => el("span", { class: "swatch", "aria-hidden": "true" }, markSvg(colorOf(p), 10))), notes: wheres });
   const status = el("p", { class: "ld-status", id: "ld-status", role: "status", "aria-live": "polite" });
 
   const svg = s("svg", { class: "ld-board", id: "ld-board", viewBox: `-10 -10 ${SIZE + 20} ${SIZE + 20}`, role: "group" });
@@ -152,8 +141,7 @@ function mountGame(session, root, shell) {
     el(
       "div",
       { class: "ludo" },
-      el("div", { class: "ld-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       el(
         "div",
@@ -612,11 +600,6 @@ function mountGame(session, root, shell) {
   }
 
   // ---------- render ----------
-  function renderScore() {
-    const item = (p) => el("div", { class: `c-${cname(p)} ${p === me ? "mine" : ""}` }, el("dt", {}, p === me ? "You" : nameOf(p)), el("dd", {}, String(score[p])));
-    scoreBox.replaceChildren(...order.map(item));
-  }
-
   function statusText() {
     if (ended) return "The game has ended.";
     if (!match) return "Getting the room's settings…";
@@ -790,14 +773,11 @@ function mountGame(session, root, shell) {
     const phase = ended ? "ended" : match?.phase || "setup";
     root.querySelector(".ludo").dataset.phase = phase;
     const d = decision();
-    for (const [i, player] of order.entries()) {
-      const { node, where: w } = pills[i];
-      const active = phase === "playing" && (current ? current.player === player : st.turn === player);
-      node.classList.toggle("active", active);
-      node.classList.toggle("done", !!st?.order.includes(player));
-      w.textContent = st ? where(player) : "";
+    bar.update({ turn: phase !== "playing" ? -1 : current ? current.player : st.turn, score });
+    for (const p of seats) {
+      wheres[p].classList.toggle("done", !!st?.order.includes(p));
+      wheres[p].textContent = st ? where(p) : "";
     }
-    renderScore();
     status.textContent = statusText();
     status.dataset.color = current ? cname(current.player) : d ? cname(d.player) : "";
     const mine = myDecision();
@@ -959,7 +939,7 @@ function mountGame(session, root, shell) {
     match.on("events", ({ events }) => {
       for (const ev of events) enqueue(ev);
     });
-    match.on("over", ({ winner }) => score[winner]++);
+    match.on("over", ({ winner }) => score.wins[winner]++);
     router.start(match);
     render();
   }

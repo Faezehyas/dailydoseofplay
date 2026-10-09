@@ -53,15 +53,15 @@ test("two friends play Ludo on the host's house rules through the invite link, t
   await guest.locator("#ld-config").filter({ hasText: "blocks on" }).waitFor();
   assert.equal(await guest.locator("#ld-config").innerText(), "three 6s lose the turn · blocks on · a capture rolls again");
   assert.equal(await host.locator("#ld-config").innerText(), await guest.locator("#ld-config").innerText(), "the host's settings reach the friend");
-  assert.match(await host.locator(".ld-players").innerText(), /Ada \(you\)[\s\S]*Bo/);
-  assert.match(await guest.locator(".ld-players").innerText(), /Bo \(you\)[\s\S]*Ada/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada \(you\)[\s\S]*Bo/);
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo \(you\)[\s\S]*Ada/);
   // Two players sit opposite: red and yellow, and each sees their own yard bottom left.
   assert.equal(await yardCorner(host, "red"), "bottom left");
   assert.equal(await yardCorner(guest, "yellow"), "bottom left");
   assert.equal(await yardCorner(guest, "red"), "top right");
-  assert.equal(await host.locator(".ld-players .who.c-red").count(), 1);
-  assert.equal(await guest.locator(".ld-players .who.c-yellow", { hasText: "Bo" }).count(), 1, "Bo is yellow on both screens");
-  assert.equal(await host.locator(".ld-players .who.c-yellow", { hasText: "Bo" }).count(), 1);
+  assert.equal(await host.locator(".pb-who.c-red").count(), 1);
+  assert.equal(await guest.locator(".pb-who.c-yellow", { hasText: "Bo" }).count(), 1, "Bo is yellow on both screens");
+  assert.equal(await host.locator(".pb-who.c-yellow", { hasText: "Bo" }).count(), 1);
   assert.equal(await host.locator(".ld-board .pawn").count(), 8);
   assert.equal(await host.locator(".yard.empty").count(), 2, "green and blue sit out");
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
@@ -97,8 +97,8 @@ test("two friends play Ludo on the host's house rules through the invite link, t
   assert.match(await loser.locator("#ld-result").innerText(), /wins$/);
   assert.match(await loser.locator("#ld-detail").innerText(), /brought all four home in \d+ rolls/);
   assert.equal(await host.locator("#ld-standings li").count(), 2);
-  assert.match(await winner.locator("#ld-score").innerText(), /You\s+1\s+\S+\s+0/);
-  assert.match(await loser.locator("#ld-score").innerText(), /You\s+0\s+\S+\s+1/);
+  assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
+  assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
   assert.ok(await resultInView(host), "the result shows on a laptop without scrolling");
   assert.ok(await resultInView(guest), "and on a phone");
   await host.screenshot({ path: `${ARTIFACTS}/ld-2-friend-over-light.png` });
@@ -114,7 +114,7 @@ test("two friends play Ludo on the host's house rules through the invite link, t
   assert.match(await host.locator("#ld-note").innerText(), /Rematch #1/);
   const again = await finish();
   const wins = (seat) => (won.winner === seat) + (again.winner === seat);
-  assert.match(await host.locator("#ld-score").innerText(), new RegExp(`You\\s+${wins(0)}\\s+Bo\\s+${wins(1)}`));
+  assert.match(await host.locator("#score").innerText(), new RegExp(`You\\s+${wins(0)}\\s+Bo\\s+${wins(1)}`));
 
   // The friend closes the tab: the host is told.
   await guest.close();
@@ -158,7 +158,6 @@ test("a four-seat Ludo room: two friends join by the invite key, a third types t
   const di = await open("Di");
   await di.goto(`${srv.base}/ludo/`);
   await di.fill("#join-code", code);
-  await di.click(".join-row button");
   const knock = host.locator("#roster li.knock", { hasText: "Di wants to join" });
   await knock.waitFor();
   assert.match(await host.locator("#roster").innerText(), /Ada\s+host[\s\S]*Bo\s+in[\s\S]*Cy\s+in[\s\S]*Di wants to join/, "the knock sits in the player list");

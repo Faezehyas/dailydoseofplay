@@ -7,6 +7,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, geometry, lineEnds, DRAW } from "./rules.js";
 import { startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -29,7 +30,6 @@ const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 startGameShell({
   slug: "dots-and-boxes",
   title: "Dots and Boxes",
-  tagline: "Join the dots, close a box, go again. Whoever ends with the most boxes wins.",
   layout: "wide",
   createRobot: (session) => {
     const config = settings.get();
@@ -201,10 +201,9 @@ function mountGame(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
   const initial = (name) => (String(name).trim()[0] || "?").toUpperCase();
   const initials = { [me]: initial(session.me.name), [opp]: initial(oppName) };
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0] }; // draws once there is one
   const cls = (player) => (player === me ? "p0" : "p1"); // yours --mine, theirs --theirs (see data-you)
   let config = null;
   let rules = null;
@@ -242,19 +241,13 @@ function mountGame(session, root, shell) {
 
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
-    const count = el("small", { class: "count" });
-    const node = el(
-      "span",
-      { class: `who ${cls(player)}` },
-      el("span", { class: "swatch", "aria-hidden": "true" }, initials[player]),
-      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : oppName), count),
-    );
+    const count = el("span", { class: "count" });
+    const swatch = el("span", { class: "swatch", "aria-hidden": "true" }, initials[player]);
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, count, clock, last: 0 };
+    return { swatch, count, clock, last: 0 };
   });
-  const players = el("div", { class: "db-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "db-score", id: "db-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave(), classes: cls });
+  bar.update({ badges: { [me]: pills[0].swatch, [opp]: pills[1].swatch }, notes: { [me]: pills[0].count, [opp]: pills[1].count } });
   const status = el("p", { class: "db-status", id: "db-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "db-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -274,8 +267,7 @@ function mountGame(session, root, shell) {
     el(
       "div",
       { class: "dots-boxes" },
-      el("div", { class: "db-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "db-main" }, boardWrap, el("div", { class: "db-side" }, tally, overBox)),
@@ -623,10 +615,10 @@ function mountGame(session, root, shell) {
   }
 
   function renderPills(counts) {
+    const st = match?.state;
+    bar.update({ turn: match?.phase !== "playing" ? -1 : current ? current.player : pendingOpp ? -1 : st.turn });
     for (const [k, player] of [me, opp].entries()) {
       const pill = pills[k];
-      const playing = match?.phase === "playing";
-      pill.node.classList.toggle("active", playing && (current ? current.player === player : match.state.turn === player && !pendingOpp));
       const n = counts[player];
       pill.count.textContent = `${n} box${n === 1 ? "" : "es"}`;
       if (n > pill.last && !fast()) {
@@ -648,12 +640,6 @@ function mountGame(session, root, shell) {
       el("span", {}, left ? ` · ${left} left · ` : " · all taken · "),
       el("b", { class: "theirs" }, `${counts[opp]} ${oppName}`),
     );
-  }
-
-  function renderScore() {
-    const item = (label, n, c) => el("div", { class: c }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), ...(score.draws ? [item("Draws", score.draws, "draws")] : []), item(oppName, score.them, "theirs"));
-    scoreBox.classList.toggle("three", score.draws > 0);
   }
 
   function statusText() {
@@ -713,7 +699,7 @@ function mountGame(session, root, shell) {
     root.querySelector(".dots-boxes").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     const counts = shownScore();
     renderPills(counts);
-    renderScore();
+    bar.update({ score });
     renderTally(counts);
     renderClocks();
     status.textContent = statusText();
@@ -857,9 +843,8 @@ function mountGame(session, root, shell) {
       else turnStart = pendingOpp ? null : now;
     });
     match.on("over", ({ winner }) => {
-      if (winner === me) score.me++;
-      else if (winner === DRAW) score.draws++;
-      else score.them++;
+      if (winner === DRAW) score.draws = (score.draws ?? 0) + 1;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();

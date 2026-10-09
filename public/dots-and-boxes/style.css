@@ -39,98 +39,29 @@
   --db-hatch: 0.5;
 }
 
-.db-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.db-top > .btn {
-  flex: none;
-}
-
 /* ---------- players ---------- */
-.db-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  flex: 1 1 auto;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.db-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 5px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.db-players .who.active {
-  border-color: var(--mine);
-  box-shadow: 0 0 0 2px var(--mine) inset;
-}
-
-.db-players .who.p1.active {
-  border-color: var(--theirs);
-  box-shadow: 0 0 0 2px var(--theirs) inset;
-}
-
 /* The swatch carries the initial drawn in your boxes. */
-.db-players .swatch {
+.player-bar .swatch {
   flex: none;
   display: grid;
   place-items: center;
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--mine);
+  background: var(--seat);
   color: var(--accent-ink);
   font-size: 0.75rem;
   font-weight: 900;
   line-height: 1;
 }
 
-.db-players .p1 .swatch {
-  background: var(--theirs);
-}
-
-.db-players .label {
-  display: grid;
-  min-width: 0;
-  line-height: 1.1;
-}
-
-.db-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.db-players .count {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.player-bar .count {
+  display: inline-block;
   transform-origin: left center;
 }
 
-.db-players .count.bump {
+.player-bar .count.bump {
   animation: db-bump 0.45s ease-out;
-}
-
-.db-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
 }
 
 @keyframes db-bump {
@@ -139,53 +70,7 @@
   100% { transform: scale(1); }
 }
 
-/* ---------- score and status ---------- */
-.db-score {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.db-score.three {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 1fr);
-}
-
-.db-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  min-width: 0;
-}
-
-.db-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.db-score dd {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.db-score .mine dd {
-  color: var(--mine-text);
-}
-
-.db-score .theirs dd {
-  color: var(--theirs-text);
-}
-
+/* ---------- status ---------- */
 .db-status {
   margin: 0;
   text-align: center;
@@ -601,7 +486,7 @@
     display: none;
   }
 
-  .db-score dd {
+  .dots-boxes .pb-score dd {
     font-size: 1.15rem;
   }
 
@@ -625,7 +510,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .db-board .line.fresh .ink,
-  .db-players .count.bump,
+  .player-bar .count.bump,
   .db-over {
     animation: none;
   }

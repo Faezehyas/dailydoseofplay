@@ -4,6 +4,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, legalPlays, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
 import { chooseMove, inContact, startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -44,7 +45,6 @@ let racingForYou = false;
 startGameShell({
   slug: "backgammon",
   title: "Backgammon",
-  tagline: "Roll, run and hit. Bring all fifteen checkers home and off the board first.",
   layout: "medium",
   createRobot: (session) => {
     const config = settings.get();
@@ -78,8 +78,7 @@ function mountBackgammon(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0 };
+  const score = { wins: [0, 0] };
   let config = null;
   let rules = null;
   let match = null;
@@ -110,19 +109,11 @@ function mountBackgammon(session, root, shell) {
 
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
-    const pips = el("small", { class: "pips" });
-    const node = el(
-      "span",
-      { class: `who ${player === me ? "me" : "them"}` },
-      el("span", { class: "swatch", "aria-hidden": "true" }),
-      el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : oppName), pips),
-    );
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, pips, clock };
+    return { clock };
   });
-  const players = el("div", { class: "bg-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "bg-score", id: "bg-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: [0, 1].map(() => el("span", { class: "swatch", "aria-hidden": "true" })) });
   const status = el("p", { class: "bg-status", id: "bg-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "bg-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -167,8 +158,7 @@ function mountBackgammon(session, root, shell) {
     el(
       "div",
       { class: "backgammon" },
-      el("div", { class: "bg-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "bg-board-wrap" }, board),
@@ -723,16 +713,10 @@ function mountBackgammon(session, root, shell) {
   }
 
   function renderPills(pos) {
-    for (const [k, player] of [me, opp].entries()) {
-      const { node, pips } = pills[k];
-      node.classList.toggle("active", match?.phase === "playing" && match.state.turn === player);
-      pips.textContent = pos ? `${pipCount(pos[player])} pips` : "";
-    }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item(oppName, score.them, "theirs"));
+    bar.update({
+      turn: match?.phase === "playing" ? match.state.turn : -1,
+      notes: [0, 1].map((player) => (pos ? `${pipCount(pos[player])} pips` : "")),
+    });
   }
 
   function statusText() {
@@ -767,7 +751,7 @@ function mountBackgammon(session, root, shell) {
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".backgammon").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills(pos);
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -883,8 +867,7 @@ function mountBackgammon(session, root, shell) {
       resetStage();
     });
     match.on("over", ({ winner }) => {
-      if (winner === me) score.me++;
-      else score.them++;
+      score.wins[winner]++;
     });
     router.start(match);
     render();

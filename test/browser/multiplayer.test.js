@@ -121,7 +121,7 @@ test("three friends fill a room through the invite link, play on shared dice, re
   const late = await open("Dee");
   await late.goto(invite);
   await late.click("#join-room");
-  await late.locator(".notice", { hasText: "doesn't exist any more" }).waitFor();
+  await late.locator("#join-error", { hasText: "doesn't exist any more" }).waitFor();
 
   // A rematch needs all three votes.
   await host.click("#rematch");

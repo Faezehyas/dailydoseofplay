@@ -210,3 +210,58 @@ test("wsOriginAllowed: whole-host match, rewritten Host plus X-Forwarded-Host", 
   assert.equal(wsOriginAllowed({ host: "games.example", origin: "null" }), false);
   assert.equal(wsOriginAllowed({ host: "games.example" }), true, "no Origin");
 });
+
+test("security headers on every response: pages, files, 304, 301, 404, 400, 405, 426, healthz and the /ws refusal", async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
+  const expected = {
+    "content-security-policy":
+      "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+    "strict-transport-security": "max-age=31536000",
+    "cross-origin-opener-policy": "same-origin",
+    "permissions-policy": "camera=(), microphone=(), geolocation=()",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "same-origin",
+  };
+  const check = (get, label) => {
+    for (const [name, value] of Object.entries(expected)) assert.equal(get(name), value, `${label}: ${name}`);
+  };
+  const checkRaw = (reply, status, label) => {
+    assert.match(reply, new RegExp(`^HTTP/1\\.1 ${status}`), label);
+    const head = reply.split("\r\n\r\n")[0].split("\r\n").slice(1);
+    const headers = new Map(head.map((line) => [line.slice(0, line.indexOf(":")).toLowerCase(), line.slice(line.indexOf(":") + 1).trim()]));
+    check((name) => headers.get(name), label);
+  };
+
+  const etag = (await fetch(`${srv.base}/engine/lobby.js`)).headers.get("etag");
+  const cases = [
+    ["/", {}, 200],
+    ["/engine/lobby.js", {}, 200],
+    ["/engine/lobby.js", { headers: { "If-None-Match": etag } }, 304],
+    ["/tic-tac-toe", { redirect: "manual" }, 301],
+    ["/nope/", {}, 404],
+    ["/", { method: "POST" }, 405],
+    ["/ws", {}, 426],
+  ];
+  for (const [url, opts, status] of cases) {
+    const res = await fetch(`${srv.base}${url}`, opts);
+    assert.equal(res.status, status, url);
+    check((name) => res.headers.get(name), `${status} ${url}`);
+  }
+
+  const health = await fetch(`${srv.base}/healthz`);
+  check((name) => health.headers.get(name), "/healthz");
+  assert.equal(health.headers.get("access-control-allow-origin"), "*");
+  assert.equal(health.headers.get("content-type"), "application/json");
+  assert.equal((await health.json()).ok, true);
+
+  checkRaw(await rawRequest(srv.base, "GET //[ HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), 400, "bad target");
+  checkRaw(
+    await rawRequest(
+      srv.base,
+      "GET /ws HTTP/1.1\r\nHost: x\r\nOrigin: https://evil.example\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
+    ),
+    403,
+    "/ws refusal",
+  );
+});

@@ -4,6 +4,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, dimensions, colorOf, isTimed, timeLeft, landing, EMPTY, DRAW } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -17,7 +18,6 @@ const settings = mountSettings(document.getElementById("c4-settings"), document.
 startGameShell({
   slug: "connect-4",
   title: "Connect 4",
-  tagline: "Drop, stack and line up four before your rival does.",
   layout: "narrow",
   createRobot: (session) => {
     const config = settings.get();
@@ -48,8 +48,7 @@ function mountConnect4(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0], draws: 0 };
   let config = null;
   let rules = null;
   let match = null;
@@ -68,13 +67,11 @@ function mountConnect4(session, root, shell) {
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
     const disc = el("span", { class: "pill-disc" });
-    const node = el("span", { class: `who ${player === me ? "me" : ""}` }, disc, el("span", { class: "name" }, player === me ? myName : oppName));
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, disc, clock };
+    return { disc, clock };
   });
-  const players = el("div", { class: "c4-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "c4-score", id: "c4-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: { [me]: pills[0].disc, [opp]: pills[1].disc } });
   const status = el("p", { class: "c4-status", id: "c4-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "c4-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -91,8 +88,7 @@ function mountConnect4(session, root, shell) {
     el(
       "div",
       { class: "connect-4" },
-      el("div", { class: "c4-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "c4-board-wrap" }, el("div", { class: "c4-frame" }, board)),
@@ -186,18 +182,13 @@ function mountConnect4(session, root, shell) {
   // ---------- render ----------
   function renderPills() {
     const st = match?.state;
+    bar.update({ turn: match?.phase === "playing" ? st.turn : -1 });
     for (const [k, player] of [me, opp].entries()) {
-      const { node, disc } = pills[k];
+      const { disc } = pills[k];
       const color = st ? colorOf(st, player) : "";
-      node.classList.toggle("active", match?.phase === "playing" && st.turn === player);
       disc.dataset.c = color;
       disc.setAttribute("aria-label", color ? `plays ${color}` : "colour not decided");
     }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item("Draws", score.draws, "draws"), item(oppName, score.them, "theirs"));
   }
 
   function statusText() {
@@ -225,7 +216,7 @@ function mountConnect4(session, root, shell) {
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".connect-4").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills();
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -320,8 +311,7 @@ function mountConnect4(session, root, shell) {
     match.on("events", () => (turnStart = performance.now()));
     match.on("over", ({ winner }) => {
       if (winner === DRAW) score.draws++;
-      else if (winner === me) score.me++;
-      else score.them++;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();

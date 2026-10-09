@@ -33,10 +33,10 @@ test("Chutes and Ladders vs the robot on a 360 px phone: spinner, hops, sounds, 
   await page.screenshot({ path: `${ARTIFACTS}/cl-3-settings-mobile-light.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".cl-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   assert.equal(await page.locator("#cl-config").innerText(), "exact spin to finish · one spin a turn");
   assert.ok(await noHorizontalScroll(page));
-  assert.match(await page.locator(".cl-players .who.p0").innerText(), /start/);
+  assert.match(await page.locator(".pb-who.p0").innerText(), /start/);
 
   // Spin by touch: the pointer spins and clicks, then the pawn hops square by square.
   await page.tap("#cl-spin");
@@ -52,7 +52,7 @@ test("Chutes and Ladders vs the robot on a 360 px phone: spinner, hops, sounds, 
   for (const name of ["flick", "tick", "settle", "hop"]) assert.ok(sounds.includes(name), `played ${name}: ${sounds.join(" ")}`);
   assert.ok(sounds.filter((n) => n === "hop").length >= first.path.length, "a hop sound per square");
   assert.equal(await page.locator("#cl-log li").count(), 2, "both spins are in the log");
-  const shownMine = await page.evaluate(() => document.querySelector(".cl-players .who.p0 .where").textContent);
+  const shownMine = await page.evaluate(() => document.querySelector(".pb-who.p0 .pb-note").textContent);
   assert.equal(shownMine, (await state(page)).pos[0] === 0 ? "start" : `square ${(await state(page)).pos[0]}`, "the pawn shows where the rules put it");
 
   // Spin by keyboard; with the sound muted nothing more plays.
@@ -107,7 +107,7 @@ test("Chutes and Ladders against three robots", { skip: !pw && "Playwright not i
   await pick(page, "robots", 3);
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".cl-players").innerText(), /Robot 1[\s\S]*Robot 2[\s\S]*Robot 3/);
+  assert.match(await page.locator(".pb-players").innerText(), /Robot 1[\s\S]*Robot 2[\s\S]*Robot 3/);
   assert.ok(await noHorizontalScroll(page));
   await spinUntilOver(page);
   const st = await state(page);

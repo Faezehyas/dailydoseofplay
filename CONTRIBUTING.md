@@ -63,9 +63,10 @@ public/<slug>/
 ```
 
 Keep `index.html`'s `<section id="lobby">` and `<section id="game" hidden>`;
-the engine renders into them. Don't make `#lobby` a live region: the lobby
-moves focus to each new screen and reads out its own progress. Shared styles
-(`.card`, `.btn`, `.btn.small`, `.rules` for the "How to play" panel,
+the engine renders into them. Keep them in its `<main>` too: the header's
+"Skip to content" link jumps there. Don't make `#lobby` a live region: the
+lobby moves focus to each new screen and reads out its own progress. Shared
+styles (`.card`, `.btn`, `.btn.small`, `.rules` for the "How to play" panel,
 `.rematch-status`, `.overlay`, `.spinner`, `.sr-only`) live in
 `/engine/theme.css`. `style.css` holds only what is specific to your game.
 
@@ -115,17 +116,20 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { rules } from "./rules.js";
 import { chooseMove } from "./robot.js";
 
 startGameShell({
   slug: "<slug>",
   title: "<Name>",
-  tagline: "<one original sentence>",
   layout: "narrow", // the page column while playing: "narrow", "medium" or "wide"
   createRobot: (session) => startTurnRobot(session, { rules, choose: chooseMove, delay: 600 }),
   onSession(session, root, shell) {
     const router = matchRouter(session);
+    const score = { wins: [0, 0], draws: 0 }; // leave out draws if the game has none
+    const bar = playerBar(session, { onLeave: () => shell.leave() });
+    root.append(bar.node);
     let match;
     let m = 0;
     let rematch = { me: false, them: false };
@@ -134,11 +138,13 @@ startGameShell({
       window.ddp.match = match; // browser tests read this
       match.on("update", render);
       match.on("invalid", (reason) => toast(reason));
+      match.on("over", ({ winner }) => (winner === 2 ? score.draws++ : score.wins[winner]++));
       router.start(match);
       render();
     }
     function render() {
       // match.state is null until the coin toss ends (match.phase === "playing").
+      bar.update({ turn: match.phase === "playing" ? match.state.turn : -1, score });
       // Draw match.state; on input call match.play(move) when match.canMove().
       // On "over"/"aborted" show the result, Rematch and Leave.
     }
@@ -163,9 +169,8 @@ Don't use `winner: 2` for a draw there, since 2 is a seat.
 
 The view must provide:
 
-- Both names (`session.me.name`, `session.opponent.name`) and whose turn it is.
+- The player bar from `engine/players.js` (see **Player bar** in `ARCHITECTURE.md`), first in the view: names, whose turn it is, the score and **Leave**. Don't build your own. Pass `badges` (a node per seat: a mark, disc or colour) and `notes` (a short line per seat, such as pips) to `update()` if the game has them, and `classes` to `playerBar()` if seats have colours of their own.
 - A clear status line.
-- A **Leave** button calling `shell.leave()`.
 - On game over: a result banner, a **Rematch** button (`id="rematch"`, calling `session.requestRematch()`), "Waiting for …" / "… wants a rematch!" text (`id="rematch-status"`), and Leave.
 - A draw state if the game has one.
 
@@ -243,8 +248,8 @@ In `public/games.json`, set the game's entry to `"status": "ready"` (add an
 entry if the game isn't listed, and copy one more placeholder tile into
 `public/index.html`'s `#games` list so the home page doesn't jump as it
 loads). Fields: `slug`, `name`, `status`, `players`,
-`maxPlayers` (2, or the same `maxPlayers` you pass to `startGameShell()` for a game with more players), and a one-sentence original `description`. The home page
-picks it up automatically. The server reads `games.json` once at startup, so
+`maxPlayers` (2, or the same `maxPlayers` you pass to `startGameShell()` for a game with more players), and a one-sentence original `description`. The home tile and
+the lobby both show it. The server reads `games.json` once at startup, so
 restart `npm start` after editing it, or creating a room will fail with `bad_game`.
 The browser test reads the "Coming soon" count from the registry, so it needs
 no change.
@@ -304,6 +309,7 @@ windows (one private).
 - [ ] No hidden information leaks over the wire. If the game has any, it uses commitments like Sea Battle.
 - [ ] All randomness comes from `SharedRandom`, through `TurnMatch` or a custom match
 - [ ] `layout` passed to `startGameShell()`, and the view's top-level box has no `max-width`
+- [ ] Names, turn, score and Leave come from `playerBar()`, not a bar of the game's own
 - [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
 - [ ] No fonts or timings of its own: timers carry `mono`, transitions use the `--dur-*` and `--ease-*` tokens
@@ -329,6 +335,7 @@ windows (one private).
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
 | `public/engine/shell.js` | Header, theme toggle, nickname, `el()`, `toast()` |
+| `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
 | `public/engine/theme.css` | Design tokens (light and dark), fonts, motion and shared components |
 | `public/sea-battle/` | The reference game, with hidden information and a custom protocol |
 | `public/games.json` | Game registry, read by the home page and the server |

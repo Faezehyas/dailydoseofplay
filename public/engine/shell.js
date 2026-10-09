@@ -1,12 +1,10 @@
 // UI shell shared by the home page and every game: header, theme and sound
-// toggles, nickname and last-game storage, toasts, tab-title alerts and tiny
-// DOM helpers.
+// toggles, nickname storage, toasts, tab-title alerts and tiny DOM helpers.
 import { soundOn, setSound } from "./sound.js";
 import { cleanName } from "./names.js";
 
 const THEME_KEY = "ddp-theme";
 const NAME_KEY = "ddp-name";
-const LAST_GAME_KEY = "ddp-last-game";
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -49,10 +47,6 @@ export function setNickname(name) {
 }
 export const displayName = (fallback = "Player") => getNickname() || fallback;
 
-// The slug of the last game started on this device; the home page shows it first.
-export const getLastGame = () => load(LAST_GAME_KEY);
-export const setLastGame = (slug) => store(LAST_GAME_KEY, slug);
-
 // Theme: "system" (default), "light" or "dark", applied as <html data-theme>.
 function applyTheme(theme) {
   if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
@@ -84,12 +78,12 @@ export function initShell({ title } = {}) {
   const header = el("header", { class: "site-header" });
   const brand = el("a", { class: "brand", href: "/" });
   brand.innerHTML = `${logoSvg()}<span>Daily Dose <em>of</em> Play</span>`;
-  const themeBtn = el("button", { class: "icon-btn", type: "button", id: "theme-toggle" });
+  // Both toggles keep one label and give their state through aria-pressed.
+  const themeBtn = el("button", { class: "icon-btn", type: "button", id: "theme-toggle", title: "Dark mode", "aria-label": "Dark mode" });
   const renderThemeBtn = () => {
     const dark = effectiveDark();
     themeBtn.innerHTML = dark ? ICONS.sun : ICONS.moon;
-    themeBtn.title = dark ? "Switch to light mode" : "Switch to dark mode";
-    themeBtn.setAttribute("aria-label", themeBtn.title);
+    themeBtn.setAttribute("aria-pressed", String(dark));
   };
   themeBtn.addEventListener("click", () => {
     const next = effectiveDark() ? "light" : "dark";
@@ -103,12 +97,10 @@ export function initShell({ title } = {}) {
   renderThemeBtn();
   const right = el("div", { class: "header-right" });
   if (title) {
-    const soundBtn = el("button", { class: "icon-btn", type: "button", id: "sound-toggle" });
+    const soundBtn = el("button", { class: "icon-btn", type: "button", id: "sound-toggle", title: "Mute sounds", "aria-label": "Mute sounds" });
     const renderSoundBtn = () => {
       const on = soundOn();
       soundBtn.innerHTML = on ? ICONS.soundOn : ICONS.soundOff;
-      soundBtn.title = on ? "Mute sounds" : "Turn sounds on";
-      soundBtn.setAttribute("aria-label", soundBtn.title);
       soundBtn.setAttribute("aria-pressed", on ? "false" : "true");
     };
     soundBtn.addEventListener("click", () => {
@@ -119,8 +111,14 @@ export function initShell({ title } = {}) {
     right.append(el("span", { class: "header-game" }, title), soundBtn);
   }
   right.append(themeBtn);
-  header.append(brand, right);
+  header.append(el("nav", { "aria-label": "Site" }, brand), right);
   document.body.prepend(header);
+  // A skip link, shown when focused, jumps past the header to the page's <main>.
+  const main = $("main");
+  if (main) {
+    main.id ||= "main";
+    document.body.prepend(el("a", { class: "skip-link", href: `#${main.id}` }, "Skip to content"));
+  }
   return header;
 }
 
