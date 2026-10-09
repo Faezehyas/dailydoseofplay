@@ -711,6 +711,394 @@ input::placeholder {
   font-size: 0.85rem;
 }
 
+/* The hero's game table (index.html). Each piece loops on its own period, so
+   the scene never repeats exactly, and plays its move once on hover or tap.
+   home.js adds .paused when the scene is off screen or the tab is hidden. */
+.hero-scene {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
+  margin: 10px auto 0;
+}
+
+.hero-scene stop {
+  stop-color: var(--hit-2);
+}
+
+.hero-scene .cord {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+}
+
+.hero-scene .lamp,
+.hero-scene .card-back,
+.hero-scene .disc.teal {
+  fill: var(--accent-2);
+}
+
+.hero-scene .bulb {
+  fill: var(--hit-2);
+}
+
+.hero-scene .table-edge {
+  fill: var(--border);
+}
+
+.hero-scene .table {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.hero-scene .hit {
+  fill: transparent;
+}
+
+.hero-scene .shade {
+  fill: var(--text);
+  opacity: 0.1;
+}
+
+.hero-scene .card-trim {
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 1.2;
+}
+
+.hero-scene .card-face,
+.hero-scene .die-face {
+  fill: var(--surface);
+  stroke: var(--control-border);
+}
+
+.hero-scene .die-b .die-face {
+  stroke: none;
+}
+
+.hero-scene .heart {
+  fill: var(--danger);
+}
+
+.hero-scene .square {
+  fill: var(--surface-2);
+  stroke: var(--border);
+}
+
+.hero-scene .square.dark {
+  fill: var(--control-border);
+  stroke: none;
+}
+
+.hero-scene .checker-side {
+  fill: var(--accent-text);
+}
+
+.hero-scene .checker-top,
+.hero-scene .disc {
+  fill: var(--accent);
+}
+
+.hero-scene .pip {
+  fill: var(--text);
+}
+
+.hero-scene .pawn {
+  fill: var(--ok);
+}
+
+.hero-scene .rack {
+  fill: var(--ship);
+}
+
+/* Face 5 shows only between the die's rolls. */
+.hero-scene .die-b {
+  opacity: 0;
+}
+
+.hero-scene .glow,
+.hero-scene .die,
+.hero-scene .card-a,
+.hero-scene .card-b,
+.hero-scene .pawn {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The pawn squashes on its base. */
+.hero-scene .pawn {
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-scene .piece {
+    cursor: pointer;
+  }
+  .hero-scene * {
+    animation-timing-function: var(--ease-out);
+    animation-iteration-count: infinite;
+  }
+  .hero-scene .glow {
+    animation: scene-glow 17s ease-in-out infinite alternate;
+  }
+  .hero-scene .card-a {
+    animation-name: scene-card-a-loop;
+    animation-duration: 13s;
+    animation-delay: -5s;
+  }
+  .hero-scene .card-b {
+    animation-name: scene-card-b-loop;
+    animation-duration: 13s;
+    animation-delay: -5s;
+  }
+  .hero-scene .checker {
+    animation-name: scene-checker-loop;
+    animation-duration: 11s;
+    animation-delay: -7s;
+  }
+  .hero-scene .die {
+    animation-name: scene-die-loop;
+    animation-duration: 7s;
+    animation-delay: -2s;
+  }
+  .hero-scene .die-b {
+    animation-name: scene-die-face;
+    animation-duration: 14s;
+    animation-delay: -2s;
+  }
+  .hero-scene .pawn {
+    animation-name: scene-pawn-loop;
+    animation-duration: 6.1s;
+    animation-delay: -1s;
+  }
+  .hero-scene .drop {
+    animation-name: scene-drop-loop;
+    animation-duration: 9.7s;
+    animation-delay: -3s;
+  }
+  /* Hover swaps a loop for its move once; the loop restarts at rest after. */
+  .hero-scene .piece:hover .card-a {
+    animation: scene-card-a 1.4s var(--ease-out);
+  }
+  .hero-scene .piece:hover .card-b {
+    animation: scene-card-b 1.4s var(--ease-out);
+  }
+  .hero-scene .piece:hover .checker {
+    animation: scene-checker 1.6s var(--ease-out);
+  }
+  .hero-scene .piece:hover .die {
+    animation: scene-die 1.2s var(--ease-out);
+  }
+  .hero-scene .piece:hover .die-b {
+    animation: none;
+  }
+  .hero-scene .piece:hover .pawn {
+    animation: scene-pawn 1.3s var(--ease-out);
+  }
+  .hero-scene .piece:hover .drop {
+    animation: scene-drop 1.4s var(--ease-out);
+  }
+}
+
+.hero-scene.paused * {
+  animation-play-state: paused;
+}
+
+@keyframes scene-glow {
+  from {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes scene-card-a {
+  50% {
+    transform: translate(15px, -3px) rotate(14deg);
+  }
+}
+
+@keyframes scene-card-a-loop {
+  89% {
+    transform: none;
+  }
+  94.5% {
+    transform: translate(15px, -3px) rotate(14deg);
+  }
+}
+
+@keyframes scene-card-b {
+  50% {
+    transform: translate(-15px, 3px) rotate(-12deg);
+  }
+}
+
+@keyframes scene-card-b-loop {
+  89% {
+    transform: none;
+  }
+  94.5% {
+    transform: translate(-15px, 3px) rotate(-12deg);
+  }
+}
+
+/* One square diagonally and back. */
+@keyframes scene-checker {
+  35%,
+  65% {
+    transform: translate(18px, -14px);
+  }
+}
+
+@keyframes scene-checker-loop {
+  85.5% {
+    transform: none;
+  }
+  90.6%,
+  95% {
+    transform: translate(18px, -14px);
+  }
+}
+
+@keyframes scene-die {
+  45% {
+    transform: translateY(-16px) rotate(200deg);
+  }
+  80% {
+    transform: rotate(360deg);
+  }
+  90% {
+    transform: translateY(-2px) rotate(360deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes scene-die-loop {
+  83% {
+    transform: none;
+  }
+  90.7% {
+    transform: translateY(-16px) rotate(200deg);
+  }
+  96.6% {
+    transform: rotate(360deg);
+  }
+  98.3% {
+    transform: translateY(-2px) rotate(360deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Twice the die's period: the face changes in the air on every other roll. */
+@keyframes scene-die-face {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  46%,
+  95% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0;
+  }
+}
+
+/* A hop to the next square and back, squashing on each landing. */
+@keyframes scene-pawn {
+  12% {
+    transform: scale(1.12, 0.84);
+  }
+  30% {
+    transform: translate(7px, -12px);
+  }
+  46% {
+    transform: translate(14px, 0) scale(1.1, 0.88);
+  }
+  54% {
+    transform: translate(14px, 0);
+  }
+  70% {
+    transform: translate(7px, -10px);
+  }
+  88% {
+    transform: scale(1.08, 0.9);
+  }
+}
+
+@keyframes scene-pawn-loop {
+  78.7% {
+    transform: none;
+  }
+  81.3% {
+    transform: scale(1.12, 0.84);
+  }
+  85.1% {
+    transform: translate(7px, -12px);
+  }
+  88.5% {
+    transform: translate(14px, 0) scale(1.1, 0.88);
+  }
+  90.2% {
+    transform: translate(14px, 0);
+  }
+  93.6% {
+    transform: translate(7px, -10px);
+  }
+  97.4% {
+    transform: scale(1.08, 0.9);
+  }
+}
+
+/* The Connect 4 disc falls into its hole; the loop then fades it out. */
+@keyframes scene-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-30px);
+    animation-timing-function: ease-in;
+  }
+  60% {
+    transform: none;
+  }
+  75% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes scene-drop-loop {
+  0%,
+  70% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(-30px);
+    animation-timing-function: ease-in;
+  }
+  80% {
+    transform: none;
+  }
+  83% {
+    transform: translateY(-4px);
+  }
+  86%,
+  96% {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: none;
+  }
+}
+
 .game-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -966,9 +1354,11 @@ input.mono {
 /* ---------- motion ---------- */
 /* Rules for all motion on the site:
    - animate only transform and opacity;
-   - nothing loops forever except a hero scene;
+   - nothing loops forever except the home hero's scene, and it pauses off
+     screen and in a hidden tab;
    - everything stops under prefers-reduced-motion;
-   - no motion starts without a user action, except the room code settling.
+   - no motion starts without a user action, except the room code settling
+     and the hero's scene.
    Loading indicators (.spinner, the home page's loading tiles) are the one
    exception: they run only while something loads.
    Timings come from --dur-fast, --dur-med and --dur-slow, easing from
