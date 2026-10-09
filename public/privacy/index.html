@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy · Daily Dose of Play</title>
+    <meta name="description" content="What Daily Dose of Play keeps on your device, what its server and other players see, and how to clear it." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/engine/fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/engine/theme.css" />
+    <script type="module" src="/engine/boot.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <article class="card text-page">
+        <h1>Privacy</h1>
+        <p class="tagline">No accounts, no cookies, no ads, no analytics. Here is everything the site keeps, and who sees what while you play.</p>
+
+        <h2>On your device</h2>
+        <p>Your browser keeps your choices for this site in its local storage. Your nickname goes to the people you play with, and a host's game settings go to their guests; nothing else leaves your device.</p>
+        <ul>
+          <li><code>ddp-name</code>: your nickname.</li>
+          <li><code>ddp-theme</code>: light or dark, when you picked one that differs from your device's.</li>
+          <li><code>ddp-sound</code>: whether sounds are on.</li>
+          <li>
+            Each game's settings, including the robot's level and, in Chutes and Ladders and Ludo, how many robots play:
+            <ul>
+              <li>Tic Tac Toe: <code>ddp-ttt-settings</code></li>
+              <li>Connect 4: <code>ddp-c4-settings</code></li>
+              <li>Gomoku: <code>ddp-gomoku-settings</code></li>
+              <li>Chess: <code>ddp-chess-settings</code></li>
+              <li>Checkers: <code>ddp-checkers-settings</code></li>
+              <li>Backgammon: <code>ddp-bg-settings</code></li>
+              <li>Sea Battle: <code>ddp-sb-settings</code></li>
+              <li>Chutes and Ladders: <code>ddp-cl-settings</code></li>
+              <li>Dots and Boxes: <code>ddp-db-settings</code></li>
+              <li>Ludo: <code>ddp-ludo-settings</code></li>
+            </ul>
+          </li>
+          <li><code>ddp-last-game</code>: the last game you opened. The site no longer saves it, but an earlier visit may have left it behind. Clearing your data removes it.</li>
+        </ul>
+
+        <h2>The lobby server</h2>
+        <p>Against the robot, the game runs in your browser alone. To play friends, your browser talks to the lobby server only while players connect. It sees your nickname, the game, the room code and your IP address, and it passes on the connection details your browsers swap to find each other. All of this lives in the server's memory, and the room is gone once the game starts, the host leaves or 30 minutes pass.</p>
+        <p>The server logs two lines per room, such as <code>room ludo/ABCD created by 12</code> and <code>room ludo/ABCD closed</code>: the game, the room code and a connection number that counts up from 1 and isn't tied to you. Nicknames and IP addresses are never logged. To stop one device from flooding the server, it counts each IP address's open connections, open rooms and failed joins in memory; the failed joins are forgotten after a minute.</p>
+
+        <h2>Playing over WebRTC</h2>
+        <p>Moves go straight from browser to browser over WebRTC, not through the server. To connect, the browsers learn each other's IP address:</p>
+        <ul>
+          <li>Two players: each browser sees the other's.</li>
+          <li>Three or four players: every guest connects to the host, so the host's browser sees every guest's address and each guest sees the host's.</li>
+          <li>Your browser asks public STUN servers run by Google and Cloudflare for its public address, so they see it too.</li>
+        </ul>
+        <p>An IP address can show roughly where you are, so play with people you know.</p>
+
+        <h2>Clearing your data</h2>
+        <p>Open your browser's settings for this site and choose <strong>Clear site data</strong> (some browsers call it Delete data or Manage website data). That removes everything listed above. A private window keeps nothing once you close it.</p>
+
+        <h2>Questions</h2>
+        <p>Open an issue on <a href="https://github.com/Faezehyas/dailydoseofplay/issues">GitHub</a>. Issues are public, so leave out anything private.</p>
+      </article>
+    </main>
+  </body>
+</html>
