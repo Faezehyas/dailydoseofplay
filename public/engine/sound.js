@@ -83,12 +83,15 @@ function audio() {
 // Browsers only start audio after a click or key press: get it ready on the
 // first one, on pages that have sounds.
 let listening = false;
+let gestured = false;
 function startOnGesture() {
   if (listening) return;
   listening = true;
-  for (const type of ["pointerdown", "keydown"]) {
-    globalThis.addEventListener?.(type, () => soundOn() && audio(), { once: true, capture: true });
-  }
+  const ready = () => {
+    gestured = true;
+    if (soundOn()) audio();
+  };
+  for (const type of ["pointerdown", "keydown"]) globalThis.addEventListener?.(type, ready, { once: true, capture: true });
 }
 
 // ---------- recordings ----------
@@ -183,10 +186,13 @@ export function defineSounds(defs) {
       if (!soundOn() || !defs[name]) return false;
       globalThis.ddpSounds?.push(name); // browser tests count what played
       try {
+        // No click or key press on this page yet: skip, rather than queue
+        // sounds that would all play at once after the first one. After it,
+        // play even while the audio device is still starting up (it can take
+        // a moment): the sound is heard as soon as it has.
+        if (!gestured) return false;
         const a = audio();
-        // Not started yet (no click on this page so far): skip, rather than
-        // queue sounds that would all play at once later.
-        if (!a || a.state !== "running") return false;
+        if (!a) return false;
         return start(a, out, name, opts, a.currentTime + 0.005 + at) === "recording";
       } catch {
         return false;
