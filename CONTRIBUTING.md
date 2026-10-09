@@ -174,7 +174,8 @@ startGameShell({
 **Settings (optional).** Clocks, board size, who goes first or a robot level
 go in `settings.js`, built with the engine's `gameSettings()`, and are passed
 to `startGameShell()`. The lobby shows them inside its card and their summary
-on the host's waiting screen; don't add a settings card of your own.
+on the host's waiting screen, and the header's settings panel in its "This
+game" tab; don't add a settings card of your own.
 
 ```js
 import { gameSettings } from "../engine/settings.js";
@@ -188,16 +189,25 @@ export const settings = gameSettings({
   groups: [
     // summary(value, label, config): the text of this group's chip in the summary ("" leaves it out).
     { name: "moveSeconds", legend: "Time per move", options: [[10, "10 s"], [0, "No limit"]], summary: (v, l) => (v ? `${l} a move` : "No move limit") },
-    // robot: true tags the group "vs robot only", gives its chip a teal dot and keeps it off the waiting screen.
-    { name: "level", legend: "Robot level", robot: true, options: [["easy", "Easy"], ["hard", "Hard"]], summary: (v, l) => `${l} robot` },
+    // scope: "device" tags the group "vs robot only", gives its chip a teal dot and keeps it off the waiting screen.
+    { name: "level", legend: "Robot level", scope: "device", options: [["easy", "Easy"], ["hard", "Hard"]], summary: (v, l) => `${l} robot` },
+    // scope: "view": this player's own view, never sent, and open to change during a game.
+    { name: "hints", legend: "Legal moves", scope: "view", options: [[true, "Show"], [false, "Hide"]], summary: () => "" },
   ],
 });
 ```
 
-Pass `settings` to `startGameShell()` and read `settings.get()` when a game
-starts: the host sends it to its guests as `setup {config}` (see **Room
-settings** under Tic Tac Toe in `ARCHITECTURE.md`), and a robot game uses it
-directly.
+Each group has a `scope` (see **Settings** in `ARCHITECTURE.md`):
+
+- `"room"`, the default: the rules (clocks, board size, who starts, house
+  rules). Read `settings.get()` when a game starts: the host sends it to its
+  guests as `setup {config}` (see **Room settings** under Tic Tac Toe in
+  `ARCHITECTURE.md`), and a robot game uses it directly. Locked during a game.
+- `"device"`: only matters against robots (their level and number; older
+  games say `robot: true`). Locked during a game.
+- `"view"`: how this player sees the game (coordinates, legal-move hints).
+  Never sent; read `settings.get()` each time you draw or decide, so a change
+  made in the settings panel mid-game applies at once.
 
 **More than two players.** Pass `minPlayers` and `maxPlayers` to
 `startGameShell()` (and `robots`, the robot seats in a robot game: a number,
@@ -243,7 +253,10 @@ font; give timers and counts the `mono` class; use `.chip` for a seat
 or a fact; time transitions with `var(--dur-fast)`, `var(--dur-med)` or
 `var(--dur-slow)` and ease them with `var(--ease-out)` or `var(--ease-spring)`.
 Animate only `transform` and `opacity`, start motion only on a player's action,
-and check it stops with reduced motion on.
+and check it stops with reduced motion on. Reduced motion is the Animations
+setting, not only the device's: in CSS put the rules that stop motion under
+`:where(:root[data-motion="reduce"])`, not `@media (prefers-reduced-motion)`, and
+in scripts ask `reducedMotion()` from `engine/shell.js`.
 
 ### 5b. Sounds (optional)
 
@@ -379,8 +392,9 @@ windows (one private).
 | `public/engine/turn-match.js` | `TurnMatch` and `startTurnRobot()` for open-information turn games |
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
-| `public/engine/shell.js` | Header, footer, theme toggle, nickname, `el()`, `toast()` |
-| `public/engine/settings.js` | `gameSettings()`: a game's settings, shown in the lobby card |
+| `public/engine/shell.js` | Header, footer, theme and sound toggles, the settings panel, nickname, `reducedMotion()`, `el()`, `toast()` |
+| `public/engine/prefs.js` | The general settings (theme, sound, volume, animations, asking before leaving) in `ddp-settings` |
+| `public/engine/settings.js` | `gameSettings()`: a game's settings, shown in the lobby card and the settings panel |
 | `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
 | `public/engine/result.js` | `resultPanel()`: the game-over panel with the result, Rematch and Leave, in every game |
 | `public/engine/celebrate.js` | `celebrate()`: the win, loss and draw moment as the result panel opens, with its chimes from `chimes.js` |

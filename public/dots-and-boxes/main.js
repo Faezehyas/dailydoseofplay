@@ -6,7 +6,7 @@
 import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
-import { el, toast, setTabAlert } from "../engine/shell.js";
+import { el, toast, setTabAlert, reducedMotion } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { celebrate } from "../engine/celebrate.js";
@@ -26,7 +26,7 @@ const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const NS = "http://www.w3.org/2000/svg";
 
 // Read live, so a browser test can switch it mid-game.
-const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const still = reducedMotion;
 
 startGameShell({
   slug: "dots-and-boxes",

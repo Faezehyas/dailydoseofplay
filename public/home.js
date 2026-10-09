@@ -1,5 +1,5 @@
 // Home page: one card per entry in games.json.
-import { initShell, el, $ } from "/engine/shell.js";
+import { initShell, el, $, reducedMotion } from "/engine/shell.js";
 
 initShell();
 
@@ -37,7 +37,6 @@ function card(game) {
 // mostly in view, it loops a short preview of its game, then shows its icon
 // again. preview.svg is inlined so its animations, which start paused, can
 // run; without it the icon stays.
-const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const canHover = matchMedia("(hover: hover)").matches;
 const HOLD_MS = 1200; // on the last frame before the next loop
 
@@ -82,7 +81,7 @@ function watchPreview(tile, img, slug) {
   let playing = false;
   function set(key, value) {
     on[key] = value;
-    const want = (on.hover || on.focus || on.view) && !reduceMotion.matches;
+    const want = (on.hover || on.focus || on.view) && !reducedMotion();
     if (want === playing) return;
     playing = want;
     if (want) start();

@@ -3,7 +3,7 @@
 import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
-import { el, toast } from "../engine/shell.js";
+import { el, toast, reducedMotion } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
 import { celebrate } from "../engine/celebrate.js";
@@ -39,7 +39,6 @@ const COLOR_NAMES = ["White", "Black"];
 const PIECE_NAMES = ["", "pawn", "knight", "bishop", "rook", "queen", "king"];
 const VALUES = [0, 1, 3, 3, 5, 9, 0];
 const PROMOS = [["q", QUEEN], ["r", ROOK], ["b", BISHOP], ["n", KNIGHT]];
-const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Original piece art on a 100×100 grid; class "d" is a detail line, "e" an eye.
 const BASE = '<path d="M24 78h52a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4v-2a4 4 0 0 1 4-4z"/>';

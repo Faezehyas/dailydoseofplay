@@ -5,24 +5,15 @@
 // tune as loud in every game. Recordings are measured as they load and set
 // to their role. A synthesized sound carries a `trim` that brings it there,
 // which the sound-levels browser test checks for every sound of every game.
-// Muting is a per-device setting shared by every game.
+// Muting and the volume are per-device settings (prefs.js) shared by every
+// game; the volume is a master gain after the output.
 import { loudness, fromDb } from "./loudness.js";
+import { getPrefs, onPrefsChange } from "./prefs.js";
 
-const KEY = "ddp-sound";
+const soundOn = () => getPrefs().sound;
 
-export function soundOn() {
-  try {
-    return localStorage.getItem(KEY) !== "off";
-  } catch {
-    return true;
-  }
-}
-
-export function setSound(on) {
-  try {
-    localStorage.setItem(KEY, on ? "on" : "off");
-  } catch {}
-}
+// The volume (0 to 100) as a gain, squared so each step sounds about as big.
+const gainOf = (volume) => (volume / 100) ** 2;
 
 // Each role's loudness in LUFS over 100 ms (see loudness.js).
 export const ROLES = {
@@ -57,12 +48,12 @@ function curve() {
   return clipCurve;
 }
 
-export function output(a) {
+export function output(a, dest = a.destination) {
   const pre = a.createGain();
   pre.gain.value = 1 / HEADROOM;
   const clip = a.createWaveShaper();
   clip.curve = curve();
-  pre.connect(clip).connect(a.destination);
+  pre.connect(clip).connect(dest);
   return pre;
 }
 
@@ -74,7 +65,11 @@ function audio() {
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
-    out = output(ctx);
+    const master = ctx.createGain();
+    master.gain.value = gainOf(getPrefs().volume);
+    master.connect(ctx.destination);
+    out = output(ctx, master);
+    onPrefsChange(({ volume }) => master.gain.setTargetAtTime(gainOf(volume), ctx.currentTime, 0.02));
   }
   if (ctx.state === "suspended") ctx.resume().catch(() => {});
   return ctx;

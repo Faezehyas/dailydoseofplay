@@ -465,7 +465,7 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion="reduce"]) {
   .die.tumble,
   .slot,
   .checker.target::after {

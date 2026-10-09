@@ -449,7 +449,7 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
   const toastBox = await page.locator("#toast").boundingBox();
   assert.ok(toastBox && toastBox.y < 120, "toasts sit at the top, clear of the boards");
   await page.click("#sound-toggle");
-  assert.equal(await page.evaluate(() => localStorage.getItem("ddp-sound")), "off");
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("ddp-settings")).sound), false);
   assert.equal(await page.locator("#sound-toggle").getAttribute("aria-pressed"), "true");
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();

@@ -1,5 +1,5 @@
 /* Shared look for the home page and every game. Colours are tokens; dark
-   mode follows the OS unless the header toggle pins a theme.
+   mode follows the OS unless the theme setting pins one.
    Contrast (WCAG 2.2 AA, checked by test/contrast.test.js): --accent and
    --accent-2 are fills; text in those colours uses --accent-text and
    --accent-2-text, text on a coral fill uses --accent-ink, and the edges of
@@ -1131,7 +1131,7 @@ input::placeholder {
   background: var(--accent-2);
 }
 
-@media (prefers-reduced-motion: no-preference) {
+:where(:root[data-motion="full"]) {
   .celebrate-lit {
     animation: celebrate-light var(--dur-slow) var(--ease-out) calc(var(--i) * var(--dur-fast)) backwards;
   }
@@ -1364,7 +1364,7 @@ input::placeholder {
   transform-origin: 50% 100%;
 }
 
-@media (prefers-reduced-motion: no-preference) {
+:where(:root[data-motion="full"]) {
   .hero-scene .piece {
     cursor: pointer;
   }
@@ -2036,7 +2036,10 @@ input.mono {
    - nothing loops forever except the home hero's scene, which pauses off
      screen and in a hidden tab, and a tile's preview while it is hovered,
      focused or, on a touch screen, in view;
-   - everything stops under prefers-reduced-motion;
+   - everything stops when animations are reduced: <html data-motion="reduce">,
+     which shell.js sets from the Animations setting or, when that follows
+     the system, prefers-reduced-motion (motion that plays only for "full"
+     goes under :where(:root[data-motion="full"]));
    - no motion starts without a user action, except the room code settling,
      the result moment when a match ends, the hero's scene and, on a touch
      screen, a tile's preview.
@@ -2046,7 +2049,7 @@ input.mono {
    --ease-out and --ease-spring. */
 
 /* The waiting room's code: its letters settle in one by one, 350 ms in all. */
-@media (prefers-reduced-motion: no-preference) {
+:where(:root[data-motion="full"]) {
   .room-code span {
     display: inline-block;
     animation: settle var(--dur-med) var(--ease-spring) calc(var(--i) * 50ms) both;
@@ -2060,7 +2063,7 @@ input.mono {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion="reduce"]) {
   *,
   *::before,
   *::after {
@@ -2221,8 +2224,96 @@ input.mono {
   outline-offset: 2px;
 }
 
-.settings .hint {
+.settings-body .hint {
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+/* Options that can't change during a game (settings.js): the choice still shows. */
+.settings-group:disabled .seg-opt span {
+  cursor: not-allowed;
+}
+
+.settings-group:disabled .seg-opt input:not(:checked) + span {
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.settings-body > .notice {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+}
+
+/* ---------- settings panel (header gear, engine/shell.js) ---------- */
+/* A modal <dialog> like confirm.js's, with a tab per kind of setting. */
+.settings-panel {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  color: var(--text);
+}
+
+.settings-panel::backdrop {
+  background: rgb(10 12 18 / 55%);
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-head h2 {
+  margin: 0;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-tabs [role="tab"] {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-tabs [aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.settings-tabs [role="tab"]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.settings-panel .settings-body {
+  padding-top: 12px;
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.volume input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  accent-color: var(--accent);
 }
