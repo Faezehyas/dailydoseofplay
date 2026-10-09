@@ -42,6 +42,13 @@ relative imports resolve.
 Every page response carries `Content-Security-Policy`, `X-Content-Type-Options`
 and `Referrer-Policy` headers. Scripts can only load from the site itself.
 
+**Caching.** Static files carry `Cache-Control: no-cache` and a strong `ETag`,
+a 64-bit FNV-1a hash of the file's bytes (`etagOf` in `server/app.js`, pure JS,
+so no `node:crypto` or `fs.stat`). Browsers keep their copy but ask every time;
+a matching `If-None-Match` (GET or HEAD) gets `304` with no body. The hash is
+taken on each request, so a deploy or a local edit shows up on the next load.
+`/healthz`, `/ws` and the 404 page carry no `ETag`.
+
 **Who may open `/ws`.** Browsers always send an `Origin` header on a
 WebSocket handshake, and a page can't change it, so the upgrade handler
 (`wsOriginAllowed` in `server/app.js`) checks it. Without the check any

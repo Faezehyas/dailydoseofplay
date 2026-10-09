@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import net from "node:net";
+import os from "node:os";
+import path from "node:path";
 import WebSocket from "ws";
 import { createApp, wsOriginAllowed } from "../server/app.js";
 import { startServer } from "./helpers.js";
@@ -49,6 +51,38 @@ test("HTTP routes: home, games, healthz, ws, 404s", async (t) => {
   assert.equal((await fetch(`${srv.base}/engine/`)).status, 404, "no directory listings");
   assert.equal((await fetch(`${srv.base}/sea-battle/sounds/splash-heavy-1.mp3`)).headers.get("content-type"), "audio/mpeg");
   assert.equal((await fetch(`${srv.base}/engine/fonts/fredoka.woff2`)).headers.get("content-type"), "font/woff2");
+});
+
+test("static files: ETag, 304 when it matches, a new ETag after an edit", async (t) => {
+  const publicDir = fs.mkdtempSync(path.join(os.tmpdir(), "ddp-public-"));
+  t.after(() => fs.rmSync(publicDir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(publicDir, "games.json"), JSON.stringify({ games: [] }));
+  fs.writeFileSync(path.join(publicDir, "app.js"), "export const v = 1;\n");
+  const srv = await startServer({ publicDir });
+  t.after(() => srv.close());
+  const url = `${srv.base}/app.js`;
+
+  const first = await fetch(url);
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get("cache-control"), "no-cache");
+  const etag = first.headers.get("etag");
+  assert.match(etag, /^"[0-9a-f]{16}"$/);
+  assert.equal(await first.text(), "export const v = 1;\n");
+
+  for (const method of ["GET", "HEAD"]) {
+    const again = await fetch(url, { method, headers: { "If-None-Match": etag } });
+    assert.equal(again.status, 304, method);
+    assert.equal(again.headers.get("etag"), etag);
+    assert.equal(await again.text(), "");
+  }
+  assert.equal((await fetch(url, { headers: { "If-None-Match": `"other", W/${etag}` } })).status, 304, "list with a weak tag");
+  assert.equal((await fetch(url, { headers: { "If-None-Match": '"0000000000000000"' } })).status, 200);
+
+  fs.writeFileSync(path.join(publicDir, "app.js"), "export const v = 2;\n");
+  const edited = await fetch(url, { headers: { "If-None-Match": etag } });
+  assert.equal(edited.status, 200);
+  assert.notEqual(edited.headers.get("etag"), etag);
+  assert.equal(await edited.text(), "export const v = 2;\n");
 });
 
 test("sea battle: every recorded sound exists and is credited", () => {
