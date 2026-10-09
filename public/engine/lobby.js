@@ -419,6 +419,10 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     const code = params.get("room");
     if (code) showInvite(code.trim().toUpperCase(), params.get("key") || undefined);
     else if (params.has("robot")) playRobot();
-    else showHome();
+    else if (params.has("friend")) {
+      // Dropped first, so a reload doesn't create a second room.
+      history.replaceState(null, "", location.pathname);
+      host();
+    } else showHome();
   });
 }

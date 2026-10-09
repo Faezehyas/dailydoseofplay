@@ -692,7 +692,7 @@ input::placeholder {
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-a.game-card:hover {
+.game-card:has(h2 a):hover {
   transform: translateY(-3px);
 }
 
@@ -704,6 +704,34 @@ a.game-card:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The name's link covers the whole tile; the quick play links sit above it. */
+.game-card h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.game-card h2 a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+
+.game-card h2 a:focus-visible {
+  outline: none;
+}
+
+.game-card h2 a:focus-visible::after {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.quick-play {
+  position: relative;
+  display: grid;
+  gap: 8px;
 }
 
 .game-card p {
@@ -777,7 +805,8 @@ a.game-card:hover {
 .game-card.placeholder .game-icon,
 .game-card.placeholder h2,
 .game-card.placeholder p,
-.game-card.placeholder .game-meta span {
+.game-card.placeholder .game-meta span,
+.game-card.placeholder .quick-play span {
   border-radius: 6px;
   background: linear-gradient(90deg, var(--surface-2) 30%, var(--border) 50%, var(--surface-2) 70%) 100% 0 / 300% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
