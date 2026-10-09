@@ -4,6 +4,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, markOf, isTimed, timeLeft, EMPTY, DRAW, IN_A_ROW } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -48,8 +49,7 @@ function mountTicTacToe(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0], draws: 0 };
   let config = null;
   let rules = null;
   let match = null;
@@ -68,13 +68,11 @@ function mountTicTacToe(session, root, shell) {
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
     const mark = el("span", { class: "pill-mark" }, "?");
-    const node = el("span", { class: `who ${player === me ? "me" : ""}` }, mark, el("span", { class: "name" }, player === me ? myName : oppName));
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, mark, clock };
+    return { mark, clock };
   });
-  const players = el("div", { class: "ttt-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "ttt-score", id: "ttt-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: { [me]: pills[0].mark, [opp]: pills[1].mark } });
   const status = el("p", { class: "ttt-status", id: "ttt-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "ttt-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -90,8 +88,7 @@ function mountTicTacToe(session, root, shell) {
     el(
       "div",
       { class: "tic-tac-toe" },
-      el("div", { class: "ttt-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "ttt-board-wrap" }, board),
@@ -180,21 +177,16 @@ function mountTicTacToe(session, root, shell) {
   // ---------- render ----------
   function renderPills() {
     const st = match?.state;
+    bar.update({ turn: match?.phase === "playing" ? st.turn : -1 });
     for (const [k, player] of [me, opp].entries()) {
-      const { node, mark } = pills[k];
+      const { mark } = pills[k];
       const symbol = st ? markOf(st, player) : null;
-      node.classList.toggle("active", match?.phase === "playing" && st.turn === player);
       mark.setAttribute("aria-label", symbol ? `plays ${symbol}` : "mark not decided");
       if (mark.dataset.v !== (symbol || "")) {
         mark.dataset.v = symbol || "";
         mark.innerHTML = symbol ? MARK_SVG[symbol] : "?";
       }
     }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item("Draws", score.draws, "draws"), item(oppName, score.them, "theirs"));
   }
 
   function statusText() {
@@ -222,7 +214,7 @@ function mountTicTacToe(session, root, shell) {
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".tic-tac-toe").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills();
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -306,8 +298,7 @@ function mountTicTacToe(session, root, shell) {
     match.on("events", () => (turnStart = performance.now()));
     match.on("over", ({ winner }) => {
       if (winner === DRAW) score.draws++;
-      else if (winner === me) score.me++;
-      else score.them++;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();

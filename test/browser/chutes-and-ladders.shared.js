@@ -41,11 +41,11 @@ export const colours = (page) =>
     };
     const token = Object.fromEntries(["--accent", "--accent-2", "--cl-p2", "--cl-p3"].map((v) => [resolve(`var(${v})`), v]));
     return Object.fromEntries(
-      [...document.querySelectorAll(".cl-players .who")].map((n) => {
+      [...document.querySelectorAll(".pb-who")].map((n) => {
         const seat = [...n.classList].find((c) => /^p\d$/.test(c));
         const swatch = getComputedStyle(n.querySelector(".swatch")).backgroundColor;
         const pawn = resolve(getComputedStyle(document.querySelector(`.cl-board .pawn.${seat}`)).getPropertyValue("--pawn"));
-        return [n.querySelector(".name").textContent.replace(" (you)", ""), `${token[swatch]} ${token[pawn]}`];
+        return [n.querySelector(".pb-name").textContent.replace(" (you)", ""), `${token[swatch]} ${token[pawn]}`];
       }),
     );
   });

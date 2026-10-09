@@ -1,6 +1,7 @@
 // Headless-browser test: every game page uses one column. In the lobby and
 // during a robot game, the view on show and "How to play" (.rules) share
-// their left and right edges, at 1280 and 360 px, with no sideways scroll.
+// their left and right edges, at 1280 and 360 px, with no sideways scroll,
+// and Leave sits at the top right of the player bar.
 // Skips if Playwright is missing.
 //
 //   npm run test:browser
@@ -81,6 +82,13 @@ for (const width of [1280, 360]) {
       const playing = await measure(page);
       assert.equal(playing.view, "game");
       assertColumn(playing, `${game.slug} robot game`, column(lobby.layout));
+      // Every game's player bar spans the column, with Leave at its top right.
+      const bar = await page.evaluate(() => {
+        const box = (s) => document.querySelector(s).getBoundingClientRect();
+        const [b, l, g] = [box(".player-bar"), box("#leave"), box("#game")];
+        return { width: b.width - g.width, right: b.right - l.right, top: l.top - b.top };
+      });
+      assert.ok(Object.values(bar).every((d) => Math.abs(d) <= 1), `${game.slug}: Leave is at the player bar's top right (${JSON.stringify(bar)})`);
       await page.close();
     }
     assert.deepEqual(errors, []);

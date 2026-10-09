@@ -71,8 +71,8 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   assert.equal(await host.evaluate(() => window.__sawKnock), false, "an invite link needs no Accept");
   assert.equal(await guest.evaluate(() => location.search), "", "the key leaves the address bar");
   await guest.locator("#ready").waitFor();
-  assert.match(await host.locator(".sb-players").innerText(), /Bo/);
-  assert.match(await guest.locator(".sb-players").innerText(), /Ada/);
+  assert.match(await host.locator(".pb-players").innerText(), /Bo/);
+  assert.match(await guest.locator(".pb-players").innerText(), /Ada/);
   assert.equal(await guest.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "no horizontal scroll on mobile");
 
   // Placement: shuffle, rotate via keyboard, then ready up.
@@ -148,9 +148,8 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
     assert.doesNotMatch(await p.locator("#sb-log").innerText(), /picked up/);
   }
   // Wins carry across rematches; the latest volley on each board is ringed.
-  assert.equal(await guest.locator("#score-me").innerText(), "1");
-  assert.equal(await host.locator("#score-opp").innerText(), "1");
-  assert.equal(await host.locator("#score-me").innerText(), "0");
+  assert.match(await guest.locator("#score").innerText(), /You\s+1\s+Ada\s+0/);
+  assert.match(await host.locator("#score").innerText(), /You\s+0\s+Bo\s+1/);
   assert.ok((await guest.locator(".enemy .cell.last").count()) >= 1);
   assert.ok((await host.locator(".own .cell.last").count()) >= 1);
   assert.match(await host.locator(".sb-over h2").innerText(), /Defeat/);
@@ -275,7 +274,7 @@ test("a typed room code waits for the host: Decline turns a stranger away, Accep
   await host.locator("#roster li.knock", { hasText: "Bo wants to join" }).getByRole("button", { name: "Accept" }).click();
   await host.locator("#ready").waitFor({ timeout: 20_000 });
   await friend.locator("#ready").waitFor({ timeout: 20_000 });
-  assert.match(await host.locator(".sb-players").innerText(), /Bo/);
+  assert.match(await host.locator(".pb-players").innerText(), /Bo/);
   // The guest's match exists once the host's settings arrive.
   for (const p of [host, friend]) await p.waitForFunction(() => window.ddp.match?.phase === "placing", null, { timeout: 20_000 });
   await host.click("#ready");
@@ -318,7 +317,7 @@ test("home page, theme toggle, drag-to-move and a robot game on a phone", { skip
   await page.click("#play-robot");
   await page.locator("#ready").waitFor();
   assert.ok(await page.locator("#sb-settings").isHidden(), "settings only on the home screen");
-  assert.match(await page.locator(".sb-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   assert.equal(await page.locator("#sb-config").innerText(), "30 s a shot · 10 min each", "default settings");
 
   // Drag the destroyer to the first free legal spot, in its current orientation.
@@ -483,7 +482,7 @@ test("a robot game on a 360 px phone with the longest nickname has no sideways s
   await page.locator("#ready").waitFor();
   await noSideScroll("while placing ships");
   // A long name is cut short, but both scores stay on screen.
-  for (const id of ["#score-me", "#score-opp"]) {
+  for (const id of ["#score .mine dd", "#score .theirs dd"]) {
     const box = await page.locator(id).boundingBox();
     assert.ok(box && box.x >= 0 && box.x + box.width <= 360, `${id} is on screen`);
   }

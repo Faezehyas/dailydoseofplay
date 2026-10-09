@@ -4,6 +4,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, legalMoves, capturedBy, countPieces, isTimed, timeLeft, owner, isKing, isJump, isDark, EMPTY, DRAW, QUIET_LIMIT } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings, normalizeLevel } from "./settings.js";
@@ -53,9 +54,8 @@ function mountCheckers(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
   const flip = me === 1; // each player sees their own men at the bottom
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0], draws: 0 };
   let config = null;
   let level = null;
   let rules = null;
@@ -78,13 +78,11 @@ function mountCheckers(session, root, shell) {
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
     const disc = el("span", { class: "pill-disc" });
-    const node = el("span", { class: `who ${player === me ? "me" : ""}` }, disc, el("span", { class: "name" }, player === me ? myName : oppName));
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, disc, clock };
+    return { disc, clock };
   });
-  const players = el("div", { class: "ck-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "ck-score", id: "ck-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: { [me]: pills[0].disc, [opp]: pills[1].disc } });
   const status = el("p", { class: "ck-status", id: "ck-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "ck-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -114,8 +112,7 @@ function mountCheckers(session, root, shell) {
     el(
       "div",
       { class: "checkers" },
-      el("div", { class: "ck-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "ck-board-wrap" }, board),
@@ -249,19 +246,14 @@ function mountCheckers(session, root, shell) {
 
   function renderPills() {
     const st = match?.state;
+    bar.update({ turn: match?.phase === "playing" ? st.turn : -1 });
     for (const [k, player] of [me, opp].entries()) {
-      const { node, disc } = pills[k];
+      const { disc } = pills[k];
       const left = st ? countPieces(st.board, player) : 12;
-      node.classList.toggle("active", match?.phase === "playing" && st.turn === player);
       disc.dataset.c = st ? colorOf(st, player) : "";
       disc.textContent = String(left);
       disc.setAttribute("aria-label", `${left} pieces left${st ? (player === st.first ? ", moves first" : ", moves second") : ""}`);
     }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item("Draws", score.draws, "draws"), item(oppName, score.them, "theirs"));
   }
 
   function statusText(legal) {
@@ -298,7 +290,7 @@ function mountCheckers(session, root, shell) {
     const legal = myMoves();
     if (!legal.length || (picked && !legal.some((m) => startsWith(m, picked)))) picked = null;
     renderPills();
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText(legal);
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -422,8 +414,7 @@ function mountCheckers(session, root, shell) {
     });
     match.on("over", ({ winner }) => {
       if (winner === DRAW) score.draws++;
-      else if (winner === me) score.me++;
-      else score.them++;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();

@@ -123,8 +123,8 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   await guest.locator("#db-config").filter({ hasText: "3×3" }).waitFor();
   assert.equal(await guest.locator("#db-config").innerText(), "3×3 boxes · 30 s a line · 3 min each", "the host's settings reach the friend");
   assert.equal(await host.locator("#db-config").innerText(), await guest.locator("#db-config").innerText());
-  assert.match(await host.locator(".db-players").innerText(), /Ada[\s\S]*Bo/);
-  assert.match(await guest.locator(".db-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.equal(await host.locator("#db-board .dot").count(), 16);
   assert.equal(await guest.locator("#db-board .hit").count(), 24, "a tap target for every line");
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
@@ -178,10 +178,10 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   for (const page of [host, guest]) {
     assert.equal(await tokenOf(page, `#db-board .line[data-l="${first}"] .ink`, "stroke"), "--accent", "the host drew first, so their line is coral on both screens");
   }
-  assert.equal(await tokenOf(host, ".db-players .p0 .swatch", "backgroundColor"), "--accent", "the host's swatch is coral on their screen");
-  assert.equal(await tokenOf(guest, ".db-players .p1 .swatch", "backgroundColor"), "--accent", "and on the friend's");
-  assert.equal(await tokenOf(guest, ".db-players .p0 .swatch", "backgroundColor"), "--accent-2", "the friend is teal on both screens");
-  assert.equal(await tokenOf(host, ".db-players .p1 .swatch", "backgroundColor"), "--accent-2");
+  assert.equal(await tokenOf(host, ".pb-who.p0 .swatch", "backgroundColor"), "--accent", "the host's swatch is coral on their screen");
+  assert.equal(await tokenOf(guest, ".pb-who.p1 .swatch", "backgroundColor"), "--accent", "and on the friend's");
+  assert.equal(await tokenOf(guest, ".pb-who.p0 .swatch", "backgroundColor"), "--accent-2", "the friend is teal on both screens");
+  assert.equal(await tokenOf(host, ".pb-who.p1 .swatch", "backgroundColor"), "--accent-2");
   await wait(guest, () => !!document.querySelector("#db-board.armed"));
   await guest.screenshot({ path: `${ARTIFACTS}/db-1-friend-mobile-dark.png`, fullPage: true });
   const { st: won, extra } = await finish();
@@ -190,8 +190,8 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   await winner.locator("#db-result").filter({ hasText: "You win!" }).waitFor();
   assert.match(await loser.locator("#db-result").innerText(), /wins$/);
   assert.match(await loser.locator("#db-detail").innerText(), /took \d of 9 boxes/);
-  assert.match(await winner.locator("#db-score").innerText(), /You\s+1\s+\S+\s+0/);
-  assert.match(await loser.locator("#db-score").innerText(), /You\s+0\s+\S+\s+1/);
+  assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
+  assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
   assert.equal(await host.locator("#db-board .box").count(), 9);
   assert.equal(await host.locator("#db-board .box.p0").count(), won.score[0], "your boxes are marked yours on your screen");
   assert.equal(await guest.locator("#db-board .box.p0").count(), won.score[1], "and theirs on theirs");
@@ -212,7 +212,7 @@ test("two friends play Dots and Boxes on the host's settings through the invite 
   assert.match(await host.locator("#db-note").innerText(), /Rematch #1/);
   const { st: again } = await finish();
   const wins = (p) => (won.winner === p) + (again.winner === p);
-  assert.match(await host.locator("#db-score").innerText(), new RegExp(`You\\s+${wins(0)}\\s+Bo\\s+${wins(1)}`));
+  assert.match(await host.locator("#score").innerText(), new RegExp(`You\\s+${wins(0)}\\s+Bo\\s+${wins(1)}`));
   assert.ok(await noHorizontalScroll(guest));
 
   // The friend closes the tab: the host is told.
@@ -248,11 +248,11 @@ test("Dots and Boxes vs the robot on a 360 px phone: touch, keyboard, pen stroke
   await page.screenshot({ path: `${ARTIFACTS}/db-4-settings-mobile-light.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".db-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   assert.equal(await page.locator("#db-config").innerText(), "4×4 boxes · no clocks · Hard robot");
   assert.ok(await page.locator("#db-clocks").isHidden(), "no clocks, no clock row");
   assert.ok(await noHorizontalScroll(page));
-  assert.equal(await page.locator(".db-players .p0 .swatch").innerText(), "C", "your initial");
+  assert.equal(await page.locator(".pb-who.p0 .swatch").innerText(), "C", "your initial");
 
   // Draw by touch: the line strokes itself in, then the robot's is replayed.
   await wait(page, () => !!document.querySelector("#db-board.armed"));

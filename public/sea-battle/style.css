@@ -8,69 +8,6 @@
   overflow-wrap: break-word;
 }
 
-.sb-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.sb-players {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1 1 0;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.sb-players .who {
-  display: flex;
-  align-items: center;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  white-space: nowrap;
-  min-width: 0;
-  /* Each name gets half the row (less the "vs"), so neither crowds the other out. */
-  max-width: min(40vw, calc(50% - 16px));
-}
-
-/* A long nickname is cut short; the score next to it always shows. */
-.sb-players .who .name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.sb-players .who.active {
-  border-color: var(--theirs);
-  box-shadow: 0 0 0 2px var(--theirs) inset;
-}
-
-.sb-players .who.me.active {
-  border-color: var(--mine);
-  box-shadow: 0 0 0 2px var(--mine) inset;
-}
-
-.sb-players .score {
-  display: inline-block;
-  flex: none;
-  min-width: 1.5em;
-  margin: 0 6px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  text-align: center;
-  font-size: 0.85rem;
-}
-
-.sb-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 .sb-statusrow {
   display: flex;
   flex-wrap: wrap;

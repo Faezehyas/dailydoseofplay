@@ -5,61 +5,6 @@
   gap: 12px;
 }
 
-.c4-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.c4-top > .btn {
-  flex: none;
-}
-
-/* Each name keeps its full width when it fits; long names share what's left. */
-.c4-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  gap: 6px;
-  flex: 1 1 auto;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.c4-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.c4-players .who.active {
-  border-color: var(--theirs);
-  box-shadow: 0 0 0 2px var(--theirs) inset;
-}
-
-.c4-players .who.me.active {
-  border-color: var(--mine);
-  box-shadow: 0 0 0 2px var(--mine) inset;
-}
-
-.c4-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.c4-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 .pill-disc {
   flex: none;
   width: 22px;
@@ -89,49 +34,6 @@
 .c4-board[data-me="teal"] {
   --disc: var(--accent-2);
   --disc-ring: color-mix(in srgb, var(--accent-2) 70%, var(--sunk));
-}
-
-/* ---------- score ---------- */
-.c4-score {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.c4-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  min-width: 0;
-}
-
-.c4-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.c4-score dd {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.c4-score .mine dd {
-  color: var(--mine-text);
-}
-
-.c4-score .theirs dd {
-  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */
