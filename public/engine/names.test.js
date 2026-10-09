@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checkName, cleanName, NAME_MAX } from "./names.js";
+import { checkName, cleanName, defaultName, ADJECTIVES, ANIMALS, NAME_MAX } from "./names.js";
 import { localPair } from "./channel.js";
 import { openSession } from "./session.js";
 
 const ZWNJ = String.fromCodePoint(0x200c);
 const cyr = (code) => String.fromCodePoint(code);
 const problem = (name) => checkName(name).problem;
+const DEFAULT = /^[A-Z][a-z]+ [A-Z][a-z]+$/;
 
 test("names in many scripts are allowed as typed", () => {
   const names = [
@@ -88,7 +89,26 @@ test("the peer-to-peer handshake applies the same rule, so a modified page can't
     openSession({ channel: x, mode: "friend", index: 0, name: "evil.com", game: "race" }),
     openSession({ channel: y, mode: "friend", index: 1, name: "sh1t", game: "race" }),
   ]);
-  assert.deepEqual(host.players.map((p) => p.name), ["evil.com", "Friend"], "the host cleans the guest's $hello");
-  assert.deepEqual(guest.players.map((p) => p.name), ["Friend", "Friend"], "guests clean the host's $start");
+  const [hostSees, guestSees] = [host, guest].map((s) => s.players.map((p) => p.name));
+  assert.equal(hostSees[0], "evil.com");
+  assert.match(hostSees[1], DEFAULT, "the host cleans the guest's $hello into a default name");
+  assert.match(guestSees[0], DEFAULT, "guests clean the host's $start");
+  assert.equal(guestSees[1], hostSees[1]);
   host.leave();
+});
+
+test("every default name is two capitalised words that pass the nickname rules and fit 20 characters", () => {
+  for (const adjective of ADJECTIVES) {
+    for (const animal of ANIMALS) {
+      const name = `${adjective} ${animal}`;
+      assert.match(name, DEFAULT);
+      assert.ok(name.length <= NAME_MAX, name);
+      assert.deepEqual(checkName(name), { name, problem: null });
+    }
+  }
+  for (const word of [...ADJECTIVES, ...ANIMALS]) assert.doesNotMatch(word, /^(Host|Guest|Friend|You|Player|Robot)$/);
+  for (let i = 0; i < 1000; i++) {
+    const [adjective, animal] = defaultName().split(" ");
+    assert.ok(ADJECTIVES.includes(adjective) && ANIMALS.includes(animal));
+  }
 });

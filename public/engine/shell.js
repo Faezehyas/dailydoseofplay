@@ -1,7 +1,7 @@
 // UI shell shared by the home page and every game: header, footer, theme and
 // sound toggles, nickname storage, toasts, tab-title alerts and tiny DOM helpers.
 import { soundOn, setSound } from "./sound.js";
-import { cleanName } from "./names.js";
+import { cleanName, defaultName } from "./names.js";
 
 const THEME_KEY = "ddp-theme";
 const NAME_KEY = "ddp-name";
@@ -43,9 +43,10 @@ function load(key) {
   }
 }
 
-// A name the rules in names.js refuse is never stored or used.
+// A name the rules in names.js refuse is never stored or used. Without a
+// nickname, a friendly default is picked and stored, so it can be changed.
 export function getNickname() {
-  return cleanName(load(NAME_KEY), "");
+  return cleanName(load(NAME_KEY), "") || setNickname(defaultName());
 }
 export function setNickname(name) {
   const clean = cleanName(name, "");

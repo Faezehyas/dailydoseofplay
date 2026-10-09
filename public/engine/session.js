@@ -9,7 +9,7 @@
 // game registers one.
 import { Emitter, MESSAGE_TOO_BIG } from "./channel.js";
 import { HubGroup, SpokeGroup } from "./group.js";
-import { cleanName } from "./names.js";
+import { cleanName, defaultName } from "./names.js";
 
 export const PROTOCOL_VERSION = 2;
 const HELLO_TIMEOUT_MS = 10_000;
@@ -146,7 +146,7 @@ export function admitGuest(link, { game }) {
         return reject(new Error("version_mismatch"));
       }
       link.send({ t: "$welcome" });
-      resolve(cleanName(msg.name, "Friend"));
+      resolve(cleanName(msg.name, defaultName()));
     }, reject);
   });
 }
@@ -174,12 +174,12 @@ export function greetHost(link, { name, game, mode = "friend", onWelcome, onRost
           settle(); // the host may wait for more players: no timeout from here
           return onWelcome?.();
         case "$roster":
-          return Array.isArray(msg.players) && onRoster?.(msg.players.map((p) => cleanName(p, "Friend")));
+          return Array.isArray(msg.players) && onRoster?.(msg.players.map((p) => cleanName(p, defaultName())));
         case "$reject":
           return fail(new Error(msg.reason === "version_mismatch" ? "version_mismatch" : "rejected"));
         case "$start": {
           done();
-          const players = Array.isArray(msg.players) ? msg.players.map((p) => cleanName(p, "Friend")) : [];
+          const players = Array.isArray(msg.players) ? msg.players.map((p) => cleanName(p, defaultName())) : [];
           if (!Number.isInteger(msg.seat) || msg.seat < 1 || msg.seat >= players.length) return reject(new Error("bad_start"));
           // Built synchronously, so no group frame that follows $start is missed.
           return resolve(new Session({ group: new SpokeGroup({ seat: msg.seat, link }), mode, players, game }));
