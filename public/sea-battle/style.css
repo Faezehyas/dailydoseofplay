@@ -102,8 +102,7 @@
   color: var(--mine-text);
 }
 
-.sb-place,
-.sb-over {
+.sb-place {
   text-align: center;
 }
 
@@ -120,28 +119,12 @@
   gap: 8px;
 }
 
-.sb-over {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-.sb-over h2 {
-  font-size: 1.6rem;
-}
-
-.sb-over h2.win {
-  color: var(--accent-text);
-}
-
 .verdict {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: 0 0 12px;
+  margin: 8px 0 0;
   color: var(--muted);
 }
 
@@ -739,9 +722,4 @@ button.cell {
     width: 80%;
     justify-self: center;
   }
-}
-
-.sb-over .detail {
-  margin: 0;
-  font-weight: 700;
 }

@@ -310,38 +310,3 @@
 .ck-board.done .piece {
   opacity: 0.8;
 }
-
-/* ---------- game over ---------- */
-.ck-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-.ck-over h2 {
-  font-size: 1.6rem;
-}
-
-.ck-over h2.win {
-  color: var(--accent-text);
-}
-
-.ck-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.ck-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.ck-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}

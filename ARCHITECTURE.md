@@ -85,6 +85,7 @@ flowchart TB
     e_channel["channel.js"]
     e_shell["shell.js"]
     e_players["players.js"]
+    e_result["result.js"]
     e_settings["settings.js"]
     e_names["names.js"]
     e_robot_pace["robot-pace.js"]
@@ -105,6 +106,7 @@ flowchart TB
   p_home --> e_shell
   p_main --> e_lobby
   p_main --> e_players
+  p_main --> e_result
   p_main --> e_session
   p_main --> e_shell
   p_main --> e_turn_match
@@ -139,6 +141,7 @@ flowchart TB
   e_lobby --> e_shell
   e_peer --> e_channel
   e_players --> e_shell
+  e_result --> e_shell
   e_room --> e_channel
   e_room --> e_group
   e_room --> e_peer
@@ -346,7 +349,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 |---|---|
 | `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`), nickname in `localStorage`, toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**) and the player bar |
+| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar and the result panel |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
@@ -359,6 +362,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. With a game's `settings` it shows them inside the home screen's card, between the nickname and the Play buttons, and their summary on the host's waiting screen, so friends see the rules before the game starts. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
+| `result.js` | `resultPanel(session, { onLeave, onShow, classes })`: the game-over panel of every game, with Rematch and Leave (see **Result panel**). |
 | `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a group marked `robot` is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary. `get()` is the current config, which the game sends to its guests (`setup`). |
 | `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
@@ -582,6 +586,28 @@ slimmer score, so four fit a 360 px phone. A pill and its score read
 `--seat` and `--seat-text`, which are `--mine` and `--theirs` unless the game
 gives each seat a class of its own that sets them (Chutes and Ladders `p0`
 to `p3`, Ludo its board colours).
+
+**Result panel.** Every game shows its result the same way, in a panel
+built by `resultPanel()` in `result.js` and pinned to the bottom of the
+screen, in the page column. It is out of the page's flow, so the board never
+moves when a match ends (Sea Battle's result used to push its boards down
+about 160 px); while it is open, the page keeps room below the game so
+everything can still be scrolled clear of it. It holds the title
+(`#result`): "You won", "You lost" or "Draw", "<name> won" when more than
+two play, or "Match stopped"; the places in order (`#result-places`, Ludo's
+standings); a reason line (`#result-reason`); an optional node of the
+game's (Sea Battle's fair-play verdict, `#verdict`); **Rematch**
+(`#rematch`); the rematch status (`#rematch-status`); and Leave. The panel
+listens to the session's rematch votes itself: Rematch becomes "Accept
+rematch" once someone else has voted, the status says who wants one or
+"Waiting for Bo…" ("Waiting for 2 players…" with more missing), and a toast
+announces another player's vote. The game creates it once and calls
+`show({ winner, stopped, reason, places, extra })` whenever something
+changes (`winner` is a seat or -1 for a draw) and `hide()` while the match
+is on. It opens once per match: focus moves to its title, and `onShow({
+winner, stopped })` runs, the hook for a game's own result moment (Ludo's
+fanfare and confetti). Place colours read `--seat`, like the player bar,
+from `.mine`, `.theirs` or the game's `classes`.
 
 **Player colours.** A player has the same colour on every screen, so "I'm the
 coral one" is true for everyone at the table. In a two-player game whoever
@@ -1050,8 +1076,8 @@ landing, then climbs a ladder rung by rung or rides the chute's Bézier curve,
 speeding up and tilting with it. A burst of stars marks a ladder's top, dust a
 chute's foot, and confetti the win. When spins pile up (a hidden tab, a 6
 spinning again) the queue plays faster; with the tab hidden or
-`prefers-reduced-motion` set, it applies them at once. The result box waits
-for the winning pawn to arrive. The pawn whose turn it is bobs on the spot.
+`prefers-reduced-motion` set, it applies them at once. The result panel
+waits for the winning pawn to arrive. The pawn whose turn it is bobs on the spot.
 
 **Art.** Everything is inline SVG drawn in code: pastel squares, wooden
 ladders, chutes drawn as playground slides (a rim, raised walls, a bed and a
@@ -1181,8 +1207,7 @@ the same at the end. Your own strokes take 170 ms. A backlog plays at double
 speed; a hidden tab, or `prefers-reduced-motion` (read when each animation
 starts, so tests can switch it mid-game), applies lines at once. Animations
 belong to a match generation, so a rematch drops the old queue and its counts.
-The result waits for the last box, and fits on screen on a laptop and on a
-360 px phone (where the tally hides once the game is over).
+The result panel waits for the last box.
 
 **Sound** (`sounds.js`, synthesized like Chutes and Ladders', behind the
 header's mute toggle): a pencil scratch per line (grains of filtered noise
@@ -1294,9 +1319,9 @@ back to its socket on a high tumbling arc; a safe square sparkles, the home
 column hums, and home and the finish throw confetti. When moves pile up the
 queue plays faster; a hidden tab or `prefers-reduced-motion` (read live, so
 tests can switch it) applies them at once. Animations belong to a match
-generation, so a rematch drops the old queue. The result waits for the last
-token and sits over the board, so it is in view without scrolling on a
-laptop and on a phone. If a player leaves, the engine's notice gets a line
+generation, so a rematch drops the old queue. The result panel waits for the
+last token and lists the standings with each player's rolls and captures (or
+tokens home). If a player leaves, the engine's notice gets a line
 saying the game is over for everyone, with where each player stood.
 
 **Sound** (`sounds.js`, behind the header's mute toggle). The die plays

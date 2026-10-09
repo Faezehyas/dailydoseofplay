@@ -131,12 +131,12 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   }
   await wait(host, () => window.ddp.match.verdict);
   await wait(guest, () => window.ddp.match.verdict);
-  for (const p of pages) assert.doesNotMatch(await p.locator("#sb-over").innerText(), /false|undefined/);
+  for (const p of pages) assert.doesNotMatch(await p.locator("#result-panel").innerText(), /false|undefined/);
   assert.match(await host.locator("#verdict").innerText(), /Fair play verified/);
   assert.match(await guest.locator("#verdict").innerText(), /Fair play verified/);
   const winner = await host.evaluate(() => window.ddp.match.state.winner);
   assert.equal(winner, 1, "the guest aimed at ships and wins");
-  assert.match(await guest.locator(".sb-over h2").innerText(), /Victory/);
+  assert.match(await guest.locator("#result").innerText(), /You won/);
   // Each player sees only the gifts they can collect, never the opponent's.
   for (const p of [host, guest]) {
     const gifts = await p.evaluate(() => {
@@ -152,7 +152,7 @@ test("two friends play a full match in real browsers", { skip: !pw && "Playwrigh
   assert.match(await host.locator("#score").innerText(), /You\s+0\s+Bo\s+1/);
   assert.ok((await guest.locator(".enemy .cell.last").count()) >= 1);
   assert.ok((await host.locator(".own .cell.last").count()) >= 1);
-  assert.match(await host.locator(".sb-over h2").innerText(), /Defeat/);
+  assert.match(await host.locator("#result").innerText(), /You lost/);
   await host.screenshot({ path: `${ARTIFACTS}/3-game-over.png`, fullPage: true });
 
   // Rematch: host asks, guest accepts, both are back to placing for match 2.
@@ -577,7 +577,7 @@ test("against the robot, running out of your own clock loses the game", { skip: 
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
   assert.equal(await page.evaluate(() => window.ddp.match.state.winner), 1);
   assert.equal(await page.locator("#sb-status").innerText(), "You ran out of time.");
-  assert.equal(await page.locator("#sb-detail").innerText(), "Your clock ran out.");
+  assert.equal(await page.locator("#result-reason").innerText(), "Your clock ran out.");
   await page.locator("#verdict.ok").waitFor({ timeout: 10_000 });
   assert.deepEqual(errors, []);
 });

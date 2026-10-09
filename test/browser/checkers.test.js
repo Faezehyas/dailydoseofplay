@@ -178,9 +178,9 @@ test("two friends play Checkers on the host's settings through the invite link, 
   assert.deepEqual(await guest.evaluate(() => window.ddp.match.state), final, "both browsers agree on every move");
   assert.equal(final.winner, 0, `the strong side wins (${final.reason})`);
   assert.ok(final.clocks.every((ms) => ms < 300_000 && ms > 0), `both clocks were spent: ${final.clocks}`);
-  assert.equal(await host.locator("#ck-result").innerText(), "Victory!");
-  assert.equal(await guest.locator("#ck-result").innerText(), "Defeat");
-  assert.match(await guest.locator("#ck-detail").innerText(), /Ada captured all your pieces|You have no legal move left/);
+  assert.equal(await host.locator("#result").innerText(), "You won");
+  assert.equal(await guest.locator("#result").innerText(), "You lost");
+  assert.match(await guest.locator("#result-reason").innerText(), /Ada captured all your pieces|You have no legal move left/);
   assert.match(await host.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+0/);
   assert.match(await guest.locator("#score").innerText(), /You\s+0\s+Draws\s+0\s+Ada\s+1/);
   await host.waitForTimeout(700); // let the last capture fade
@@ -212,9 +212,9 @@ test("two friends play Checkers on the host's settings through the invite link, 
   assert.deepEqual(await guest.evaluate(() => window.ddp.match.state), timedOut);
   assert.equal(timedOut.reason, "timeout");
   assert.equal(timedOut.winner, 0);
-  assert.equal(await guest.locator("#ck-result").innerText(), "Defeat");
-  assert.equal(await guest.locator("#ck-detail").innerText(), "Your clock ran out.");
-  assert.equal(await host.locator("#ck-detail").innerText(), "Bo's clock ran out.");
+  assert.equal(await guest.locator("#result").innerText(), "You lost");
+  assert.equal(await guest.locator("#result-reason").innerText(), "Your clock ran out.");
+  assert.equal(await host.locator("#result-reason").innerText(), "Bo's clock ran out.");
   assert.match(await host.locator("#score").innerText(), /You\s+2\s+Draws\s+0\s+Bo\s+0/);
   await guest.screenshot({ path: `${ARTIFACTS}/checkers-4-clock-loss-mobile-dark.png`, fullPage: true });
 
@@ -265,7 +265,7 @@ test("Checkers vs the robot on a 360 px phone: a full game by touch, then a rema
   await wait(page, () => window.ddp.match.phase === "over");
   const st = await page.evaluate(() => window.ddp.match.state);
   assert.equal(st.winner, 0, `beating the Easy robot (${st.reason})`);
-  assert.equal(await page.locator("#ck-result").innerText(), "Victory!");
+  assert.equal(await page.locator("#result").innerText(), "You won");
   assert.match(await page.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Robot\s+0/);
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${ARTIFACTS}/checkers-7-robot-win-light.png`, fullPage: true });

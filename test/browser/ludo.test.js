@@ -100,10 +100,11 @@ test("two friends play Ludo on the host's house rules through the invite link, t
   await guest.screenshot({ path: `${ARTIFACTS}/ld-1-friend-mobile-dark.png`, fullPage: true });
   const won = await finish();
   const [winner, loser] = won.winner === 0 ? [host, guest] : [guest, host];
-  await winner.locator("#ld-result").filter({ hasText: "You win!" }).waitFor();
-  assert.match(await loser.locator("#ld-result").innerText(), /wins$/);
-  assert.match(await loser.locator("#ld-detail").innerText(), /brought all four home in \d+ rolls/);
-  assert.equal(await host.locator("#ld-standings li").count(), 2);
+  await winner.locator("#result").filter({ hasText: "You won" }).waitFor();
+  await loser.locator("#result").waitFor();
+  assert.equal(await loser.locator("#result").innerText(), "You lost");
+  assert.match(await loser.locator("#result-reason").innerText(), /brought all four home in \d+ rolls/);
+  assert.equal(await host.locator("#result-places li").count(), 2);
   assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
   assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
   assert.ok(await resultInView(host), "the result shows on a laptop without scrolling");

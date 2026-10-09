@@ -276,38 +276,3 @@
     animation: none;
   }
 }
-
-/* ---------- game over ---------- */
-.c4-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-.c4-over h2 {
-  font-size: 1.6rem;
-}
-
-.c4-over h2.win {
-  color: var(--accent-text);
-}
-
-.c4-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.c4-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.c4-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}

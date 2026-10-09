@@ -3,6 +3,7 @@
 import { startGameShell } from "../engine/lobby.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
 import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
@@ -124,7 +125,6 @@ function mountSeaBattle(session, root, shell) {
   let lastAgain = false;
   let selectedShip = -1;
   let dragging = false;
-  let rematchVotes = { me: false, them: false };
   const score = { wins: [0, 0] }; // across rematches
   let lastShots = [new Set(), new Set()]; // board -> squares of the latest volley at it
   let lastTurnSeen = -1;
@@ -158,7 +158,7 @@ function mountSeaBattle(session, root, shell) {
   );
   const weaponsBar = el("div", { class: "sb-weapons", role: "toolbar", "aria-label": "Weapons" });
   const log = el("ol", { class: "sb-log", id: "sb-log", "aria-label": "Battle log" });
-  const overBox = el("div", { class: "sb-over", id: "sb-over", hidden: true });
+  const result = resultPanel(session, { onLeave: () => shell.leave() });
 
   root.append(
     el(
@@ -169,10 +169,10 @@ function mountSeaBattle(session, root, shell) {
       el("div", { class: "sb-clocks" }, myClock, clock, oppClock),
       configLine,
       placeBar,
-      overBox,
       el("div", { class: "sb-boards" }, enemyBoard.wrap, ownBoard.wrap),
       weaponsBar,
       log,
+      result.node,
     ),
   );
 
@@ -500,35 +500,18 @@ function mountSeaBattle(session, root, shell) {
 
   function renderOver() {
     const phase = match.phase;
-    if (phase !== "over" && phase !== "aborted") {
-      overBox.hidden = true;
-      return;
-    }
-    overBox.hidden = false;
-    const won = phase === "over" && match.state.winner === me;
+    if (phase !== "over" && phase !== "aborted") return result.hide();
+    if (phase === "aborted") return result.show({ stopped: true, reason: match.abortReason || "The match was stopped." });
+    const { winner, reason } = match.state;
+    const won = winner === me;
     let verdict;
-    if (phase === "aborted") verdict = el("p", { class: "verdict bad" }, match.abortReason || "The match was stopped.");
-    else if (!match.verdict) verdict = el("p", { class: "verdict" }, el("span", { class: "spinner" }), `Checking ${oppName}'s fleet against their locked-in commitment…`);
+    if (!match.verdict) verdict = el("p", { class: "verdict" }, el("span", { class: "spinner" }), `Checking ${oppName}'s fleet against their locked-in commitment…`);
     else if (match.verdict.ok) verdict = el("p", { class: "verdict ok", id: "verdict" }, `✓ Fair play verified: every answer from ${oppName} matched the fleet they locked in.`);
     else verdict = el("p", { class: "verdict bad", id: "verdict" }, `⚠ ${oppName}'s answers don't add up: ${match.verdict.reason}.`);
-
-    let rematchText = "";
-    if (rematchVotes.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematchVotes.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: won ? "win" : "" }, phase === "aborted" ? "Match stopped" : won ? "Victory!" : "Defeat"),
-      ...(phase === "over" && match.state.reason === "timeout"
-        ? [el("p", { class: "detail", id: "sb-detail" }, won ? `${oppName}'s clock ran out.` : "Your clock ran out.")]
-        : []),
-      verdict,
-      el(
-        "div",
-        { class: "sb-actions" },
-        el("button", { class: "btn primary", type: "button", id: "rematch", disabled: rematchVotes.me, onclick: () => session.requestRematch() }, rematchVotes.them && !rematchVotes.me ? "Accept rematch" : "Rematch"),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    let why;
+    if (reason === "timeout") why = won ? `${oppName}'s clock ran out.` : "Your clock ran out.";
+    else why = won ? `You sank ${oppName}'s whole fleet.` : `${oppName} sank your whole fleet.`;
+    result.show({ winner, reason: why, extra: verdict });
   }
 
   function addLog(text, cls = "") {
@@ -794,7 +777,6 @@ function mountSeaBattle(session, root, shell) {
     selectedShip = -1;
     lastShots = [new Set(), new Set()];
     lastTurnSeen = -1;
-    rematchVotes = { me: false, them: false };
     timedOut = false;
     claimed = false;
     match = new SeaBattleMatch({ send: (msg) => session.send(msg), me, fleet, m, config });
@@ -860,14 +842,7 @@ function mountSeaBattle(session, root, shell) {
     render();
   }
 
-  offs.push(
-    session.on("rematch", (votes) => {
-      rematchVotes = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
-    session.on("rematch-start", () => config && newMatch()),
-  );
+  offs.push(session.on("rematch-start", () => config && newMatch()));
   // The room's settings come from whoever created it (the robot uses ours).
   function begin(c) {
     if (config) return;

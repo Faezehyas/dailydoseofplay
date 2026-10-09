@@ -524,38 +524,3 @@
   min-width: 3.2em;
   font-weight: 700;
 }
-
-/* ---------- game over ---------- */
-.chess-over {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px;
-}
-
-.chess-over h2 {
-  font-size: 1.6rem;
-}
-
-.chess-over h2.win {
-  color: var(--accent-text);
-}
-
-.chess-over .detail {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
-.chess-over .detail.bad {
-  color: var(--danger);
-  font-weight: 700;
-}
-
-.chess-over-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}

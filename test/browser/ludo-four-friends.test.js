@@ -81,9 +81,9 @@ test("four friends fill a Ludo room in four browsers and play for places, then o
   assert.equal(st.order.length, 4);
   for (const p of st.order.slice(0, 3)) assert.ok(st.tokens[p].every((r) => r === 56), "three players finished for places");
   for (const p of pages) {
-    await p.locator("#ld-standings").waitFor();
-    assert.equal(await p.locator("#ld-standings li").count(), 4);
-    assert.match(await p.locator("#ld-standings").innerText(), /1st[\s\S]*2nd[\s\S]*3rd[\s\S]*4th/);
+    await p.locator("#result-places").waitFor();
+    assert.equal(await p.locator("#result-places li").count(), 4);
+    assert.match(await p.locator("#result-places").innerText(), /1st[\s\S]*2nd[\s\S]*3rd[\s\S]*4th/);
   }
   assert.ok(await resultInView(friends[0]), "the standings fit a phone without scrolling");
   await host.screenshot({ path: `${ARTIFACTS}/ld-6-four-over.png` });
