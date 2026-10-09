@@ -50,13 +50,13 @@ test("four friends fill a Ludo room in four browsers and play for places, then o
   const colors = ["red", "green", "yellow", "blue"];
   for (const [seat, p] of pages.entries()) {
     assert.equal(await p.locator(".ld-board .pawn").count(), 16, "sixteen tokens on the board");
-    assert.equal(await p.locator(".ld-players .who").count(), 4);
-    assert.equal(await p.locator("#ld-score > div").count(), 4);
+    assert.equal(await p.locator(".pb-who").count(), 4);
+    assert.equal(await p.locator("#score > div").count(), 4);
     assert.equal(await yardCorner(p, colors[seat]), "bottom left", `${colors[seat]} sees their own yard bottom left`);
     // Each player's colour is the same on every screen.
-    assert.equal(await p.locator(".ld-players .who.c-green").innerText().then((s) => s.split("\n")[0]), seat === 1 ? "Bo (you)" : "Bo");
+    assert.equal(await p.locator(".pb-who.c-green").innerText().then((s) => s.split("\n")[0]), seat === 1 ? "Bo (you)" : "Bo");
   }
-  assert.match(await friends[1].locator(".ld-players").innerText(), /Cy \(you\)[\s\S]*Ada[\s\S]*Bo[\s\S]*Di/, "you first, then the others in seat order");
+  assert.match(await friends[1].locator(".pb-players").innerText(), /Cy \(you\)[\s\S]*Ada[\s\S]*Bo[\s\S]*Di/, "you first, then the others in seat order");
   assert.ok(await noHorizontalScroll(friends[0]), "four players fit a 360 px phone");
   await friends[0].screenshot({ path: `${ARTIFACTS}/ld-4-four-mobile-dark.png`, fullPage: true });
 

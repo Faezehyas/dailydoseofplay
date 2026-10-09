@@ -40,67 +40,6 @@
   --hint: rgb(10 12 18 / 34%);
 }
 
-/* "You vs Robot" stays together, centred over the scoreboard, with Leave on
-   the right; the empty first column balances Leave. */
-.chess-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
-  align-items: center;
-  gap: 8px;
-}
-
-.chess-top > .chess-players {
-  grid-column: 2;
-}
-
-.chess-top > .btn {
-  grid-column: 3;
-  justify-self: end;
-}
-
-/* Each name keeps its full width when it fits; long names share what's left. */
-.chess-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.chess-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.chess-players .who.active {
-  border-color: var(--theirs);
-  box-shadow: 0 0 0 2px var(--theirs) inset;
-}
-
-.chess-players .who.me.active {
-  border-color: var(--mine);
-  box-shadow: 0 0 0 2px var(--mine) inset;
-}
-
-.chess-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.chess-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 .pill-color {
   flex: none;
   width: 22px;
@@ -117,49 +56,6 @@
 .pill-color[data-color="b"] {
   background: var(--pc-b);
   border: 2px solid var(--pc-b-edge);
-}
-
-/* ---------- score ---------- */
-.chess-score {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.chess-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 4px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  min-width: 0;
-}
-
-.chess-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.chess-score dd {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.chess-score .mine dd {
-  color: var(--mine-text);
-}
-
-.chess-score .theirs dd {
-  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */

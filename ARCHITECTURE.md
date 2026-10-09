@@ -198,7 +198,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 |---|---|
 | `shell.js` | Header with light/dark and sound toggles, nickname and last game played in `localStorage` (the home page shows that game first; it never leaves the device), toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
-| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), its loading tiles and the "Last played" label (see **Colours and contrast**), and the game page column (see **Page column**) |
+| `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), its loading tiles and the "Last played" label (see **Colours and contrast**), the game page column (see **Page column**) and the player bar |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
 | `channel.js` | `Emitter` and `localPair()`, an in-memory two-ended channel with the same interface as `PeerChannel` (used for robots and tests). `MAX_MESSAGE_LENGTH` (64 K characters of JSON) and `MESSAGE_TOO_BIG`: the local pair refuses an oversized message the same way, so robot games and tests behave like WebRTC. |
@@ -210,6 +210,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
 | `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and only errors use `role="alert"`. It also sets which view is on show for the page column, and saves the game's slug when a game starts. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
+| `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
 | `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon and Ludo, see each game's `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
@@ -362,6 +363,24 @@ game's own top-level box has no `max-width`, so it fills `#game`. The default
 is the widest, so a game that passes no `layout` is never squeezed: its own
 box keeps whatever width it sets, and its rules panel matches the column.
 `test/browser/layout.test.js` checks every ready game at 1280 and 360 px.
+
+**Player bar.** Every game shows the same bar above its board, built by
+`playerBar()` in `players.js` and styled in `theme.css`: a pill per player
+(you first, "(you)" after your name, then the others in seat order), a ring
+on whoever's turn it is, and Leave (`id="leave"`) at the top right. Under it
+the score (`#score`) shows wins per player and, for games whose score has a
+`draws` field, a Draws box (Dots and Boxes adds it with the first draw,
+since only some boards can be drawn). The game creates it once and calls
+`update({ turn, score, badges, notes })` with whatever changed, each indexed
+by seat: `turn` is a seat or -1, `score` is `{ wins, draws }`, a badge is a
+node of the game's own (a mark, disc, stone or swatch, which the game may
+keep changing), and a note is a short line under the name (pips, boxes, a
+square), as text or a node. With three or four players the pills wrap, at
+most two to a row; under 600 px they sit in a 2×2 grid beside Leave over a
+slimmer score, so four fit a 360 px phone. A pill and its score read
+`--seat` and `--seat-text`, which are `--mine` and `--theirs` unless the game
+gives each seat a class of its own that sets them (Chutes and Ladders `p0`
+to `p3`, Ludo its board colours).
 
 **Player colours.** A player has the same colour on every screen, so "I'm the
 coral one" is true for everyone at the table. In a two-player game whoever

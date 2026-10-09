@@ -36,7 +36,7 @@ test("Ludo against three robots on a 360 px phone: die, hops, sounds, mute, keyb
   await page.screenshot({ path: `${ARTIFACTS}/ld-9-settings-mobile.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".ld-players").innerText(), /Cleo[\s\S]*Robot 1[\s\S]*Robot 2[\s\S]*Robot 3/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot 1[\s\S]*Robot 2[\s\S]*Robot 3/);
   assert.equal(await page.locator("#ld-config").innerText(), "three 6s lose the turn · no blocks · no capture bonus · play for places · 10 s to move · Hard robots");
   assert.equal(await yardCorner(page, "red"), "bottom left");
   assert.ok(await noHorizontalScroll(page));

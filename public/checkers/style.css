@@ -5,61 +5,6 @@
   gap: 12px;
 }
 
-.ck-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.ck-top > .btn {
-  flex: none;
-}
-
-/* Each name keeps its full width when it fits; long names share what's left. */
-.ck-players {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
-  align-items: center;
-  gap: 6px;
-  flex: 1 1 auto;
-  min-width: 0;
-  font-weight: 700;
-}
-
-.ck-players .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 4px 12px 4px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.ck-players .who.active {
-  border-color: var(--theirs);
-  box-shadow: 0 0 0 2px var(--theirs) inset;
-}
-
-.ck-players .who.me.active {
-  border-color: var(--mine);
-  box-shadow: 0 0 0 2px var(--mine) inset;
-}
-
-.ck-players .name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ck-players .vs {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
 /* The player's colour, with their pieces left. */
 .pill-disc {
   display: inline-grid;
@@ -88,49 +33,6 @@
 
 .pill-disc[data-c="b"] {
   --pc: var(--accent-2);
-}
-
-/* ---------- score ---------- */
-.ck-score {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.ck-score > div {
-  display: grid;
-  justify-items: center;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  min-width: 0;
-}
-
-.ck-score dt {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ck-score dd {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.ck-score .mine dd {
-  color: var(--mine-text);
-}
-
-.ck-score .theirs dd {
-  color: var(--theirs-text);
 }
 
 /* ---------- status ---------- */

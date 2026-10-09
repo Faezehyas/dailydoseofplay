@@ -4,6 +4,7 @@ import { startGameShell } from "../engine/lobby.js";
 import { matchRouter } from "../engine/session.js";
 import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
+import { playerBar } from "../engine/players.js";
 import { makeRules, normalizeConfig, stoneOf, isTimed, timeLeft, EMPTY, DRAW, SIZE } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -57,8 +58,7 @@ function mountGomoku(session, root, shell) {
   const me = session.index;
   const opp = 1 - me;
   const oppName = session.opponent.name;
-  const myName = session.me.name === "You" ? "You" : `${session.me.name} (you)`;
-  const score = { me: 0, them: 0, draws: 0 };
+  const score = { wins: [0, 0], draws: 0 };
   let config = null;
   let rules = null;
   let match = null;
@@ -78,13 +78,11 @@ function mountGomoku(session, root, shell) {
   // ---------- layout ----------
   const pills = [me, opp].map((player) => {
     const stone = el("span", { class: "pill-stone", dataset: { v: "" } });
-    const node = el("span", { class: `who ${player === me ? "me" : ""}` }, stone, el("span", { class: "name" }, player === me ? myName : oppName));
     const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
-    return { node, stone, clock };
+    return { stone, clock };
   });
-  const players = el("div", { class: "gmk-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
-  const leaveBtn = el("button", { class: "btn ghost small", type: "button", id: "leave", onclick: () => shell.leave() }, "Leave");
-  const scoreBox = el("dl", { class: "gmk-score", id: "gmk-score", "aria-label": "Score" });
+  const bar = playerBar(session, { onLeave: () => shell.leave() });
+  bar.update({ badges: { [me]: pills[0].stone, [opp]: pills[1].stone } });
   const status = el("p", { class: "gmk-status", id: "gmk-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "gmk-movebar", "aria-hidden": "true" }, moveBarFill);
@@ -103,8 +101,7 @@ function mountGomoku(session, root, shell) {
     el(
       "div",
       { class: "gomoku" },
-      el("div", { class: "gmk-top" }, players, leaveBtn),
-      scoreBox,
+      bar.node,
       status,
       clocks,
       el("div", { class: "gmk-board-wrap" }, board),
@@ -189,18 +186,13 @@ function mountGomoku(session, root, shell) {
   // ---------- render ----------
   function renderPills() {
     const st = match?.state;
+    bar.update({ turn: match?.phase === "playing" ? st.turn : -1 });
     for (const [k, player] of [me, opp].entries()) {
-      const { node, stone } = pills[k];
+      const { stone } = pills[k];
       const v = st ? stoneOf(st, player) : "";
-      node.classList.toggle("active", match?.phase === "playing" && st.turn === player);
       stone.dataset.v = v;
       stone.setAttribute("aria-label", v ? (v === "first" ? "solid stones, moves first" : "ringed stones") : "stones not decided");
     }
-  }
-
-  function renderScore() {
-    const item = (label, n, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, String(n)));
-    scoreBox.replaceChildren(item("You", score.me, "mine"), item("Draws", score.draws, "draws"), item(oppName, score.them, "theirs"));
   }
 
   const runWord = (st) => COUNT_WORD[st.line?.length] || "five";
@@ -230,7 +222,7 @@ function mountGomoku(session, root, shell) {
     // Coral is whoever moves first this match, on every screen.
     root.querySelector(".gomoku").dataset.you = st ? (st.first === me ? "a" : "b") : "";
     renderPills();
-    renderScore();
+    bar.update({ score });
     renderClocks(phase === "playing" ? performance.now() - turnStart : 0);
     status.textContent = statusText();
     status.classList.toggle("mine", phase === "playing" && st.turn === me);
@@ -315,8 +307,7 @@ function mountGomoku(session, root, shell) {
     match.on("events", () => (turnStart = performance.now()));
     match.on("over", ({ winner }) => {
       if (winner === DRAW) score.draws++;
-      else if (winner === me) score.me++;
-      else score.them++;
+      else score.wins[winner]++;
     });
     router.start(match);
     render();

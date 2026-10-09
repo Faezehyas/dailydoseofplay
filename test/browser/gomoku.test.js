@@ -83,11 +83,11 @@ test("two friends play Gomoku on the host's settings through the invite link, wi
   assert.equal(await guest.locator("#gmk-config").innerText(), "15 × 15, five in a row · 20 s a move · 3 min each", "the host's settings reach the friend");
   assert.equal(await host.locator("#gmk-config").innerText(), await guest.locator("#gmk-config").innerText());
   assert.deepEqual(await guest.evaluate(() => [window.ddp.match.state.moveMs, window.ddp.match.state.clocks]), [20_000, [180_000, 180_000]]);
-  assert.match(await host.locator(".gmk-players").innerText(), /Ada[\s\S]*Bo/);
+  assert.match(await host.locator(".pb-players").innerText(), /Ada[\s\S]*Bo/);
   // "Ada vs Bo" stays together, centred over the scoreboard.
   const centre = (page, sel) => page.locator(sel).evaluate((n) => { const r = n.getBoundingClientRect(); return r.left + r.width / 2; });
-  assert.ok(Math.abs((await centre(host, ".gmk-players")) - (await centre(host, "#gmk-score"))) < 2, "the players are centred");
-  assert.match(await guest.locator(".gmk-players").innerText(), /Bo[\s\S]*Ada/);
+  assert.ok(Math.abs((await centre(host, ".pb-players")) - (await centre(host, "#score"))) < 2, "the players are centred");
+  assert.match(await guest.locator(".pb-players").innerText(), /Bo[\s\S]*Ada/);
   assert.ok(await noHorizontalScroll(guest), "no horizontal scroll at 360 px");
   const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   assert.equal(await bg(guest), "rgb(18, 21, 28)", "the phone follows its dark OS theme");
@@ -148,8 +148,8 @@ test("two friends play Gomoku on the host's settings through the invite link, wi
   assert.equal(await host.locator("#gmk-result").innerText(), "Victory!");
   assert.equal(await guest.locator("#gmk-result").innerText(), "Defeat");
   assert.equal(await guest.locator("#gmk-detail").innerText(), "Ada lined up five stones.");
-  assert.match(await host.locator("#gmk-score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+0/);
-  assert.match(await guest.locator("#gmk-score").innerText(), /You\s+0\s+Draws\s+0\s+Ada\s+1/);
+  assert.match(await host.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+0/);
+  assert.match(await guest.locator("#score").innerText(), /You\s+0\s+Draws\s+0\s+Ada\s+1/);
   const clocks = await host.evaluate(() => window.ddp.match.state.clocks);
   assert.ok(clocks.every((ms) => ms < 180_000 && ms > 150_000), `both clocks were spent: ${clocks}`);
   await settle(host);
@@ -172,7 +172,7 @@ test("two friends play Gomoku on the host's settings through the invite link, wi
   assert.equal(await guest.locator("#gmk-result").innerText(), "Victory!");
   assert.equal(await guest.locator("#gmk-status").innerText(), "You win with six in a row!");
   assert.equal(await host.locator("#gmk-detail").innerText(), "Bo lined up six stones.");
-  assert.match(await host.locator("#gmk-score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
+  assert.match(await host.locator("#score").innerText(), /You\s+1\s+Draws\s+0\s+Bo\s+1/);
   assert.ok(await noHorizontalScroll(guest));
   await settle(guest);
   await guest.screenshot({ path: `${ARTIFACTS}/gomoku-3-rematch-mobile-dark.png`, fullPage: true });
@@ -224,10 +224,10 @@ test("Gomoku vs the robot on a 360 px phone: a full game, then a loss on the mov
   await page.screenshot({ path: `${ARTIFACTS}/gomoku-4-lobby-mobile.png`, fullPage: true });
   await page.click("#play-robot");
   await wait(page, () => window.ddp.match?.phase === "playing");
-  assert.match(await page.locator(".gmk-players").innerText(), /Cleo[\s\S]*Robot/);
+  assert.match(await page.locator(".pb-players").innerText(), /Cleo[\s\S]*Robot/);
   // On a phone the names use the full width, from the scoreboard's left edge.
   const left = (sel) => page.locator(sel).evaluate((n) => n.getBoundingClientRect().left);
-  assert.ok(Math.abs((await left(".gmk-players")) - (await left("#gmk-score"))) < 1, "the names start at the scoreboard's edge");
+  assert.ok(Math.abs((await left(".pb-players")) - (await left("#score"))) < 1, "the names start at the scoreboard's edge");
   assert.equal(await page.locator("#gmk-config").innerText(), "15 × 15, five in a row · 10 s a move · no game clock");
   assert.equal(await page.evaluate(() => window.ddp.match.state.turn), 0, "the room setting says I start");
   assert.ok(await page.locator("#gmk-move-left").isVisible());
@@ -285,7 +285,7 @@ test("Gomoku vs the robot on a 360 px phone: a full game, then a loss on the mov
   assert.equal(await page.evaluate(() => window.ddp.match.state.reason), "timeout");
   assert.equal(await page.locator("#gmk-result").innerText(), "Defeat");
   assert.equal(await page.locator("#gmk-detail").innerText(), "Your clock ran out.");
-  assert.match(await page.locator("#gmk-score").innerText(), /Robot\s+[1-2]/);
+  assert.match(await page.locator("#score").innerText(), /Robot\s+[1-2]/);
   await page.click("#leave");
   await page.locator("#play-friend").waitFor();
   assert.deepEqual(errors, []);

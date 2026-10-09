@@ -672,6 +672,198 @@ input::placeholder {
   font-weight: 700;
 }
 
+/* ---------- player bar (engine/players.js) ---------- */
+/* A player's pill and score read --seat (ring) and --seat-text (wins): the
+   player colours by default, or a game's own class per seat, which wins
+   over these zero-specificity defaults. */
+:where(.player-bar .mine) {
+  --seat: var(--mine);
+  --seat-text: var(--mine-text);
+}
+
+:where(.player-bar .theirs) {
+  --seat: var(--theirs);
+  --seat-text: var(--theirs-text);
+}
+
+.player-bar {
+  display: grid;
+  gap: 8px;
+}
+
+/* The players stay together, centred over the score, with Leave at the top
+   right; the empty first column balances Leave. No grid gap, so on a phone
+   that empty column takes no room from the names. */
+.pb-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
+  align-items: start;
+}
+
+.pb-top > .pb-players {
+  grid-column: 2;
+}
+
+.pb-top > .btn {
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 8px;
+}
+
+/* Each name keeps its full width when it fits; long names share what's left. */
+.pb-players {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto minmax(0, max-content);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 700;
+}
+
+/* Three or four players wrap, at most two to a row. */
+.player-bar.many .pb-players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.player-bar.many .pb-who {
+  max-width: calc(50% - 3px);
+}
+
+.pb-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.pb-who:has(> .pb-badge:not(:empty)) {
+  padding-left: 6px;
+}
+
+.pb-who.active {
+  border-color: var(--seat);
+  box-shadow: 0 0 0 2px var(--seat) inset;
+}
+
+.pb-badge {
+  display: contents;
+}
+
+.pb-label {
+  display: grid;
+  min-width: 0;
+}
+
+.pb-label:has(> .pb-note:not(:empty)) {
+  line-height: 1.1;
+}
+
+.pb-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-note {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pb-note:empty {
+  display: none;
+}
+
+.pb-vs {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.pb-score {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.pb-score > div {
+  display: grid;
+  justify-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+
+.pb-score dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-score dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.2;
+  color: var(--seat-text, var(--text));
+}
+
+/* Phones, three or four players: the pills in a 2×2 grid beside Leave, a
+   slimmer score. */
+@media (max-width: 600px) {
+  .player-bar.many .pb-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .player-bar.many .pb-top > * {
+    grid-column: auto;
+  }
+
+  .player-bar.many .pb-players {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .player-bar.many .pb-who {
+    max-width: none;
+    padding: 3px 8px 3px 4px;
+    font-size: 0.9rem;
+  }
+
+  .player-bar.many .pb-score > div {
+    grid-auto-flow: column;
+    justify-content: center;
+    align-items: baseline;
+    gap: 6px;
+    padding: 3px 6px;
+  }
+
+  .player-bar.many .pb-score dt {
+    font-size: 0.72rem;
+  }
+
+  .player-bar.many .pb-score dd {
+    font-size: 1.05rem;
+  }
+}
+
 /* ---------- home ---------- */
 .hero {
   text-align: center;

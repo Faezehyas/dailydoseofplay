@@ -83,9 +83,9 @@ test("a 20-letter nickname stays on a 360 px screen in the status, note and rema
   }
 
   // The scoreboard label for the opponent is cut short instead.
-  const label = await textSpan(waiter, "#ttt-score .theirs dt");
+  const label = await textSpan(waiter, "#score .theirs dt");
   assert.ok(label.ellipsis, "the opponent's score label ends in an ellipsis");
-  const box = await waiter.locator("#ttt-score .theirs dt").boundingBox();
+  const box = await waiter.locator("#score .theirs dt").boundingBox();
   assert.ok(box.x >= 0 && box.x + box.width <= 360, "the score label's box is on screen");
 
   // The first player lines up the top row: "<name> wins this round."
