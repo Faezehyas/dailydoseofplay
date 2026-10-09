@@ -1,0 +1,3 @@
+[submodule "vendor/mental-poker"]
+	path = vendor/mental-poker
+	url = https://github.com/paritytech/mental-poker
