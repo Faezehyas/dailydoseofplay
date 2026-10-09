@@ -39,8 +39,22 @@ Dotfiles, path traversal, directory paths and `*.test.js` return 404. A bare
 `/<slug>` gets a 301 to `/<slug>/` (the query string is kept) so the game's
 relative imports resolve.
 
-Every page response carries `Content-Security-Policy`, `X-Content-Type-Options`
-and `Referrer-Policy` headers. Scripts can only load from the site itself.
+**Security headers.** Every response carries the same set (`SECURITY_HEADERS`
+in `server/app.js`): pages, files, `304`, the `301` redirect, `400`, `404`,
+`405`, `426`, `/healthz` (which also keeps `Access-Control-Allow-Origin: *`)
+and the `403` that refuses a `/ws` handshake.
+
+| Header | Value | Why |
+|---|---|---|
+| `Content-Security-Policy` | `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'` | Scripts, fetches and sockets stay on the site itself. `connect-src 'self'` covers our own `ws:`/`wss:` in current browsers (CSP Level 3: Chrome 71, Firefox since 2018, Safari 16), so injected code can't open a socket to another host. WebRTC's STUN servers are not under `connect-src`. |
+| `Strict-Transport-Security` | `max-age=31536000` | Once a browser has seen the site over HTTPS, it never uses plain HTTP for it for a year. No `includeSubDomains` and no `preload`, so it can be dropped later. Browsers ignore it over plain HTTP, so `localhost` and LAN play are unaffected. |
+| `Cross-Origin-Opener-Policy` | `same-origin` | A page on another site that opens ours gets no handle to our window. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | No game needs them. The invite link's Share (`navigator.share`) and Copy (`navigator.clipboard`) stay allowed. |
+| `X-Content-Type-Options` | `nosniff` | Files are only run as the type we send. |
+| `Referrer-Policy` | `same-origin` | Invite links with their keys never leak to other sites. |
+
+`test/browser/security-headers.test.js` checks that, under these headers, the
+lobby still reaches `/ws` and the invite link still copies and shares.
 
 **Caching.** Static files carry `Cache-Control: no-cache` and a strong `ETag`,
 a 64-bit FNV-1a hash of the file's bytes (`etagOf` in `server/app.js`, pure JS,
@@ -208,7 +222,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
 | `robot-pace.js` | `robotPause(ms)`: every robot's pause before it moves goes through it, so browser tests can speed robots up by setting `globalThis.ddpRobotPace` (1 for players) |
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
-| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. Under the lobby (and the game's settings), a "More games" row links to the other ready games; it hides while a game is on show. It also sets which view is on show for the page column, and saves the game's slug when a game starts. |
+| `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. Under the lobby (and the game's settings), a "More games" row links to the other ready games; it hides while a game is on show. It also sets which view is on show for the page column, and saves the game's slug when a game starts. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
 | `settings.js` | `mountSettings()`: a game's settings panel on the lobby's home screen (segmented options such as clocks or board size), remembered per device. The game sends the room creator's choice to its guest (`setup`). |
@@ -438,7 +452,7 @@ its own audio context or output.
 | File | Job |
 |---|---|
 | `index.html` | Page with `#lobby` and `#game` sections and the rules |
-| `main.js` | `startGameShell({ slug, title, tagline, layout, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; `layout` picks the page column (see **Page column**). |
+| `main.js` | `startGameShell({ slug, title, layout, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; the lobby's tagline is the game's `description` there (a `tagline` option still overrides it); `layout` picks the page column (see **Page column**). |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
 | `match.js` | Only for games with hidden information: one player's protocol state machine. Other games use `engine/turn-match.js`. |
 | `sounds.js` | Optional: the game's sounds, `export const sounds = defineSounds({...})` with a role for each (see **Sound levels**), and the `play` helpers `main.js` calls. The only file that imports `engine/sound.js`. |

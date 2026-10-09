@@ -34,7 +34,6 @@ const still = () => reduced.matches;
 startGameShell({
   slug: "chutes-and-ladders",
   title: "Chutes and Ladders",
-  tagline: "Spin, hop, climb the ladders and dodge the chutes. First to square 100 wins.",
   layout: "wide",
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,

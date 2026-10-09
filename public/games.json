@@ -14,7 +14,7 @@
       "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
-      "description": "Three in a row wins. The classic five-minute duel."
+      "description": "Line them up before your friend does. Quick to learn, sneaky to master."
     },
     {
       "slug": "connect-4",
@@ -22,7 +22,7 @@
       "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
-      "description": "Drop discs, line up four before your friend does."
+      "description": "Drop, stack and line up four before your rival does."
     },
     {
       "slug": "gomoku",
@@ -30,7 +30,7 @@
       "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
-      "description": "Five in a row on a big board. Easy to learn, deep to master."
+      "description": "Fifteen lines each way, five stones to win. Build two threats, block every one of theirs."
     },
     {
       "slug": "chess",
@@ -38,7 +38,7 @@
       "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
-      "description": "The king of board games, played straight from the browser."
+      "description": "Sixty-four squares, two armies, one king to trap. Your move."
     },
     {
       "slug": "checkers",
@@ -46,7 +46,7 @@
       "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
-      "description": "Jump, capture, crown. Clear the board to win."
+      "description": "Hop, capture, crown a king. Leave your friend without a piece to move."
     },
     {
       "slug": "backgammon",
@@ -54,7 +54,7 @@
       "status": "ready",
       "players": "2 players",
       "maxPlayers": 2,
-      "description": "Race your checkers home with a little luck and a lot of tactics."
+      "description": "Roll, run and hit. Bring all fifteen checkers home and off the board first."
     },
     {
       "slug": "chutes-and-ladders",
@@ -78,7 +78,7 @@
       "status": "ready",
       "players": "2–4 players",
       "maxPlayers": 4,
-      "description": "Roll a 6 to come out, send rivals back to their yard, and race all four tokens home."
+      "description": "Roll a 6 to come out, knock rivals back to their yard, and race all four tokens home."
     }
   ]
 }

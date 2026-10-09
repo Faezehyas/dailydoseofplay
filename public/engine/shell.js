@@ -57,7 +57,7 @@ export const setLastGame = (slug) => store(LAST_GAME_KEY, slug);
 // again on the next call.
 let gamesRequest = null;
 export function loadGames() {
-  gamesRequest ||= fetch("/games.json")
+  gamesRequest ||= fetch("/games.json", { cache: "no-cache" })
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
