@@ -33,11 +33,13 @@ function card(game) {
   return el("li", {}, tile);
 }
 
-// A ready tile plays a short preview of its game on hover or focus, or once as
-// it scrolls into view on a touch screen. preview.svg is inlined so its
-// animations, which start paused, can run; without it the icon stays.
+// While a ready tile is hovered or focused, or on a touch screen while it is
+// mostly in view, it loops a short preview of its game, then shows its icon
+// again. preview.svg is inlined so its animations, which start paused, can
+// run; without it the icon stays.
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const canHover = matchMedia("(hover: hover)").matches;
+const HOLD_MS = 1200; // on the last frame before the next loop
 
 async function fetchPreview(slug) {
   try {
@@ -54,27 +56,44 @@ async function fetchPreview(slug) {
 
 function watchPreview(tile, img, slug) {
   let preview;
-  async function play() {
-    if (reduceMotion.matches) return;
+  let run = 0; // bumped on every start and stop, so a stale loop ends
+  const on = { hover: false, focus: false, view: false };
+  async function start() {
+    const id = ++run;
     preview ??= fetchPreview(slug);
     const svg = await preview;
-    if (!svg) return;
-    if (!svg.isConnected) img.replaceWith(svg);
-    const animations = svg.getAnimations({ subtree: true });
-    if (animations.some((a) => a.playState === "running")) return;
-    for (const a of animations) a.play();
+    if (!svg || id !== run) return;
+    img.replaceWith(svg);
+    while (id === run) {
+      const animations = svg.getAnimations({ subtree: true });
+      for (const a of animations) a.play();
+      try {
+        await Promise.all(animations.map((a) => a.finished));
+      } catch {
+        return; // taken out of the page
+      }
+      await new Promise((r) => setTimeout(r, HOLD_MS));
+    }
   }
-  tile.addEventListener("mouseenter", play);
-  tile.addEventListener("focusin", (e) => tile.contains(e.relatedTarget) || play());
+  function stop() {
+    run++;
+    preview?.then((svg) => svg?.replaceWith(img));
+  }
+  let playing = false;
+  function set(key, value) {
+    on[key] = value;
+    const want = (on.hover || on.focus || on.view) && !reduceMotion.matches;
+    if (want === playing) return;
+    playing = want;
+    if (want) start();
+    else stop();
+  }
+  tile.addEventListener("mouseenter", () => set("hover", true));
+  tile.addEventListener("mouseleave", () => set("hover", false));
+  tile.addEventListener("focusin", () => set("focus", true));
+  tile.addEventListener("focusout", (e) => tile.contains(e.relatedTarget) || set("focus", false));
   if (canHover) return;
-  new IntersectionObserver(
-    ([entry], observer) => {
-      if (entry.intersectionRatio < 0.6) return;
-      observer.disconnect();
-      play();
-    },
-    { threshold: 0.6 },
-  ).observe(tile);
+  new IntersectionObserver(([entry]) => set("view", entry.intersectionRatio >= 0.6), { threshold: [0, 0.6] }).observe(tile);
 }
 
 const list = $("#games");

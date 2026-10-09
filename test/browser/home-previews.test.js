@@ -1,8 +1,8 @@
-// Headless-browser tests: a ready game's home tile swaps its icon for a short
-// preview of the game on hover or keyboard focus, plays it once and plays it
-// again next time, without changing size; on a touch screen it plays once as
-// the tile scrolls into view; with reduced motion, or without a preview, the
-// icon stays. Skips if Playwright is missing.
+// Headless-browser tests: while a ready game's home tile is hovered or has
+// keyboard focus, it loops a short preview of the game in place of its icon,
+// without changing size, and shows the icon again after; on a touch screen it
+// loops while the tile is in view; with reduced motion, or without a preview,
+// the icon stays. Skips if Playwright is missing.
 //
 //   npm run test:browser
 import test from "node:test";
@@ -63,7 +63,7 @@ async function openHome(browser, srv, errors, options = {}) {
   return page;
 }
 
-test("hovering or focusing a tile plays its game's preview", { skip: !pw && "Playwright not installed", timeout: 90_000 }, async (t) => {
+test("a tile loops its game's preview while hovered or focused, then shows its icon again", { skip: !pw && "Playwright not installed", timeout: 90_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });
   const srv = await startServer();
   const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
@@ -95,36 +95,52 @@ test("hovering or focusing a tile plays its game's preview", { skip: !pw && "Pla
         assert.equal(shown.hidden, "true", `${slug}: the preview is decorative`);
         assert.equal(await tile.locator(".game-icon img").count(), 0, `${slug}: the preview replaced the icon`);
         assert.deepEqual(await tileSize(page, slug), before, `${slug} at ${width} px: the tile keeps its size`);
+        await page.mouse.move(0, 0);
+        await tile.locator(".game-icon img").waitFor();
+        assert.equal(await preview(page, slug), null, `${slug}: the icon is back once the mouse leaves`);
       }
       assert.equal(fetched.length, ready.length, "each preview is fetched once");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width} px: no horizontal scroll`);
 
-      // Hold a preview at its last frame, then hover it again: it plays again.
-      const { slug } = ready[0];
-      await page.locator(`.game-card[data-slug="${slug}"]`).scrollIntoViewIfNeeded();
+      // A hovered preview loops; hovering the next tile puts its icon back.
+      const [one, two] = ready.map((g) => g.slug);
+      await page.locator(`.game-card[data-slug="${one}"]`).scrollIntoViewIfNeeded();
+      await page.locator(`.game-card[data-slug="${one}"]`).hover();
+      await page.locator(`.game-card[data-slug="${one}"] svg.tile-preview`).waitFor();
       await page.evaluate((slug) => {
         for (const a of document.querySelector(`.game-card[data-slug="${slug}"] svg.tile-preview`).getAnimations({ subtree: true })) a.finish();
-      }, slug);
-      assert.deepEqual((await preview(page, slug)).states, ["finished"], "the preview stops on its last frame");
+      }, one);
+      await page.waitForFunction(
+        (slug) => document.querySelector(`.game-card[data-slug="${slug}"] svg.tile-preview`).getAnimations({ subtree: true }).some((a) => a.playState === "running"),
+        one,
+        { timeout: 5000 },
+      );
       await page.screenshot({ path: `${ARTIFACTS}/home-previews-${width}-${colorScheme}.png` });
-      await page.mouse.move(0, 0);
-      await page.locator(`.game-card[data-slug="${slug}"]`).hover();
-      assert.ok(started(await preview(page, slug)), "the preview plays again on the next hover");
+      await page.locator(`.game-card[data-slug="${two}"]`).hover();
+      await page.locator(`.game-card[data-slug="${one}"] .game-icon img`).waitFor();
+      await page.locator(`.game-card[data-slug="${two}"] svg.tile-preview`).waitFor();
+      assert.ok(started(await preview(page, two)), "the next tile plays");
       await page.close();
     }
   }
 
-  // Keyboard: tabbing into a tile plays its preview.
+  // Keyboard: tabbing into a tile plays its preview; tabbing on to the next
+  // tile puts the first one's icon back.
   const page = await openHome(browser, srv, errors);
-  const first = await page.locator(".game-card[data-slug]").first().getAttribute("data-slug");
-  for (let i = 0; i < 20 && !(await page.evaluate(() => !!document.activeElement.closest(".game-card"))); i++) await page.keyboard.press("Tab");
+  const [first, second] = await page.locator(".game-card[data-slug]").evaluateAll((els) => els.slice(0, 2).map((e) => e.dataset.slug));
+  const focusedTile = () => page.evaluate(() => document.activeElement.closest(".game-card")?.dataset.slug);
+  for (let i = 0; i < 20 && (await focusedTile()) !== first; i++) await page.keyboard.press("Tab");
   await page.locator(`.game-card[data-slug="${first}"] svg.tile-preview`).waitFor();
   assert.ok(started(await preview(page, first)), "focusing a tile with Tab plays its preview");
+  for (let i = 0; i < 10 && (await focusedTile()) !== second; i++) await page.keyboard.press("Tab");
+  await page.locator(`.game-card[data-slug="${second}"] svg.tile-preview`).waitFor();
+  await page.locator(`.game-card[data-slug="${first}"] .game-icon img`).waitFor();
+  assert.equal(await preview(page, first), null, "the first tile shows its icon again");
   await page.close();
   assert.deepEqual(errors, []);
 });
 
-test("previews play once in view on a touch screen and never with reduced motion", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+test("previews loop in view on a touch screen and never play with reduced motion", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
   const srv = await startServer();
   const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
   t.after(async () => {
@@ -140,6 +156,9 @@ test("previews play once in view on a touch screen and never with reduced motion
   await phone.locator(`.game-card[data-slug="${last}"]`).scrollIntoViewIfNeeded();
   await phone.locator(`.game-card[data-slug="${last}"] svg.tile-preview`).waitFor();
   assert.ok(started(await preview(phone, last)), "it plays once it is in view");
+  await phone.evaluate(() => scrollTo(0, 0));
+  await phone.locator(`.game-card[data-slug="${last}"] .game-icon img`).waitFor();
+  assert.equal(await preview(phone, last), null, "out of view, it shows its icon again");
   await phone.close();
 
   // Reduced motion: hovering and focusing leave the icons alone.

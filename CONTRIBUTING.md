@@ -233,11 +233,11 @@ for a synthesized one that is off, prints the `trim` to set.
 
 ### 5c. Preview (optional)
 
-`preview.svg` is a 3–5 second animation of a few moves that the home tile plays
+`preview.svg` is a 3–5 second animation of a few moves that the home tile loops
 on hover (see **Tile previews** in `ARCHITECTURE.md`; `public/tic-tac-toe/preview.svg`
 is the shortest to copy). Without one the tile keeps its icon.
 
-- Root: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-<short name>">`, under 8 KB, no scripts, images or external refs.
+- Root: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" class="tile-preview pv-<short name>">`, under 10 KB, no scripts, images or external refs.
 - Colours only from tokens, in the file's `<style>`; start every selector with your `.pv-…` class, and keyframes and ids with your game's name, since the style applies to the whole home page.
 - Players: the seat classes `.a` to `.d` set `currentColor`. Draw the player tags top right and light them in turn with `.lit` (`--d` start, `--l` length; `.stay` for the last).
 - Moves: give a piece `.pop`, `.fade`, `.gone`, `.draw`, `.slide` (from `--x`, `--y`) or `.fall` (from `--y`) and its start time `--d`, or your own keyframes. Animate only transform and opacity, and put a moving piece in a `<g transform="…">` rather than giving it a `transform` of its own.

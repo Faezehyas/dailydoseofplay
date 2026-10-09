@@ -531,7 +531,8 @@ dot for a seat or a fact ("2–4 players" on the home tiles): the dot is
 Transitions use `--dur-fast`, `--dur-med` or `--dur-slow` and `--ease-out` or
 `--ease-spring`. The rules, at the top of the motion section in `theme.css`:
 animate only transform and opacity; nothing loops forever except the home
-hero's scene; everything stops under `prefers-reduced-motion`; no motion starts
+hero's scene and a tile's preview while it is hovered, focused or, on a touch
+screen, in view; everything stops under `prefers-reduced-motion`; no motion starts
 without a user action, except the room code, whose letters settle in one by
 one (350 ms) when the waiting room opens, the hero's scene, and a tile's
 preview on a touch screen. Loading indicators run only while something loads.
@@ -546,13 +547,14 @@ compositor, so they cause no layout or paint. `home.js` adds `.paused` while
 the scene is off screen (IntersectionObserver) or the tab is hidden, and with
 `prefers-reduced-motion` the scene is still.
 
-**Tile previews.** A ready game's home tile plays a 3–5 second preview of the
-game: its pieces move, small player tags light up in turn, and it stops on its
-last frame. It plays on hover or keyboard focus, every time, and on a touch
-screen (`hover: none`) once, when the tile is first 60% in view. `home.js`
-fetches `<slug>/preview.svg` the first time, inlines it in place of the icon
-(an `<img>` couldn't reach the page's tokens or be started) and calls `play()`
-on its animations, which start paused. Without the file, or with
+**Tile previews.** While a ready game's home tile is hovered or has keyboard
+focus, or on a touch screen (`hover: none`) while it is at least 60% in view,
+it loops a 3–5 second preview of the game: its pieces move and small player
+tags light up in turn. Each loop holds its last frame for a moment; when the
+tile loses hover, focus or view, its icon comes back. `home.js` fetches
+`<slug>/preview.svg` the first time, inlines it in place of the icon (an
+`<img>` couldn't reach the page's tokens or be started) and calls `play()` on
+its animations, which start paused, again after each loop. Without the file, or with
 `prefers-reduced-motion`, the icon stays. Because the SVG is inlined, its
 `<style>` applies to the whole page: selectors start with the game's class
 (`.pv-ttt`) and keyframes and ids with its name. `theme.css` gives every

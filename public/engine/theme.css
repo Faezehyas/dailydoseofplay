@@ -1431,8 +1431,8 @@ input::placeholder {
 }
 
 /* A tile's preview (<slug>/preview.svg, 320 x 200), which home.js swaps in for
-   the icon. Its animations start paused, run once from home.js and hold their
-   last frame; each piece waits --d, and a player tag stays lit for --l. The
+   the icon. Its animations start paused and home.js plays them in a loop; each
+   piece waits --d, and a player tag stays lit for --l. The
    classes below are the moves a preview can use; it adds its own keyframes,
    named after its game, for anything else. */
 .game-icon .tile-preview {
@@ -1734,8 +1734,9 @@ input.mono {
 /* ---------- motion ---------- */
 /* Rules for all motion on the site:
    - animate only transform and opacity;
-   - nothing loops forever except the home hero's scene, and it pauses off
-     screen and in a hidden tab;
+   - nothing loops forever except the home hero's scene, which pauses off
+     screen and in a hidden tab, and a tile's preview while it is hovered,
+     focused or, on a touch screen, in view;
    - everything stops under prefers-reduced-motion;
    - no motion starts without a user action, except the room code settling,
      the hero's scene and, on a touch screen, a tile's preview.
