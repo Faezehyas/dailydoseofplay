@@ -130,7 +130,7 @@ test("Ludo against three robots on a 360 px phone: die, hops, sounds, mute, keyb
   for (let k = 0; k < 3; k++) assert.deepEqual(await page.evaluate((i) => window.ddp.robots[i].match.state, k), st, `robot ${k + 1} agrees`);
   await page.locator("#result").waitFor();
   assert.match(await page.locator("#result").innerText(), /^(You won|Robot \d won)$/);
-  assert.ok((await heard()).includes(st.winner === 0 ? "win" : "lose"));
+  assert.ok((await heard()).includes(st.winner === 0 ? "win-wood" : "over-wood"));
   assert.ok(await resultInView(page), "the result fits the phone without scrolling");
   await page.screenshot({ path: `${ARTIFACTS}/ld-13-robot-over.png` });
 

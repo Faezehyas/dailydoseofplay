@@ -192,6 +192,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
         el("button", { class: "btn primary big", id: "play-friend", type: "button", onclick: host }, duel ? "Play with a friend" : "Play with friends"),
         el("button", { class: "btn big", id: "play-robot", type: "button", onclick: playRobot }, "Play vs robot"),
       ),
+      el("p", { class: "lobby-note", id: "direct-note" }, "Games connect your browser directly to your friends'. Play with people you know."),
       el("div", { class: "divider" }, el("span", {}, "or join with a code")),
       joinForm,
       joinError,

@@ -2,8 +2,9 @@
 // everything else is synthesized: a wooden tap and a marimba note per hop
 // that climbs as the token goes, a pop for leaving the yard, a shimmer into
 // the home column, a bell on a safe square, a bonk for a capture, a slide
-// whistle for being captured, a fanfare home, and tunes for the end. They
-// play through the engine (engine/sound.js), which sets their loudness.
+// whistle for being captured and a fanfare home. The result chimes are the
+// engine's (engine/chimes.js). They play through the engine
+// (engine/sound.js), which sets their loudness.
 import { defineSounds } from "../engine/sound.js";
 import { tone, noise, decay, pentatonic } from "../engine/synth.js";
 
@@ -112,15 +113,6 @@ const SYNTH = {
     noise(a, o, t, { dur: 0.014, gain: 0.12, type: "highpass", freq: 3000 });
     tone(a, o, t, { freq: 1500, dur: 0.02, gain: 0.03, type: "square" });
   },
-  win: (a, o, t) => {
-    [10, 12, 13, 15].forEach((n, i) => marimba(a, o, t + i * 0.11, note(n), 0.12));
-    for (const n of [15, 17, 18, 20]) tone(a, o, t + 0.46, { freq: note(n), type: "triangle", dur: 0.9, gain: 0.045, attack: 0.02 });
-    sparkle(a, o, t + 0.5);
-  },
-  lose: (a, o, t) => {
-    [12, 11, 10].forEach((n, i) => tone(a, o, t + i * 0.2, { freq: note(n), type: "triangle", dur: 0.3, gain: 0.08 }));
-    tone(a, o, t + 0.6, { freq: note(8), to: note(7), type: "triangle", dur: 0.6, gain: 0.08 });
-  },
 };
 
 const DICE = ["dice-1", "dice-2"].map((n) => new URL(`./sounds/${n}.mp3`, import.meta.url).href);
@@ -138,8 +130,6 @@ export const sounds = defineSounds({
   nope: { role: "ui", synth: SYNTH.nope, trim: 5.2 },
   turn: { role: "ui", synth: SYNTH.turn, trim: 5.2 },
   tick: { role: "cue", synth: SYNTH.tick, trim: 5.2 },
-  win: { role: "fanfare", synth: SYNTH.win, trim: 6.2 },
-  lose: { role: "fanfare", synth: SYNTH.lose, trim: 12.2 },
 });
 
 // Plays `name` now, or `at` seconds from now.

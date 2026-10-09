@@ -6,6 +6,7 @@ import { TurnMatch, startTurnRobot } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, stoneOf, isTimed, timeLeft, EMPTY, DRAW, SIZE } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { settings } from "./settings.js";
@@ -93,7 +94,10 @@ function mountGomoku(session, root, shell) {
   board.insertAdjacentHTML("afterbegin", gridSvg());
   const configLine = el("p", { class: "gmk-config", id: "gmk-config" });
   const note = el("p", { class: "gmk-note", id: "gmk-note" });
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "paper", highlight: (match.state.line || []).map((i) => cells[i]), board }),
+  });
 
   root.append(
     el(

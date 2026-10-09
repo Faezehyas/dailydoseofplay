@@ -539,6 +539,12 @@ input::placeholder {
   grid-template-columns: 1fr;
 }
 
+.lobby-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 8px;
+}
+
 .divider {
   display: flex;
   align-items: center;
@@ -1084,6 +1090,104 @@ input::placeholder {
 
 .result-panel .rematch-status:empty {
   display: none;
+}
+
+/* ---------- result moment (engine/celebrate.js) ---------- */
+/* The colours hold while the result is up; the motion plays once, about
+   1.5 s, and not at all with reduced motion. */
+.celebrate-lit {
+  filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 8px var(--accent));
+}
+
+.celebrate-dim {
+  opacity: 0.7;
+}
+
+.celebrate-pulse {
+  border-color: var(--seat);
+}
+
+.celebrate-burst {
+  position: fixed;
+  z-index: 41;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* The logo's four dots: one diagonal coral, the other teal. */
+.celebrate-dot {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+}
+
+.celebrate-dot.b {
+  background: var(--accent-2);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .celebrate-lit {
+    animation: celebrate-light var(--dur-slow) var(--ease-out) calc(var(--i) * var(--dur-fast)) backwards;
+  }
+  .celebrate-dim {
+    animation: celebrate-dim calc(var(--dur-slow) * 2) var(--ease-out) backwards;
+  }
+  .celebrate-loss h2,
+  .celebrate-over h2 {
+    animation: celebrate-fade calc(var(--dur-slow) * 2) var(--ease-out) backwards;
+  }
+  .celebrate-pulse {
+    animation: celebrate-pulse calc(var(--dur-slow) * 2) var(--ease-out);
+  }
+  .celebrate-dot {
+    animation: celebrate-rise calc(var(--dur-slow) * 3) var(--ease-out) calc(var(--after) * var(--dur-fast) + var(--dur-med));
+  }
+}
+
+@keyframes celebrate-light {
+  from {
+    opacity: 0.4;
+  }
+}
+
+@keyframes celebrate-dim {
+  from {
+    opacity: 1;
+  }
+}
+
+@keyframes celebrate-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes celebrate-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+/* Each set of four rises and spreads a little: the middle one straight up,
+   the others out to the sides. */
+@keyframes celebrate-rise {
+  from {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 10px - 5px), calc(var(--dy) * 10px - 5px)) scale(0.5);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(var(--q) * 64px + var(--dx) * 14px - 7px), calc(var(--dy) * 14px - 84px + var(--q) * var(--q) * 24px));
+  }
 }
 
 /* ---------- home ---------- */
@@ -1773,8 +1877,8 @@ input.mono {
    - nothing loops forever except the home hero's scene, and it pauses off
      screen and in a hidden tab;
    - everything stops under prefers-reduced-motion;
-   - no motion starts without a user action, except the room code settling
-     and the hero's scene.
+   - no motion starts without a user action, except the room code settling,
+     the result moment when a match ends, and the hero's scene.
    Loading indicators (.spinner, the home page's loading tiles) are the one
    exception: they run only while something loads.
    Timings come from --dur-fast, --dur-med and --dur-slow, easing from

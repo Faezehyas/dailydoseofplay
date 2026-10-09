@@ -75,7 +75,7 @@ test("Chutes and Ladders vs the robot on a 360 px phone: spinner, hops, sounds, 
   assert.equal(await page.evaluate(() => window.ddp.robot.match.state.ply), st.ply, "the robot saw every spin");
   await page.locator("#result").waitFor();
   assert.match(await page.locator("#result").innerText(), /^(You won|You lost)$/);
-  assert.ok((await heard()).includes(st.winner === 0 ? "win" : "lose"));
+  assert.ok((await heard()).includes(st.winner === 0 ? "win-bell" : "loss-bell"));
   assert.ok(await page.locator("#result-panel").isVisible());
   await page.screenshot({ path: `${ARTIFACTS}/cl-5-robot-over-light.png`, fullPage: true });
 

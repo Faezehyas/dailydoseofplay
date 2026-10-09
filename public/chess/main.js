@@ -6,6 +6,7 @@ import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
 import { resultPanel } from "../engine/result.js";
+import { celebrate } from "../engine/celebrate.js";
 import {
   makeRules,
   normalizeConfig,
@@ -128,7 +129,10 @@ function mountChess(session, root, shell) {
   const movesList = el("ol", { class: "chess-moves", id: "chess-moves", "aria-label": "Moves" });
   const configLine = el("p", { class: "chess-config", id: "chess-config" });
   const note = el("p", { class: "chess-note", id: "chess-note" });
-  const result = resultPanel(session, { onLeave: () => shell.leave() });
+  const result = resultPanel(session, {
+    onLeave: () => shell.leave(),
+    onShow: ({ outcome }) => outcome && celebrate({ outcome, flavour: "wood", highlight: match.state.reason === "checkmate" ? [squares[match.state.kings[match.state.side]]] : [], board }),
+  });
   let squares = []; // by square index
   let flipped = false;
 
