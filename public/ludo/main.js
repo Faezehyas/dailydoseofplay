@@ -35,7 +35,6 @@ let hurry = 0; // 0 normal, 1 quick, 2 skip to the end
 startGameShell({
   slug: "ludo",
   title: "Ludo",
-  tagline: "Roll a 6 to come out, knock rivals back to their yard, and race all four tokens home.",
   layout: "wide",
   minPlayers: 2,
   maxPlayers: MAX_PLAYERS,
