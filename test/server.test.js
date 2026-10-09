@@ -112,7 +112,9 @@ test("sea battle: every recorded sound exists and is credited", () => {
   }
 });
 
-test("registry: every entry is well formed and every ready game has a folder", () => {
+test("registry: every entry is well formed and every ready game has a folder", async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
   const slugs = new Set();
   for (const g of registry.games) {
     assert.match(g.slug, /^[a-z0-9]+(-[a-z0-9]+)*$/);
@@ -124,6 +126,13 @@ test("registry: every entry is well formed and every ready game has a folder", (
     if (g.status === "ready") {
       assert.ok(fs.existsSync(new URL(`../public/${g.slug}/index.html`, import.meta.url)), `${g.slug}/index.html`);
       assert.ok(fs.existsSync(new URL(`../public/${g.slug}/icon.svg`, import.meta.url)), `${g.slug}/icon.svg`);
+      // The optional preview is inlined in the home page: same-origin and script-free.
+      if (fs.existsSync(new URL(`../public/${g.slug}/preview.svg`, import.meta.url))) {
+        const res = await fetch(`${srv.base}/${g.slug}/preview.svg`);
+        assert.equal(res.headers.get("content-type"), "image/svg+xml", `${g.slug}/preview.svg`);
+        const svg = await res.text();
+        assert.doesNotMatch(svg, /<script|\son\w+=|@import|(href|src)="(?!#)|url\((?!#)/i, `${g.slug}/preview.svg has no external references`);
+      }
     }
   }
 });
