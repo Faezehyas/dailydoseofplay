@@ -341,6 +341,37 @@ h3 {
   text-align: center;
 }
 
+.site-footer p {
+  margin: 0;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 16px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+}
+
+/* An open result panel is fixed to the bottom of the screen. The footer, which
+   ends every page, makes room for it, so nothing scrolls under the panel. */
+body:has(.result-panel:not([hidden])) .page {
+  padding-bottom: 48px;
+}
+
+body:has(.result-panel:not([hidden])) .site-footer {
+  padding-bottom: calc(var(--result-h, 0px) + 32px);
+}
+
 /* ---------- buttons and fields ---------- */
 .btn {
   display: inline-flex;
@@ -889,6 +920,115 @@ input::placeholder {
   .player-bar.many .pb-score dd {
     font-size: 1.05rem;
   }
+}
+
+/* ---------- result panel (engine/result.js) ---------- */
+/* Pinned to the bottom of the screen in the page column, so the board never
+   moves; the page keeps room below the game so nothing stays behind it. */
+.page:has(.result-panel:not([hidden])) {
+  padding-bottom: calc(var(--result-h, 0px) + 24px);
+}
+
+.result-panel {
+  position: fixed;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: min(var(--column, 520px), 100% - 32px);
+  max-height: calc(100% - 64px);
+  overflow-y: auto;
+  margin: 0 auto;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.result-panel h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.result-panel h2.win {
+  color: var(--accent-text);
+}
+
+.result-places {
+  display: grid;
+  gap: 4px;
+  margin: 8px auto 0;
+  padding: 0;
+  max-width: 360px;
+  list-style: none;
+  text-align: left;
+}
+
+:where(.result-places .mine) {
+  --seat: var(--mine);
+}
+
+:where(.result-places .theirs) {
+  --seat: var(--theirs);
+}
+
+.result-places li {
+  display: grid;
+  grid-template-columns: 2.6em minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 10px;
+  border-left: 4px solid var(--seat);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.result-places li.mine {
+  font-weight: 800;
+}
+
+.result-places .place {
+  font-weight: 800;
+}
+
+.result-places .who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-places small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.result-reason {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.result-reason:empty {
+  display: none;
+}
+
+.result-reason.bad {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.result-panel .rematch-status:empty {
+  display: none;
 }
 
 /* ---------- home ---------- */

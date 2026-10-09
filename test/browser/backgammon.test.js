@@ -97,9 +97,10 @@ test("two friends play Backgammon on the host's settings through the invite link
   await guest.screenshot({ path: `${ARTIFACTS}/bg-1-friend-mobile-dark.png`, fullPage: true });
   const won = await finish();
   const [winner, loser] = won.winner === 0 ? [host, guest] : [guest, host];
-  await winner.locator("#bg-result").filter({ hasText: "Victory!" }).waitFor();
-  assert.equal(await loser.locator("#bg-result").innerText(), "Defeat");
-  assert.match(await loser.locator("#bg-detail").innerText(), /bore off all fifteen checkers/);
+  await winner.locator("#result").filter({ hasText: "You won" }).waitFor();
+  await loser.locator("#result").waitFor();
+  assert.equal(await loser.locator("#result").innerText(), "You lost");
+  assert.match(await loser.locator("#result-reason").innerText(), /bore off all fifteen checkers/);
   assert.match(await winner.locator("#score").innerText(), /You\s+1\s+\S+\s+0/);
   assert.match(await loser.locator("#score").innerText(), /You\s+0\s+\S+\s+1/);
   assert.ok(won.clocks.every((ms) => ms < 300_000 && ms > 0), `both clocks were spent: ${won.clocks}`);

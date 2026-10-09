@@ -8,6 +8,7 @@ import { matchRouter } from "../engine/session.js";
 import { TurnMatch } from "../engine/turn-match.js";
 import { el, toast, setTabAlert } from "../engine/shell.js";
 import { playerBar } from "../engine/players.js";
+import { resultPanel } from "../engine/result.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, geometry, lineEnds, DRAW } from "./rules.js";
 import { startRobot } from "./robot.js";
 import { mountSettings } from "./settings.js";
@@ -212,7 +213,6 @@ function mountGame(session, root, shell) {
   let match = null;
   let m = 0;
   let gen = 0; // bumps on every new match, so the old match's animations stop
-  let rematch = { me: false, them: false };
   let destroyed = false;
   let shownLines = [];
   let shownBoxes = [];
@@ -258,7 +258,7 @@ function mountGame(session, root, shell) {
   const tallyTheirs = el("span", { class: "fill theirs" });
   const tallyText = el("p", { class: "db-tally-text", id: "db-tally" });
   const tally = el("div", { class: "db-tally" }, el("div", { class: "db-tally-bar", "aria-hidden": "true" }, tallyMine, tallyTheirs), tallyText);
-  const overBox = el("div", { class: "db-over", id: "db-over", hidden: true });
+  const result = resultPanel(session, { onLeave: () => shell.leave() });
   const configLine = el("p", { class: "db-config", id: "db-config" });
   const note = el("p", { class: "db-note", id: "db-note" });
   const cursorText = el("p", { class: "db-sr", id: "db-cursor", "aria-live": "polite" });
@@ -270,10 +270,11 @@ function mountGame(session, root, shell) {
       bar.node,
       status,
       clocks,
-      el("div", { class: "db-main" }, boardWrap, el("div", { class: "db-side" }, tally, overBox)),
+      el("div", { class: "db-main" }, boardWrap, el("div", { class: "db-side" }, tally)),
       configLine,
       note,
       cursorText,
+      result.node,
     ),
   );
 
@@ -719,48 +720,17 @@ function mountGame(session, root, shell) {
   function renderOver() {
     const phase = match?.phase;
     // Let the last line and its boxes play out first.
-    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && pendingAll)) {
-      overBox.hidden = true;
-      if (overBox.firstChild) overBox.replaceChildren();
-      return;
-    }
-    if (overBox.hidden) {
-      overBox.hidden = false;
-      requestAnimationFrame(() => overBox.scrollIntoView?.({ block: "nearest", behavior: still() ? "auto" : "smooth" }));
-    }
+    if ((phase !== "over" && phase !== "aborted") || (phase === "over" && pendingAll)) return result.hide();
     const st = match.state;
     const winner = phase === "over" ? st.winner : -1;
-    let title;
-    let detail;
-    if (phase === "aborted") {
-      title = "Match stopped";
-      detail = match.abortReason || "The match was stopped.";
-    } else if (st.reason === "timeout") {
-      title = winner === me ? "You win!" : `${oppName} wins`;
-      detail = winner === me ? `${oppName}'s clock ran out, with the boxes at ${st.score[me]}–${st.score[opp]}.` : `Your clock ran out, with the boxes at ${st.score[me]}–${st.score[opp]}.`;
-    } else {
+    let reason;
+    if (phase === "aborted") reason = match.abortReason || "The match was stopped.";
+    else if (st.reason === "timeout") reason = winner === me ? `${oppName}'s clock ran out, with the boxes at ${st.score[me]}–${st.score[opp]}.` : `Your clock ran out, with the boxes at ${st.score[me]}–${st.score[opp]}.`;
+    else {
       const [a, b] = [st.score[me], st.score[opp]];
-      title = winner === DRAW ? "It's a draw" : winner === me ? "You win!" : `${oppName} wins`;
-      detail = winner === DRAW ? `${a} boxes each: an even split.` : winner === me ? `You took ${a} of ${a + b} boxes; ${oppName} took ${b}.` : `${oppName} took ${b} of ${a + b} boxes; you took ${a}.`;
+      reason = winner === DRAW ? `${a} boxes each: an even split.` : winner === me ? `You took ${a} of ${a + b} boxes; ${oppName} took ${b}.` : `${oppName} took ${b} of ${a + b} boxes; you took ${a}.`;
     }
-    let rematchText = "";
-    if (rematch.me) rematchText = `Waiting for ${oppName}…`;
-    else if (rematch.them) rematchText = `${oppName} wants a rematch!`;
-    overBox.replaceChildren(
-      el("h2", { class: winner === me ? "win" : winner === DRAW ? "draw" : "", id: "db-result" }, title),
-      el("p", { class: `detail ${phase === "aborted" ? "bad" : ""}`, id: "db-detail" }, detail),
-      el(
-        "div",
-        { class: "db-actions" },
-        el(
-          "button",
-          { class: "btn primary", type: "button", id: "rematch", disabled: rematch.me, onclick: () => session.requestRematch() },
-          rematch.them && !rematch.me ? "Accept rematch" : "Rematch",
-        ),
-        el("button", { class: "btn", type: "button", onclick: () => shell.leave() }, "Leave"),
-      ),
-      rematchText && el("p", { class: "rematch-status", id: "rematch-status" }, rematchText),
-    );
+    result.show({ winner: winner === DRAW ? -1 : winner, stopped: phase === "aborted", reason });
   }
 
   // ---------- clocks ----------
@@ -788,7 +758,6 @@ function mountGame(session, root, shell) {
   function newMatch() {
     m += 1;
     gen += 1;
-    rematch = { me: false, them: false };
     shownLines = Array(geo.lines).fill(-1);
     shownBoxes = Array(geo.boxes).fill(-1);
     lineNodes = new Map();
@@ -887,11 +856,6 @@ function mountGame(session, root, shell) {
   document.addEventListener("visibilitychange", onVisible);
   const offs = [
     offMsg,
-    session.on("rematch", (votes) => {
-      rematch = votes;
-      if (votes.them && !votes.me) toast(`${oppName} wants a rematch`);
-      render();
-    }),
     session.on("rematch-start", () => config && newMatch()),
   ];
   if (session.mode === "robot") begin(settings.get());
