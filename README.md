@@ -44,7 +44,7 @@ npm start                 # http://localhost:8080  (PORT=3000 npm start to chang
 - Chutes and Ladders: http://localhost:8080/chutes-and-ladders/
 - Dots and Boxes: http://localhost:8080/dots-and-boxes/
 - Ludo: http://localhost:8080/ludo/
-- Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?room=CODE&key=KEY` (the invite link) joins a room. Without `key`, the room's host has to let you in.
+- Shortcuts: `/<game>/?robot=1` starts a robot game; `/<game>/?friend=1` creates a room for friends at once (the home page's **Play friends**); `/<game>/?room=CODE&key=KEY` (the invite link) joins a room. Without `key`, the room's host has to let you in.
 - Health: http://localhost:8080/healthz
 
 To play a friend match on one machine, open the game in two windows (one
