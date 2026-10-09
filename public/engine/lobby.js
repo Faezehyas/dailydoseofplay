@@ -118,6 +118,19 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     $("h1", lobbyRoot).focus();
   }
 
+  // Opens the page's "How to play" panel and moves focus to it.
+  function howToPlayLink() {
+    const panel = $("details.rules");
+    if (!panel) return null;
+    const open = (e) => {
+      e.preventDefault();
+      panel.open = true;
+      $("summary", panel).focus({ preventScroll: true });
+      panel.scrollIntoView({ block: "start" });
+    };
+    return el("p", { class: "how-to-play" }, el("a", { href: "#how-to-play", id: "how-to-play-link", onclick: open }, "How to play"));
+  }
+
   function nicknameField() {
     const input = el("input", {
       id: "nickname",
@@ -184,6 +197,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     view(
       el("h1", {}, title),
       taglineEl,
+      howToPlayLink(),
       nicknameField(),
       settings?.panel(),
       el(

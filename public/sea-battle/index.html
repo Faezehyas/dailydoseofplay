@@ -15,21 +15,39 @@
     <main class="page">
       <section id="lobby"></section>
       <section id="game" hidden></section>
-      <details class="card rules">
+      <details class="card rules" id="how-to-play">
         <summary>How to play</summary>
+        <h3>Goal</h3>
+        <p>Sink your opponent's whole fleet before they sink yours.</p>
+        <h3>Players</h3>
+        <p>Two: play a friend, or play the robot.</p>
+        <h3>Setup</h3>
         <ul>
-          <li>Each player hides a fleet of 5 ships (sizes 5, 4, 3, 3 and 2) on a 10×10 grid. Ships can't touch side by side; corners are fine.</li>
-          <li>Ships are placed at random. Shuffle, or drag ships to move them. While dragging, press <strong>R</strong> to rotate the ship; you can also tap a ship to rotate it, or use the arrow keys and R on a focused ship. Then press <strong>Ready</strong>.</li>
-          <li>Take turns firing at the enemy waters. A hit lets you fire again; a miss, or sinking a ship, passes the turn. Fire marks a hit, a splash marks a miss.</li>
-          <li>When a ship is fully hit it sinks and is revealed. The water beside it is marked as clear.</li>
-          <li>Before you start, press <strong>Change</strong> under your nickname to pick the time limits: time per shot (if it runs out, a random shot is fired for you) and time for each player (if your clock runs out, you lose). With a friend, the settings of whoever creates the room apply to both of you; against the robot, only your clock runs.</li>
-          <li>Every few moves a mystery gift (?) pops up in the enemy waters (your opponent gets one in yours, which you don't see). Aim at its own square to win a weapon (a blast or rain that hits it from another square destroys it):
-            <strong>Big missile</strong> (5-square plus),
-            <strong>Missile rain</strong> (7 random squares; select it, then press Launch rain),
-            <strong>Nuclear missile</strong> (14-square blast) or
-            <strong>Carpet bomb</strong> (a whole row or column; press R or the Row/Column button to switch). A gift left on water cleared beside a sunk ship disappears.</li>
-          <li>Sink the whole enemy fleet to win.</li>
-          <li>Fair play: your fleet never leaves your browser until the game ends. Both sides lock in their fleet with a cryptographic commitment and check each other's answers afterwards. Every random event (who starts, gifts, missile rain) is drawn jointly by both browsers.</li>
+          <li>Each player hides a fleet of 5 ships (sizes 5, 4, 3, 3 and 2) on their own 10 × 10 grid. Ships can't touch side by side; touching at the corners is fine.</li>
+          <li>Your ships start in random places. Press <strong>Shuffle</strong> for a new layout, drag a ship to move it, or tap a ship to rotate it. Then press <strong>Ready</strong>.</li>
+        </ul>
+        <h3>On your turn</h3>
+        <ul>
+          <li>Fire at a square of the enemy waters. Fire marks a hit, a splash marks a miss.</li>
+          <li>A hit lets you fire again; a miss, or a hit that sinks a ship, passes the turn.</li>
+          <li>A ship hit on every square sinks and is revealed, and the water beside it is marked as clear.</li>
+          <li>Every few moves a mystery gift (?) pops up in the enemy waters. Your opponent gets one in yours, which you don't see. Aim at a gift's own square to win the weapon inside; a blast or rain that hits it from another square destroys it. A gift on water cleared beside a sunk ship disappears.</li>
+          <li>Weapons: <strong>Big missile</strong> (a 5-square plus), <strong>Missile rain</strong> (7 random squares; select it, then press Launch rain), <strong>Nuclear missile</strong> (a 14-square blast) and <strong>Carpet bomb</strong> (a whole row or column; press R or the Row/Column button to switch).</li>
+        </ul>
+        <h3>Winning</h3>
+        <p>Sink every enemy ship to win.</p>
+        <h3>Settings and clocks</h3>
+        <ul>
+          <li>Time per shot: if it runs out, a random shot is fired for you.</li>
+          <li>Time for each player: if your clock runs out, you lose.</li>
+          <li>In a friend game, the settings of whoever creates the room apply to both players. Against the robot, only your clock runs.</li>
+        </ul>
+        <h3>Fair play</h3>
+        <p>Your fleet never leaves your browser until the game ends. Both sides lock in their fleet with a cryptographic commitment and check each other's answers afterwards. Every random event (who starts, gifts, missile rain) is drawn jointly by both browsers.</p>
+        <h3>Keyboard</h3>
+        <ul>
+          <li>While placing, Tab to a ship: the arrow keys move it and R rotates it. While dragging a ship, R rotates it too.</li>
+          <li>With the carpet bomb selected, R switches between a row and a column.</li>
         </ul>
       </details>
     </main>

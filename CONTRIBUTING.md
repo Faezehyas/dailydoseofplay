@@ -53,7 +53,7 @@ things, because they choose your protocol:
 
 ```
 public/<slug>/
-├── index.html       page shell: copy public/sea-battle/index.html, change title, meta and rules text
+├── index.html       page shell: copy public/sea-battle/index.html, change title, meta and "How to play"
 ├── style.css        game-specific styles; only var(--…) tokens from /engine/theme.css, light and dark
 ├── main.js          startGameShell(...) and the view
 ├── rules.js         pure rules
@@ -74,6 +74,29 @@ lobby moves focus to each new screen and reads out its own progress. Shared
 styles (`.card`, `.btn`, `.btn.small`, `.rules` for the "How to play" panel,
 `.rematch-status`, `.overlay`, `.spinner`, `.sr-only`) live in
 `/engine/theme.css`. `style.css` holds only what is specific to your game.
+
+"How to play" follows the same shape in every game, so players know where to
+look. It is the `<details>` after `#game`; the lobby's "How to play" link
+opens it by its id. Use these `<h3>` sections in this order and leave out any
+that don't apply: Goal, Players (2, or 2–4, and robots and their levels),
+Setup, On your turn, Winning (and draws), Settings and clocks, Fair play,
+Keyboard. Give a section a `<p>` for one point or a `<ul>` for several, in
+your own words. `test/browser/how-to-play.test.js` checks the order.
+
+```html
+<details class="card rules" id="how-to-play">
+  <summary>How to play</summary>
+  <h3>Goal</h3>
+  <p>Be the first to line up three marks.</p>
+  <h3>Players</h3>
+  <p>Two: play a friend, or play the robot.</p>
+  <h3>On your turn</h3>
+  <ul>
+    <li>…</li>
+  </ul>
+  <!-- Setup, Winning, Settings and clocks, Fair play, Keyboard -->
+</details>
+```
 
 ### 3. Write `rules.js` (pure)
 
