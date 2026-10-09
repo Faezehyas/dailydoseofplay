@@ -4,6 +4,23 @@
    --accent-2 are fills; text in those colours uses --accent-text and
    --accent-2-text, text on a coral fill uses --accent-ink, and the edges of
    inputs and options use --control-border. */
+
+/* Self-hosted (the CSP allows only our own files), latin subsets; see
+   fonts/LICENSE.txt. Body text stays on the system font stack. */
+@font-face {
+  font-family: "Fredoka";
+  src: url("fonts/fredoka.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Red Hat Mono";
+  src: url("fonts/red-hat-mono.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
   --bg: #f6f3ee;
@@ -33,6 +50,15 @@
   --hit-2: #ffc23a;
   --sunk: #2c3446;
   --gift: #8b5cf6;
+  /* Headings and the logo; codes, timers and counts (.mono). */
+  --font-display: "Fredoka", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  --font-mono: "Red Hat Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Motion: see the rules under "motion" below. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-med: 200ms;
+  --dur-slow: 320ms;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -164,6 +190,7 @@ a {
 h1,
 h2,
 h3 {
+  font-family: var(--font-display);
   line-height: 1.2;
   margin: 0 0 0.5em;
 }
@@ -185,6 +212,7 @@ h3 {
   gap: 10px;
   color: var(--text);
   text-decoration: none;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 1.1rem;
   letter-spacing: -0.01em;
@@ -291,7 +319,7 @@ h3 {
   font-weight: 700;
   cursor: pointer;
   text-decoration: none;
-  transition: transform 0.08s ease, filter 0.15s ease;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 
 .btn:hover {
@@ -580,7 +608,7 @@ input::placeholder {
   /* A pill on one line, a rounded box once a long name wraps it. */
   border-radius: calc(0.5lh + 10px);
   font-weight: 700;
-  transition: all 0.2s ease;
+  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-med) var(--ease-out);
   z-index: 60;
   text-align: center;
   overflow-wrap: anywhere;
@@ -689,7 +717,7 @@ input::placeholder {
   gap: 10px;
   color: var(--text);
   text-decoration: none;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: transform var(--dur-med) var(--ease-out);
 }
 
 .game-card:has(h2 a):hover {
@@ -876,6 +904,75 @@ input::placeholder {
   }
   .header-game {
     display: none;
+  }
+}
+
+/* ---------- chips and facts ---------- */
+/* A pill with a coloured dot: a player's seat or a fact such as "2–4 players".
+   The dot is muted; .mine and .theirs take the player colours, and a game
+   can set --dot to a seat colour of its own. */
+.chip {
+  --dot: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 1px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.chip::before {
+  content: "";
+  flex: none;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+.chip.mine {
+  --dot: var(--mine);
+}
+
+.chip.theirs {
+  --dot: var(--theirs);
+}
+
+/* Room codes, invite links, timers and counts. input.mono outranks the
+   font of input[type="text"]. */
+.mono,
+input.mono {
+  font-family: var(--font-mono);
+}
+
+/* ---------- motion ---------- */
+/* Rules for all motion on the site:
+   - animate only transform and opacity;
+   - nothing loops forever except a hero scene;
+   - everything stops under prefers-reduced-motion;
+   - no motion starts without a user action, except the room code settling.
+   Loading indicators (.spinner, the home page's loading tiles) are the one
+   exception: they run only while something loads.
+   Timings come from --dur-fast, --dur-med and --dur-slow, easing from
+   --ease-out and --ease-spring. */
+
+/* The waiting room's code: its letters settle in one by one, 350 ms in all. */
+@media (prefers-reduced-motion: no-preference) {
+  .room-code span {
+    display: inline-block;
+    animation: settle var(--dur-med) var(--ease-spring) calc(var(--i) * 50ms) both;
+  }
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(-0.4em) scale(0.8);
   }
 }
 

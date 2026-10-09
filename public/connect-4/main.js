@@ -69,7 +69,7 @@ function mountConnect4(session, root, shell) {
   const pills = [me, opp].map((player) => {
     const disc = el("span", { class: "pill-disc" });
     const node = el("span", { class: `who ${player === me ? "me" : ""}` }, disc, el("span", { class: "name" }, player === me ? myName : oppName));
-    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"}`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
+    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
     return { node, disc, clock };
   });
   const players = el("div", { class: "c4-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
@@ -78,7 +78,7 @@ function mountConnect4(session, root, shell) {
   const status = el("p", { class: "c4-status", id: "c4-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "c4-movebar", "aria-hidden": "true" }, moveBarFill);
-  const moveLeft = el("span", { class: "move-left", id: "c4-move-left", role: "timer", "aria-label": "Time left for this move" });
+  const moveLeft = el("span", { class: "move-left mono", id: "c4-move-left", role: "timer", "aria-label": "Time left for this move" });
   const clocks = el("div", { class: "c4-clocks", id: "c4-clocks", hidden: true }, pills[0].clock, el("div", { class: "move" }, moveBar, moveLeft), pills[1].clock);
   const board = el("div", { class: "c4-board", id: "c4-board", role: "group", "aria-label": "Board" });
   const configLine = el("p", { class: "c4-config", id: "c4-config" });

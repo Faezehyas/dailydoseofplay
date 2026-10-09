@@ -48,6 +48,7 @@ test("HTTP routes: home, games, healthz, ws, 404s", async (t) => {
   assert.equal((await fetch(`${srv.base}/sea-battle/icon.svg`)).headers.get("content-type"), "image/svg+xml");
   assert.equal((await fetch(`${srv.base}/engine/`)).status, 404, "no directory listings");
   assert.equal((await fetch(`${srv.base}/sea-battle/sounds/splash-heavy-1.mp3`)).headers.get("content-type"), "audio/mpeg");
+  assert.equal((await fetch(`${srv.base}/engine/fonts/fredoka.woff2`)).headers.get("content-type"), "font/woff2");
 });
 
 test("sea battle: every recorded sound exists and is credited", () => {

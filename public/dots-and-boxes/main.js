@@ -249,7 +249,7 @@ function mountGame(session, root, shell) {
       el("span", { class: "swatch", "aria-hidden": "true" }, initials[player]),
       el("span", { class: "label" }, el("span", { class: "name" }, player === me ? myName : oppName), count),
     );
-    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"}`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
+    const clock = el("span", { class: `clock ${player === me ? "mine" : "theirs"} mono`, role: "timer", "aria-label": player === me ? "Your clock" : `${oppName}'s clock` });
     return { node, count, clock, last: 0 };
   });
   const players = el("div", { class: "db-players" }, pills[0].node, el("span", { class: "vs" }, "vs"), pills[1].node);
@@ -258,7 +258,7 @@ function mountGame(session, root, shell) {
   const status = el("p", { class: "db-status", id: "db-status", role: "status", "aria-live": "polite" });
   const moveBarFill = el("span");
   const moveBar = el("div", { class: "db-movebar", "aria-hidden": "true" }, moveBarFill);
-  const moveLeft = el("span", { class: "move-left", id: "db-move-left", role: "timer", "aria-label": "Time left for this line" });
+  const moveLeft = el("span", { class: "move-left mono", id: "db-move-left", role: "timer", "aria-label": "Time left for this line" });
   const clocks = el("div", { class: "db-clocks", id: "db-clocks", hidden: true }, pills[0].clock, el("div", { class: "move" }, moveBar, moveLeft), pills[1].clock);
   const boardWrap = el("div", { class: "db-board-wrap" });
   const tallyMine = el("span", { class: "fill mine" });

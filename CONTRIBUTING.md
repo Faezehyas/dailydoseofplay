@@ -187,6 +187,14 @@ inputs and segmented options are outlined in `var(--control-border)`; and
 fade text with a muted colour, not `opacity`. A new game-specific colour
 used as text needs 4.5:1 on its background in both themes.
 
+Use the shared type and motion instead of your own (see **Type and motion**
+in `ARCHITECTURE.md`): no fonts of your own; headings already get the display
+font; give timers and counts the `mono` class; use `.chip` for a seat
+or a fact; time transitions with `var(--dur-fast)`, `var(--dur-med)` or
+`var(--dur-slow)` and ease them with `var(--ease-out)` or `var(--ease-spring)`.
+Animate only `transform` and `opacity`, start motion only on a player's action,
+and check it stops with reduced motion on.
+
 ### 6. Register it
 
 In `public/games.json`, set the game's entry to `"status": "ready"` (add an
@@ -255,6 +263,7 @@ windows (one private).
 - [ ] `layout` passed to `startGameShell()`, and the view's top-level box has no `max-width`
 - [ ] 360 px wide with no horizontal scroll, also with two 20-letter names; light and dark; touch and keyboard
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
+- [ ] No fonts or timings of its own: timers carry `mono`, transitions use the `--dur-*` and `--ease-*` tokens
 - [ ] Each player has the same colour on every screen (see **Player colours** in `ARCHITECTURE.md`): style `.mine` and `.theirs` with `--mine` and `--theirs`, and set `data-you` on the game's root
 - [ ] Original name, text and art; nothing copied from papergames
 - [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
@@ -276,7 +285,7 @@ windows (one private).
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
 | `public/engine/shell.js` | Header, theme toggle, nickname, `el()`, `toast()` |
-| `public/engine/theme.css` | Design tokens (light and dark) and shared components |
+| `public/engine/theme.css` | Design tokens (light and dark), fonts, motion and shared components |
 | `public/sea-battle/` | The reference game, with hidden information and a custom protocol |
 | `public/games.json` | Game registry, read by the home page and the server |
 | `test/` | Server and signaling integration tests, plus the browser tests |

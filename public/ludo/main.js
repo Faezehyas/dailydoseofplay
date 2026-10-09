@@ -139,7 +139,7 @@ function mountGame(session, root, shell) {
   const rollBtn = el("button", { class: "btn primary big ld-roll", type: "button", id: "ld-roll", onclick: () => rollNow() }, "Roll");
   const timerFill = el("span");
   const timerText = el("span", { class: "ld-timer-text" });
-  const timer = el("div", { class: "ld-timer", id: "ld-timer", hidden: true, role: "timer", "aria-label": "Time to move" }, el("span", { class: "bar" }, timerFill), timerText);
+  const timer = el("div", { class: "ld-timer mono", id: "ld-timer", hidden: true, role: "timer", "aria-label": "Time to move" }, el("span", { class: "bar" }, timerFill), timerText);
   const hint = el("p", { class: "ld-hint", id: "ld-hint" });
   const skipBtn = el("button", { class: "btn small ld-skip", type: "button", id: "ld-skip", hidden: true, onclick: () => skip() }, "Skip to the standings");
   const logList = el("ol", { class: "ld-log", id: "ld-log", "aria-label": "Recent moves" });
