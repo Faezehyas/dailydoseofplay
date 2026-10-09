@@ -402,8 +402,9 @@ built by `resultPanel()` in `result.js` and pinned to the bottom of the
 screen, in the page column. It is out of the page's flow, so the board never
 moves when a match ends (Sea Battle's result used to push its boards down
 about 160 px); while it is open, the page keeps room below the game so
-everything can still be scrolled clear of it, and **Show board**
-(`#result-toggle`) folds it down to its title. It holds the title
+everything can still be scrolled clear of it, and a round chevron button
+(`#result-toggle`) folds it down to its title to show the whole board, and
+opens it again. It holds the title
 (`#result`): "You won", "You lost" or "Draw", "<name> won" when more than
 two play, or "Match stopped"; the places in order (`#result-places`, Ludo's
 standings); a reason line (`#result-reason`); an optional node of the

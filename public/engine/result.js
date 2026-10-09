@@ -1,7 +1,7 @@
 // The game-over panel every game shows, pinned to the bottom of the screen so
 // the board never moves: who won, the places when a game plays on for them, a
 // reason line, an optional node of the game's, Rematch with everyone's votes,
-// and Leave. "Show board" folds it down to its title.
+// and Leave. A chevron folds it down to its title, to see the whole board.
 import { el, toast } from "./shell.js";
 
 const PLACE = ["1st", "2nd", "3rd", "4th"];
@@ -14,7 +14,7 @@ export function resultPanel(session, { onLeave, onShow = () => {}, classes = () 
   let folded = false;
 
   const title = el("h2", { id: "result", tabindex: "-1" });
-  const toggle = el("button", { class: "btn ghost small", type: "button", id: "result-toggle", "aria-controls": "result-body", onclick: () => fold(!folded) });
+  const toggle = el("button", { class: "result-toggle", type: "button", id: "result-toggle", "aria-label": "Result details", "aria-controls": "result-body", onclick: () => fold(!folded) });
   const places = el("ol", { class: "result-places", id: "result-places" });
   const reason = el("p", { class: "result-reason", id: "result-reason" });
   const extra = el("div", { class: "result-extra" });
@@ -29,7 +29,7 @@ export function resultPanel(session, { onLeave, onShow = () => {}, classes = () 
   function fold(on) {
     folded = on;
     body.hidden = on;
-    toggle.textContent = on ? "Show result" : "Show board";
+    toggle.title = on ? "Show the result" : "Show the board";
     toggle.setAttribute("aria-expanded", String(!on));
   }
 
