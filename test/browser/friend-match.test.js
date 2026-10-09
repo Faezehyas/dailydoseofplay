@@ -212,7 +212,6 @@ test("a blocked peer connection shows the no-TURN explanation", { skip: !pw && "
   const guest = await ctx.newPage();
   await guest.goto(`${srv.base}/sea-battle/`);
   await guest.fill("#join-code", code.toLowerCase());
-  await guest.click(".join-row button");
   await host.locator("#roster li.knock", { hasText: "Guest wants to join" }).getByRole("button", { name: "Accept" }).click();
   await guest.locator("#connect-error").waitFor({ timeout: 10_000 }).catch(async (err) => {
     throw new Error(`${err.message}\nguest lobby: ${await guest.locator("#lobby").innerText()}`);
@@ -249,8 +248,7 @@ test("a typed room code waits for the host: Decline turns a stranger away, Accep
   const typeCode = async (page, code) => {
     await page.goto(`${srv.base}/sea-battle/`);
     await page.fill("#join-code", code);
-    await page.click(".join-row button");
-    await page.locator("#lobby-status", { hasText: "Asking the room's host to let you in" }).waitFor();
+    await page.locator("#lobby-status", { hasText: "Waiting for the host to let you in" }).waitFor();
   };
   const host = await open("Ada");
   await host.goto(`${srv.base}/sea-battle/`);
@@ -265,7 +263,7 @@ test("a typed room code waits for the host: Decline turns a stranger away, Accep
   await knock.waitFor();
   assert.match(await host.title(), /Mal wants to join/, "the tab title tells a host who is busy elsewhere");
   await knock.getByRole("button", { name: "Decline" }).click();
-  await stranger.locator(".notice", { hasText: "didn't let you in" }).waitFor();
+  await stranger.locator("#join-error", { hasText: "didn't let you in" }).waitFor();
   await host.locator("#roster").waitFor({ state: "hidden" });
   assert.equal(await stranger.locator("#ready").count(), 0);
 

@@ -213,6 +213,27 @@ h3 {
 }
 
 /* ---------- header ---------- */
+/* Above the page until a keyboard user tabs to it. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  z-index: 70;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transform: translateY(calc(-100% - 16px));
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
 .site-header {
   display: flex;
   align-items: center;
@@ -510,6 +531,12 @@ input::placeholder {
 .invite-row input {
   flex: 1 1 220px;
   font-size: 0.9rem;
+}
+
+.room-code-label {
+  color: var(--muted);
+  font-weight: 600;
+  margin: 16px 0 0;
 }
 
 .room-code {

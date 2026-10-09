@@ -50,6 +50,10 @@ const NO_TURN_HELP =
 
 const LAYOUTS = ["narrow", "medium", "wide"];
 
+// Room codes, as server/signaling.js makes them (no I, L, O, 0 or 1).
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const CODE_LENGTH = 4;
+
 export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide" }) {
   initShell({ title });
   const lobbyRoot = $("#lobby");
@@ -68,8 +72,9 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   const params = new URLSearchParams(location.search);
 
   // ---------- views ----------
-  // Progress text for screen readers ("Creating a room…", "Bo joined"). It
-  // outlives the views, so each change is read out; errors use role="alert".
+  // Progress text for screen readers ("Creating a room…", "Bo joined"), and
+  // join errors. It outlives the views, so each change is read out;
+  // connection problems use role="alert".
   const progress = el("p", { class: "sr-only", id: "lobby-progress", role: "status" });
   lobbyRoot.append(progress);
   let firstView = true;
@@ -120,28 +125,45 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     return getNickname() || fallback;
   }
 
-  function showHome(message) {
+  // error: why the last join failed, shown under the code field, which keeps `code`.
+  function showHome(error, code = "") {
     cleanupConnection();
     const codeInput = el("input", {
       id: "join-code",
       type: "text",
-      maxlength: "4",
+      value: code,
       autocapitalize: "characters",
       autocomplete: "off",
+      enterkeyhint: "go",
       spellcheck: "false",
       placeholder: "CODE",
       "aria-label": "Room code",
+      "aria-describedby": "join-error",
+    });
+    const joinError = el("p", { class: "notice error", id: "join-error", hidden: true });
+    const showError = (text) => {
+      joinError.textContent = text;
+      joinError.hidden = !text;
+      progress.textContent = text;
+    };
+    // Uppercase, drop spaces and dashes, refuse anything else; a full code joins at once.
+    codeInput.addEventListener("input", () => {
+      const typed = [...codeInput.value.toUpperCase().replace(/[\s-]/g, "")];
+      const kept = typed.filter((c) => CODE_ALPHABET.includes(c));
+      const clean = kept.join("").slice(0, CODE_LENGTH);
+      if (codeInput.value !== clean) codeInput.value = clean;
+      showError(kept.length < typed.length ? "Codes use letters and the numbers 2–9" : "");
+      if (clean.length === CODE_LENGTH) join(clean);
     });
     const joinForm = el(
       "form",
-      { class: "join-row", onsubmit: (e) => (e.preventDefault(), codeInput.value.trim() && join(codeInput.value)) },
+      { class: "join-row", onsubmit: (e) => (e.preventDefault(), codeInput.value && join(codeInput.value)) },
       codeInput,
       el("button", { class: "btn", type: "submit" }, "Join"),
     );
     view(
       el("h1", {}, title),
       tagline && el("p", { class: "tagline" }, tagline),
-      message && el("p", { class: "notice", role: "alert" }, message),
       nicknameField(),
       el(
         "div",
@@ -151,7 +173,13 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       ),
       el("div", { class: "divider" }, el("span", {}, "or join with a code")),
       joinForm,
+      joinError,
     );
+    if (!error) return;
+    // The code stays in the field, focused and ready to fix; the error is read out too.
+    showError(error);
+    codeInput.focus();
+    codeInput.select();
   }
 
   // An invite link stops here first so the friend can pick a nickname before joining.
@@ -196,10 +224,13 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
           : `Send this link to up to ${maxPlayers - 1} friends. Start when everyone is in; a full room starts by itself.`,
         " Someone who types the code instead has to be let in by you.",
       ),
+      // Screen readers get the code from the label, spaced so each letter is
+      // read on its own; the big code below is for the eyes.
+      el("p", { class: "room-code-label" }, "Room code", el("span", { class: "sr-only" }, ` ${[...room.code].join(" ")}`)),
       // One span per letter, so the letters can settle in one by one (theme.css).
       el(
         "div",
-        { class: "room-code mono", id: "room-code", "aria-label": `Room code ${room.code}` },
+        { class: "room-code mono", id: "room-code", "aria-hidden": "true" },
         [...room.code].map((c, i) => el("span", { style: `--i: ${i}` }, c)),
       ),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
@@ -372,7 +403,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     room.on("status", ({ step, host: hostName, players }) => {
       if (!current()) return;
       if (step === "knocking") {
-        setStatus("Asking the room's host to let you in…");
+        setStatus("Waiting for the host to let you in…");
       } else if (step === "connecting") {
         host = hostName || host;
         setStatus(`Connecting to ${host}…`);
@@ -388,7 +419,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       session = await room.join();
     } catch (err) {
       if (!current()) return;
-      if (!(err instanceof RoomError)) return showHome(ERRORS[err.code] || ERRORS.connect_failed);
+      if (!(err instanceof RoomError)) return showHome(ERRORS[err.code] || ERRORS.connect_failed, code);
       return showFailure(ERRORS[err.code] || NO_TURN_HELP, () => join(code, key));
     }
     if (!current()) return session.leave();

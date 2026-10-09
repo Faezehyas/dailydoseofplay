@@ -62,9 +62,10 @@ public/<slug>/
 ```
 
 Keep `index.html`'s `<section id="lobby">` and `<section id="game" hidden>`;
-the engine renders into them. Don't make `#lobby` a live region: the lobby
-moves focus to each new screen and reads out its own progress. Shared styles
-(`.card`, `.btn`, `.btn.small`, `.rules` for the "How to play" panel,
+the engine renders into them. Keep them in its `<main>` too: the header's
+"Skip to content" link jumps there. Don't make `#lobby` a live region: the
+lobby moves focus to each new screen and reads out its own progress. Shared
+styles (`.card`, `.btn`, `.btn.small`, `.rules` for the "How to play" panel,
 `.rematch-status`, `.overlay`, `.spinner`, `.sr-only`) live in
 `/engine/theme.css`. `style.css` holds only what is specific to your game.
 

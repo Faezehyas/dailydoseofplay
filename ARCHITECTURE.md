@@ -39,8 +39,22 @@ Dotfiles, path traversal, directory paths and `*.test.js` return 404. A bare
 `/<slug>` gets a 301 to `/<slug>/` (the query string is kept) so the game's
 relative imports resolve.
 
-Every page response carries `Content-Security-Policy`, `X-Content-Type-Options`
-and `Referrer-Policy` headers. Scripts can only load from the site itself.
+**Security headers.** Every response carries the same set (`SECURITY_HEADERS`
+in `server/app.js`): pages, files, `304`, the `301` redirect, `400`, `404`,
+`405`, `426`, `/healthz` (which also keeps `Access-Control-Allow-Origin: *`)
+and the `403` that refuses a `/ws` handshake.
+
+| Header | Value | Why |
+|---|---|---|
+| `Content-Security-Policy` | `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'` | Scripts, fetches and sockets stay on the site itself. `connect-src 'self'` covers our own `ws:`/`wss:` in current browsers (CSP Level 3: Chrome 71, Firefox since 2018, Safari 16), so injected code can't open a socket to another host. WebRTC's STUN servers are not under `connect-src`. |
+| `Strict-Transport-Security` | `max-age=31536000` | Once a browser has seen the site over HTTPS, it never uses plain HTTP for it for a year. No `includeSubDomains` and no `preload`, so it can be dropped later. Browsers ignore it over plain HTTP, so `localhost` and LAN play are unaffected. |
+| `Cross-Origin-Opener-Policy` | `same-origin` | A page on another site that opens ours gets no handle to our window. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | No game needs them. The invite link's Share (`navigator.share`) and Copy (`navigator.clipboard`) stay allowed. |
+| `X-Content-Type-Options` | `nosniff` | Files are only run as the type we send. |
+| `Referrer-Policy` | `same-origin` | Invite links with their keys never leak to other sites. |
+
+`test/browser/security-headers.test.js` checks that, under these headers, the
+lobby still reaches `/ws` and the invite link still copies and shares.
 
 **Caching.** Static files carry `Cache-Control: no-cache` and a strong `ETag`,
 a 64-bit FNV-1a hash of the file's bytes (`etagOf` in `server/app.js`, pure JS,
@@ -196,7 +210,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 
 | Module | Job |
 |---|---|
-| `shell.js` | Header with light/dark and sound toggles, nickname and last game played in `localStorage` (the home page shows that game first; it never leaves the device), toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper |
+| `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`), nickname and last game played in `localStorage` (the home page shows that game first; it never leaves the device), toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper |
 | `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
 | `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), its loading tiles and the "Last played" label (see **Colours and contrast**), the game page column (see **Page column**) and the player bar and the result panel |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
@@ -208,7 +222,7 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `session.js` → `matchRouter()` | Routes game messages to the current match by match number `m`, with the sender's seat, and holds messages for a rematch that hasn't started yet |
 | `robot-pace.js` | `robotPause(ms)`: every robot's pause before it moves goes through it, so browser tests can speed robots up by setting `globalThis.ddpRobotPace` (1 for players) |
 | `turn-match.js` | `TurnMatch` and `startTurnRobot()`: a generic protocol for open-information turn games, for two or more players. Agreed coin toss for who starts, every peer validates every move with the same rules (only the seat on turn may move), and luck moves (dice) use `SharedRandom`. A rules object may set `draws`, the most shared draws one match needs (default 256). This is the default for future games; Sea Battle needs hidden information, so it has its own `match.js`. |
-| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and only errors use `role="alert"`. It also sets which view is on show for the page column, and saves the game's slug when a game starts. |
+| `lobby.js` | `startGameShell()`: the "Play with a friend" / "Play vs robot" / join-by-code UI, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column, and saves the game's slug when a game starts. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
 | `result.js` | `resultPanel(session, { onLeave, onShow, classes })`: the game-over panel of every game, with Rematch and Leave (see **Result panel**). |
