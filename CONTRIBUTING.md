@@ -58,6 +58,7 @@ public/<slug>/
 ├── main.js          startGameShell(...) and the view
 ├── rules.js         pure rules
 ├── robot.js         move choice (+ startRobot when not using startTurnRobot)
+├── settings.js      optional: the game's settings, shown in the lobby card (step 5)
 ├── sounds.js        optional: the game's sounds, played through the engine (step 5b)
 ├── icon.svg         original 16:10 card art (viewBox 0 0 320 200), no external refs
 ├── rules.test.js    rules unit tests
@@ -166,6 +167,34 @@ startGameShell({
   },
 });
 ```
+
+**Settings (optional).** Clocks, board size, who goes first or a robot level
+go in `settings.js`, built with the engine's `gameSettings()`, and are passed
+to `startGameShell()`. The lobby shows them inside its card and their summary
+on the host's waiting screen; don't add a settings card of your own.
+
+```js
+import { gameSettings } from "../engine/settings.js";
+import { normalizeConfig } from "./rules.js";
+
+export const settings = gameSettings({
+  key: "ddp-<slug>-settings", // localStorage; never rename it, or players lose their choice
+  prefix: "<prefix>", // radio names: <prefix>-<group>; the panel is #<prefix>-settings
+  normalize: normalizeConfig, // raw (or null) -> a complete, valid config
+  hint: "In a friend game, the settings of whoever creates the room apply to both players.",
+  groups: [
+    // summary(value, label, config): the text of this group's chip in the summary ("" leaves it out).
+    { name: "moveSeconds", legend: "Time per move", options: [[10, "10 s"], [0, "No limit"]], summary: (v, l) => (v ? `${l} a move` : "No move limit") },
+    // robot: true tags the group "vs robot only", gives its chip a teal dot and keeps it off the waiting screen.
+    { name: "level", legend: "Robot level", robot: true, options: [["easy", "Easy"], ["hard", "Hard"]], summary: (v, l) => `${l} robot` },
+  ],
+});
+```
+
+Pass `settings` to `startGameShell()` and read `settings.get()` when a game
+starts: the host sends it to its guests as `setup {config}` (see **Room
+settings** under Tic Tac Toe in `ARCHITECTURE.md`), and a robot game uses it
+directly.
 
 **More than two players.** Pass `minPlayers` and `maxPlayers` to
 `startGameShell()` (and `robots`, the robot seats in a robot game: a number,
@@ -314,6 +343,7 @@ windows (one private).
 - [ ] Coral or teal text uses `--accent-text` or `--accent-2-text`; controls are outlined in `--control-border`
 - [ ] No fonts or timings of its own: timers carry `mono`, transitions use the `--dur-*` and `--ease-*` tokens
 - [ ] Each player has the same colour on every screen (see **Player colours** in `ARCHITECTURE.md`): style `.mine` and `.theirs` with `--mine` and `--theirs`, and set `data-you` on the game's root
+- [ ] A new `localStorage` key (such as the settings panel's `key`) is listed on `public/privacy/index.html`
 - [ ] Sounds, if any, are in `sounds.js` with a role each, and `test/browser/sound-levels.test.js` passes
 - [ ] Original name, text and art; nothing copied from papergames
 - [ ] `games.json` entry set to `ready`; `GAMES.md` ticked; README updated
@@ -335,6 +365,7 @@ windows (one private).
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
 | `public/engine/shell.js` | Header, footer, theme toggle, nickname, `el()`, `toast()` |
+| `public/engine/settings.js` | `gameSettings()`: a game's settings, shown in the lobby card |
 | `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
 | `public/engine/result.js` | `resultPanel()`: the game-over panel with the result, Rematch and Leave, in every game |
 | `public/engine/celebrate.js` | `celebrate()`: the win, loss and draw moment as the result panel opens, with its chimes from `chimes.js` |

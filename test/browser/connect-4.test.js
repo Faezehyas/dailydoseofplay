@@ -33,7 +33,11 @@ const pw = await loadPlaywright();
 const wait = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 20_000 });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#c4-settings label:has(input[name="c4-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#c4-settings[open]").count())) await page.click("#c4-settings > summary");
+  await page.click(`#c4-settings label:has(input[name="c4-${name}"][value="${value}"])`);
+}
 
 test("two friends play Connect 4 on the host's settings through the invite link, then a rematch", { skip: !pw && "Playwright not installed", timeout: 120_000 }, async (t) => {
   mkdirSync(ARTIFACTS, { recursive: true });

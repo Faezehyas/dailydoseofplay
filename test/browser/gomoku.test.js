@@ -33,7 +33,11 @@ const at = (r, c) => r * 15 + c;
 const wait = (page, fn, arg, timeout = 20_000) => page.waitForFunction(fn, arg, { timeout });
 const moveCount = (page) => page.evaluate(() => window.ddp.match.state.moves.length);
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#gmk-settings label:has(input[name="gmk-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#gmk-settings[open]").count())) await page.click("#gmk-settings > summary");
+  await page.click(`#gmk-settings label:has(input[name="gmk-${name}"][value="${value}"])`);
+}
 const point = (i) => `.gmk-cell[data-i="${i}"]`;
 // Let the last stone finish growing and any toast fade before a screenshot.
 async function settle(page) {

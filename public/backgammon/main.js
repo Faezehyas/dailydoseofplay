@@ -9,7 +9,7 @@ import { resultPanel } from "../engine/result.js";
 import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, legalPlays, applyStep, clonePos, pipCount, BAR, OFF, CHECKERS } from "./rules.js";
 import { chooseMove, inContact, startRobot } from "./robot.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 
 const ROBOT_DELAY = 800;
@@ -31,7 +31,6 @@ const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const TOP = [13, 14, 15, 16, 17, 18, "bar-top", 19, 20, 21, 22, 23, 24, "off-top"];
 const BOTTOM = [12, 11, 10, 9, 8, 7, BAR, 6, 5, 4, 3, 2, 1, OFF];
 
-const settings = mountSettings(document.getElementById("bg-settings"), document.getElementById("lobby"));
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function robotChoice(level) {
@@ -48,6 +47,7 @@ startGameShell({
   slug: "backgammon",
   title: "Backgammon",
   layout: "medium",
+  settings,
   createRobot: (session) => {
     const config = settings.get();
     const delay = (state, me) => (racingForYou && !inContact(state.pos, me) ? ROBOT_RACING : ROBOT_DELAY);

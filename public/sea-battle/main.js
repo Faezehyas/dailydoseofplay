@@ -9,7 +9,7 @@ import { SeaBattleMatch } from "./match.js";
 import { matchRouter } from "../engine/session.js";
 import { startRobot } from "./robot.js";
 import * as R from "./rules.js";
-import { mountSettings } from "./settings.js";
+import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 
 const ICON = {
@@ -79,12 +79,11 @@ const BOOM_STEP = 0.17;
 const LAUNCH_SOUND = { shot: "launch", big: "launch-big", rain: "launch-rain", nuke: "launch-nuke", carpet: "launch-rain" };
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their shot
 
-const settings = mountSettings(document.getElementById("sb-settings"), document.getElementById("lobby"));
-
 startGameShell({
   slug: "sea-battle",
   title: "Sea Battle",
   layout: "wide",
+  settings,
   createRobot: (session) => startRobot(session, { delay: AI_DELAY, config: settings.get() }),
   onSession: (session, root, shell) => mountSeaBattle(session, root, shell),
 });

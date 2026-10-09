@@ -2,7 +2,7 @@
 // waiting room, and hand-off of a Session to the game. How players get
 // connected lives in room.js; this file is only the UI around it.
 //
-//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout })
+//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout, settings })
 //
 // onSession(session, root) mounts the game in `root` and returns { destroy }.
 // createRobot(session) drives one robot seat over an in-memory group; robots
@@ -12,6 +12,8 @@
 // overrides it (older games passed their own).
 // layout is the page column while the game is on show: "narrow", "medium" or
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
+// settings is the game's gameSettings() (settings.js): the home screen shows
+// them inside the lobby card, and the host's waiting screen their summary.
 import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert } from "./shell.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
@@ -56,11 +58,11 @@ const LAYOUTS = ["narrow", "medium", "wide"];
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 4;
 
-export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide" }) {
+export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide", settings }) {
   initShell({ title });
   const lobbyRoot = $("#lobby");
   const gameRoot = $("#game");
-  // The lobby, settings, game and "How to play" share one column (theme.css).
+  // The lobby, game and "How to play" share one column (theme.css).
   const page = lobbyRoot.closest(".page");
   const showView = (name) => {
     if (page) page.dataset.view = name;
@@ -179,6 +181,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
       el("h1", {}, title),
       taglineEl,
       nicknameField(),
+      settings?.panel(),
       el(
         "div",
         { class: "lobby-actions" },
@@ -248,6 +251,13 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
         [...room.code].map((c, i) => el("span", { style: `--i: ${i}` }, c)),
       ),
       el("div", { class: "invite-row" }, linkInput, copyBtn, shareBtn),
+      settings &&
+        el(
+          "div",
+          { class: "room-settings", id: "room-settings" },
+          el("p", { class: "room-settings-label" }, "Game settings"),
+          el("p", { class: "settings-line" }, settings.summary(false)),
+        ),
       el("ul", { class: "roster", id: "roster", "aria-label": "Players", hidden: duel }),
       el("p", { class: "waiting", id: "lobby-status" }),
       !duel && el("button", { class: "btn primary", type: "button", id: "start-game", disabled: true, onclick: () => begin(room) }, "Start game"),

@@ -32,7 +32,11 @@ async function loadPlaywright() {
 const pw = await loadPlaywright();
 const wait = (page, fn, arg, timeout = 20_000) => page.waitForFunction(fn, arg, { timeout });
 const noHorizontalScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const pick = (page, name, value) => page.click(`#db-settings label:has(input[name="db-${name}"][value="${value}"])`);
+// The settings fold to a summary line in the lobby card; open it first.
+async function pick(page, name, value) {
+  if (!(await page.locator("#db-settings[open]").count())) await page.click("#db-settings > summary");
+  await page.click(`#db-settings label:has(input[name="db-${name}"][value="${value}"])`);
+}
 const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const state = (page) => page.evaluate(() => window.ddp.match.state);
 // The theme token a CSS property of the first match resolves to, so screens
