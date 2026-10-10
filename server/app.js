@@ -27,18 +27,22 @@ const MIME = {
   ".woff2": "font/woff2",
   ".webmanifest": "application/manifest+json",
   ".txt": "text/plain; charset=utf-8",
+  ".wasm": "application/wasm",
 };
 
+const CSP = "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'";
 // On every response, including redirects, errors and the /ws refusal.
 const SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "same-origin",
-  "Content-Security-Policy":
-    "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+  "Content-Security-Policy": CSP,
   "Strict-Transport-Security": "max-age=31536000",
   "Cross-Origin-Opener-Policy": "same-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 };
+// Only the card deck's worker compiles WebAssembly (see ARCHITECTURE.md).
+const DECK_WORKER = path.join("engine", "deck-worker.js");
+const DECK_WORKER_CSP = CSP.replace("default-src 'self';", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval';");
 
 export function parseRegistry(text) {
   const games = new Map();
@@ -145,13 +149,16 @@ export async function createApp({
   function sendFile(req, res, file) {
     fs.readFile(file, (err, data) => {
       if (err) return notFound(req, res);
+      const security = path.relative(publicDir, file) === DECK_WORKER
+        ? { ...SECURITY_HEADERS, "Content-Security-Policy": DECK_WORKER_CSP }
+        : SECURITY_HEADERS;
       const etag = etagOf(data);
       if (etagMatches(req.headers["if-none-match"], etag)) {
-        res.writeHead(304, { ...SECURITY_HEADERS, ETag: etag, "Cache-Control": "no-cache" });
+        res.writeHead(304, { ...security, ETag: etag, "Cache-Control": "no-cache" });
         return res.end();
       }
       res.writeHead(200, {
-        ...SECURITY_HEADERS,
+        ...security,
         "Content-Type": MIME[path.extname(file)] || "application/octet-stream",
         "Content-Length": data.length,
         "Cache-Control": "no-cache",

@@ -18,6 +18,7 @@ test("HTTP routes: home, games, healthz, ws, 404s", async (t) => {
   assert.equal(home.status, 200);
   assert.match(home.headers.get("content-type"), /text\/html/);
   assert.match(home.headers.get("content-security-policy"), /default-src 'self'/);
+  assert.doesNotMatch(home.headers.get("content-security-policy"), /eval/, "pages can't compile code");
   assert.match(await home.text(), /Daily Dose of Play/);
 
   const health = await fetch(`${srv.base}/healthz`);
@@ -51,6 +52,13 @@ test("HTTP routes: home, games, healthz, ws, 404s", async (t) => {
   assert.equal((await fetch(`${srv.base}/engine/`)).status, 404, "no directory listings");
   assert.equal((await fetch(`${srv.base}/sea-battle/sounds/splash-heavy-1.mp3`)).headers.get("content-type"), "audio/mpeg");
   assert.equal((await fetch(`${srv.base}/engine/fonts/fredoka.woff2`)).headers.get("content-type"), "font/woff2");
+  const wasm = await fetch(`${srv.base}/engine/vendor/mental-poker/cards_play_bg.wasm`);
+  assert.equal(wasm.headers.get("content-type"), "application/wasm", "WebAssembly.instantiateStreaming needs it");
+  // Only the deck worker, which runs under its own script's policy, may compile WebAssembly.
+  const worker = (await fetch(`${srv.base}/engine/deck-worker.js`)).headers.get("content-security-policy");
+  assert.match(worker, /^default-src 'self'; script-src 'self' 'wasm-unsafe-eval';/);
+  assert.doesNotMatch(worker, /'unsafe-eval'/);
+  assert.doesNotMatch((await fetch(`${srv.base}/engine/deck-crypto.js`)).headers.get("content-security-policy"), /eval/);
 });
 
 test("static files: ETag, 304 when it matches, a new ETag after an edit", async (t) => {

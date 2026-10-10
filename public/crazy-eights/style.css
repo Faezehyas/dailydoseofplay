@@ -1,0 +1,1191 @@
+/* Crazy Eights view. Shared tokens come from /engine/theme.css. The table's
+   own palette (felt, wooden rim, the cards and their backs) is defined here
+   for light and dark; card faces stay paper-white in both. Players take
+   colours by seat, the same on every screen: coral, teal, violet and amber,
+   each with a fill (--c) and an ink for text (--c-ink). */
+.crazy-eights {
+  --ce-p2: #7c55e6;
+  --ce-p2-ink: #6640d0;
+  --ce-p3: #e8a317;
+  --ce-p3-ink: #8a5a00;
+  --ce-felt: #2a7666;
+  --ce-felt-2: #1d584c;
+  --ce-felt-ink: #f3fbf8;
+  --ce-felt-muted: #dcefe9;
+  --ce-rim: #a06d40;
+  --ce-rim-2: #6f4626;
+  --ce-paper: #fffdf8;
+  --ce-edge: #cfc5b3;
+  --ce-red: #c62a3b;
+  --ce-black: #20242e;
+  --ce-blue: #1f5fc4;
+  --ce-green: #176f3a;
+  --ce-gold: #e0ad2a;
+  --ce-gold-dark: #a87a12;
+  --ce-skin: #f1caa4;
+  --ce-cheek: #ee9f8c;
+  --ce-beard: #cbc4b8;
+  --ce-hair-q: #8c4a26;
+  --ce-hair-j: #4a3324;
+  --ce-cap: #2b8a8a;
+  --ce-petal: #ff8a73;
+  --ce-leaf: #3f8f4f;
+  --ce-wood: #8a5a34;
+  --ce-court: #f7efe0;
+  --ce-back: #d65a3c;
+  --ce-back-line: #ffe7d2;
+  --ce-shadow: rgb(20 30 25 / 35%);
+  --ce-glow: #ffd36b;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .crazy-eights {
+    --ce-p2: #b496ff;
+    --ce-p2-ink: #c3abff;
+    --ce-p3: #ffc04d;
+    --ce-p3-ink: #ffc857;
+    --ce-felt: #215b50;
+    --ce-felt-2: #143a33;
+    --ce-felt-muted: #b7d6cf;
+    --ce-rim: #6f4a2c;
+    --ce-rim-2: #43291a;
+    --ce-paper: #f1ece2;
+    --ce-edge: #9d9584;
+    --ce-court: #ebe1cf;
+    --ce-back: #b94a31;
+    --ce-back-line: #f4d9c4;
+    --ce-shadow: rgb(0 0 0 / 50%);
+  }
+}
+
+:root[data-theme="dark"] .crazy-eights {
+  --ce-p2: #b496ff;
+  --ce-p2-ink: #c3abff;
+  --ce-p3: #ffc04d;
+  --ce-p3-ink: #ffc857;
+  --ce-felt: #215b50;
+  --ce-felt-2: #143a33;
+  --ce-felt-muted: #b7d6cf;
+  --ce-rim: #6f4a2c;
+  --ce-rim-2: #43291a;
+  --ce-paper: #f1ece2;
+  --ce-edge: #9d9584;
+  --ce-court: #ebe1cf;
+  --ce-back: #b94a31;
+  --ce-back-line: #f4d9c4;
+  --ce-shadow: rgb(0 0 0 / 50%);
+}
+
+/* Seat colours: --c to fill, --c-ink for text on the page's surfaces. */
+.p-0 { --c: var(--accent); --c-ink: var(--accent-text); }
+.p-1 { --c: var(--accent-2); --c-ink: var(--accent-2-text); }
+.p-2 { --c: var(--ce-p2); --c-ink: var(--ce-p2-ink); }
+.p-3 { --c: var(--ce-p3); --c-ink: var(--ce-p3-ink); }
+
+/* Your own colour, for the shared .mine styles: seats 2 and 3 aren't coral or teal. */
+.crazy-eights[data-seat="2"] { --mine: var(--ce-p2); --mine-text: var(--ce-p2-ink); }
+.crazy-eights[data-seat="3"] { --mine: var(--ce-p3); --mine-text: var(--ce-p3-ink); }
+
+/* ---------- top: the shared player bar, then the status ---------- */
+.crazy-eights .player-bar :is(.pb-who, .pb-score > div) {
+  --seat: var(--c);
+  --seat-text: var(--c-ink);
+}
+
+.crazy-eights .dot {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 18%);
+}
+
+.ce-seat .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ce-status {
+  margin: 0;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  min-height: 1.6em;
+}
+
+.ce-status.mine {
+  color: var(--c-ink);
+}
+
+.ce-config,
+.ce-note {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- layout: the table, with the actions and log beside it on wide screens ---------- */
+.ce-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .ce-main {
+    grid-template-columns: minmax(0, 1fr) 250px;
+  }
+
+  .ce-side {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+.ce-table-wrap {
+  position: relative;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* ---------- the table: felt in a wooden rim ---------- */
+.ce-table {
+  --cw: clamp(52px, 12.5cqi, 82px); /* a card's width; height is 1.4 times */
+  --ch: calc(var(--cw) * 1.4);
+  --ow: clamp(24px, 6cqi, 36px); /* an opponent's card back */
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  min-height: min(560px, max(400px, calc(100svh - 240px)));
+  padding: 10px 10px 8px;
+  border-radius: 26px;
+  border: 7px solid var(--ce-rim);
+  background:
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, rgb(0 0 0 / 22%)),
+    radial-gradient(circle at 50% 45%, var(--ce-felt), var(--ce-felt-2));
+  box-shadow: inset 0 0 0 2px var(--ce-rim-2), inset 0 6px 18px rgb(0 0 0 / 30%), var(--shadow);
+  color: var(--ce-felt-ink);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+  isolation: isolate; /* the hand's stacking stays under the picker and the result */
+}
+
+/* ---------- opponents ---------- */
+.ce-opps {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ce-seat {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 0 1 180px;
+}
+
+.ce-seat .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 9px 2px 4px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 28%);
+  color: var(--ce-felt-ink);
+  font-size: 0.85rem;
+  font-weight: 800;
+  border: 2px solid transparent;
+  transition: border-color var(--dur-med) var(--ease-out), background-color var(--dur-med) var(--ease-out);
+}
+
+.ce-seat.active .pill {
+  border-color: var(--c);
+  background: rgb(0 0 0 / 45%);
+}
+
+.ce-seat .count {
+  flex: none;
+  min-width: 1.6em;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ce-felt-ink);
+  color: #17201d;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.ce-fan {
+  position: relative;
+  height: calc(var(--ow) * 1.4 + 6px);
+  width: 100%;
+  max-width: 170px;
+}
+
+.ce-fan .ce-card {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: var(--ow);
+  height: calc(var(--ow) * 1.4);
+  margin-left: calc(var(--ow) / -2);
+}
+
+/* A word over a seat: "Pass", "Skip", "Last card!" */
+.ce-bubble {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 3;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--c, var(--border));
+  font-weight: 800;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow);
+}
+
+/* On a wide table with four players, the two side seats sit at the sides. */
+@container (min-width: 620px) {
+  .ce-table.four-seats .ce-seat.pos-left,
+  .ce-table.four-seats .ce-seat.pos-right {
+    position: absolute;
+    top: 40%;
+    width: 150px;
+  }
+
+  .ce-table.four-seats .ce-seat.pos-left {
+    left: 10px;
+  }
+
+  .ce-table.four-seats .ce-seat.pos-right {
+    right: 10px;
+  }
+}
+
+/* ---------- centre: stock, discard pile, suit and direction ---------- */
+.ce-centre {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  column-gap: clamp(14px, 6cqi, 40px);
+  row-gap: 6px;
+  min-height: calc(var(--ch) + 40px);
+}
+
+.ce-stock,
+.ce-pile {
+  position: relative;
+  width: var(--cw);
+  height: var(--ch);
+}
+
+.ce-stock {
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.ce-stock:disabled {
+  cursor: default;
+}
+
+.ce-stock .ce-card {
+  position: absolute;
+  inset: 0;
+}
+
+.ce-stack {
+  position: relative;
+}
+
+.ce-riffle {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ce-riffle .ce-card {
+  position: absolute;
+  inset: 0;
+}
+
+.ce-stock.armed .ce-card:last-of-type {
+  box-shadow: 0 0 0 3px var(--ce-glow), 0 6px 16px var(--ce-shadow);
+}
+
+.ce-stock .left {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  z-index: 2;
+  transform: translateX(-50%);
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 55%);
+  color: var(--ce-felt-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ce-stock.empty .ce-card {
+  display: none;
+}
+
+.ce-stock.empty::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 2px dashed rgb(255 255 255 / 35%);
+}
+
+.ce-pile .ce-card {
+  position: absolute;
+  inset: 0;
+}
+
+.ce-pile-label,
+.ce-stock-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ce-felt-muted);
+  text-align: center;
+}
+
+/* The suit to follow: big and clear, above all after an 8 names one. */
+.ce-suit-badge {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px 3px 4px;
+  border-radius: 999px;
+  background: var(--ce-paper);
+  color: #1d2129;
+  font-weight: 800;
+  box-shadow: 0 2px 6px var(--ce-shadow);
+}
+
+.ce-suit-badge[hidden] {
+  display: none;
+}
+
+.ce-suit-badge .ce-suit {
+  width: 22px;
+  height: 22px;
+}
+
+.ce-suit-badge.named {
+  box-shadow: 0 0 0 3px var(--ce-glow), 0 2px 8px var(--ce-shadow);
+}
+
+/* Under the piles; during play it floats over the felt, so it never moves them. */
+.ce-busy {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 3px 12px 3px 6px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 35%);
+  color: var(--ce-felt-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.ce-busy[hidden] {
+  display: none;
+}
+
+.ce-busy.float {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  z-index: 3;
+  width: max-content;
+  transform: translateX(-50%);
+}
+
+.ce-busy .spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  border-color: rgb(255 255 255 / 30%);
+  border-top-color: var(--ce-glow);
+}
+
+/* Which way play goes, when aces can turn it. */
+.ce-dir {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 1px 10px 1px 6px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 30%);
+  color: var(--ce-felt-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ce-dir[hidden] {
+  display: none;
+}
+
+.ce-dir .arrow {
+  display: inline-grid;
+}
+
+.ce-dir.ccw .arrow svg {
+  transform: scaleX(-1);
+}
+
+/* ---------- cards ---------- */
+.ce-card {
+  --suit: var(--ce-black);
+  display: block;
+  width: var(--cw);
+  height: var(--ch);
+  perspective: 600px;
+}
+
+.ce-card .in {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+.ce-card.down .in {
+  transform: rotateY(180deg);
+}
+
+.ce-card .side {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 7%/5%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 3px 8px var(--ce-shadow);
+}
+
+.ce-card .back {
+  transform: rotateY(180deg);
+}
+
+.ce-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ce-card .paper {
+  fill: var(--ce-paper);
+  stroke: var(--ce-edge);
+  stroke-width: 1.2;
+}
+
+.s-0 { --suit: var(--ce-black); }
+.s-1 { --suit: var(--ce-red); }
+.s-2 { --suit: var(--ce-red); }
+.s-3 { --suit: var(--ce-black); }
+.four-colour .s-2 { --suit: var(--ce-blue); }
+.four-colour .s-3 { --suit: var(--ce-green); }
+
+.ce-svg use,
+.ce-suit use {
+  fill: var(--suit);
+}
+
+.ce-card .idx text {
+  fill: var(--suit);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 25px;
+  text-anchor: middle;
+}
+
+.ce-card .idx text.narrow {
+  font-size: 21px;
+  letter-spacing: -1.5px;
+}
+
+.ce-card .ace-ring {
+  fill: none;
+  stroke: var(--suit);
+  stroke-width: 1;
+  stroke-dasharray: 1 3;
+  opacity: 0.6;
+}
+
+.ce-card .court-bg {
+  fill: var(--ce-court);
+  stroke: var(--suit);
+  stroke-width: 1.2;
+}
+
+.ce-card .court-line {
+  stroke: var(--suit);
+  stroke-width: 0.8;
+  opacity: 0.5;
+}
+
+
+/* ---------- your hand ---------- */
+.ce-me {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ce-me .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 2px 9px 2px 4px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 28%);
+  font-size: 0.85rem;
+  font-weight: 800;
+  border: 2px solid transparent;
+}
+
+.ce-me.active .pill {
+  border-color: var(--c);
+  background: rgb(0 0 0 / 45%);
+}
+
+.ce-hand {
+  position: relative;
+  width: 100%;
+  height: calc(var(--ch) + 26px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.ce-hand-in {
+  position: relative;
+  height: 100%;
+  margin: 0 auto;
+}
+
+.ce-hcard {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 8px;
+  font: inherit;
+  cursor: default;
+  transform-origin: 50% 160%;
+  transition: transform var(--dur-med) var(--ease-out);
+}
+
+.ce-hcard .ce-card .side {
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.ce-hcard.playable {
+  cursor: pointer;
+}
+
+.ce-hcard.playable .ce-card .front {
+  box-shadow: 0 0 0 3px var(--ce-glow), 0 6px 14px var(--ce-shadow);
+}
+
+.ce-hcard.dim .ce-card .front::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(10 20 16 / 32%);
+}
+
+.ce-hcard:focus-visible {
+  outline: none;
+}
+
+.ce-hcard:focus-visible .ce-card .front {
+  box-shadow: 0 0 0 3px var(--focus), 0 0 0 6px #fff, 0 6px 14px var(--ce-shadow);
+}
+
+.ce-hand-hint {
+  margin: 0;
+  min-height: 1.3em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ce-felt-muted);
+  text-align: center;
+}
+
+/* ---------- flying cards and effects ---------- */
+.ce-fly {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 26px;
+}
+
+.ce-fly > .ce-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.ce-fx {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+}
+
+.ce-fx.confetti {
+  width: 8px;
+  height: 14px;
+  margin: -7px 0 0 -4px;
+  border-radius: 2px;
+  background: var(--c, var(--ce-glow));
+}
+
+.ce-fx.ring {
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  border: 3px solid var(--ce-glow);
+}
+
+/* ---------- the suit picker ---------- */
+.ce-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  background: rgb(0 0 0 / 25%);
+  border-radius: 20px;
+}
+
+.ce-picker[hidden] {
+  display: none;
+}
+
+.ce-picker-card {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.ce-picker-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.ce-picker-suits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ce-pick {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 4px 6px;
+  border-radius: 12px;
+  border: 2px solid var(--control-border);
+  background: var(--ce-paper);
+  color: #1d2129;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.ce-pick .ce-suit {
+  width: 34px;
+  height: 34px;
+}
+
+.ce-pick.best {
+  border-color: var(--accent-2);
+}
+
+.ce-pick:hover {
+  transform: translateY(-2px);
+}
+
+.ce-picker-card .btn {
+  margin-top: 2px;
+}
+
+/* ---------- side: actions, timer, log ---------- */
+.ce-side {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ce-actions {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.ce-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.ce-buttons .btn {
+  flex: 1 1 0;
+}
+
+.ce-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.ce-timer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.ce-timer[hidden] {
+  display: none;
+}
+
+.ce-timer .bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ce-timer .bar span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--c, var(--accent-2));
+  transform-origin: left;
+}
+
+.ce-timer.low {
+  color: var(--danger);
+}
+
+.ce-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ce-log li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--c);
+  font-size: 0.85rem;
+  line-height: 1.25;
+  color: var(--muted);
+}
+
+.ce-log li.fresh {
+  color: var(--text);
+}
+
+.ce-log .mini,
+.ce-left .mini {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--ce-paper);
+  border: 1px solid var(--ce-edge);
+  color: var(--suit);
+  font-weight: 800;
+  font-size: 0.75rem;
+  gap: 0;
+}
+
+.ce-log .mini.back,
+.ce-left .mini.back {
+  background: var(--ce-back);
+  border-color: var(--ce-back);
+}
+
+.ce-log .mini .ce-suit,
+.ce-left .mini .ce-suit {
+  width: 10px;
+  height: 10px;
+}
+
+.ce-log .mini span,
+.ce-left .mini span {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+/* ---------- game over: over the table, so it's in view ---------- */
+/* At least the table's size; on a small phone it may reach below the table. */
+.ce-over {
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: 100%;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--bg) 35%, transparent);
+}
+
+.ce-over[hidden] {
+  display: none;
+}
+
+.ce-over-card {
+  width: min(100%, 400px);
+  text-align: center;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ce-over {
+    animation: ce-fade var(--dur-slow) var(--ease-out);
+  }
+
+  .ce-over-card {
+    animation: ce-pop var(--dur-slow) var(--ease-spring);
+  }
+
+  .ce-log li.fresh {
+    animation: ce-in var(--dur-slow) var(--ease-out);
+  }
+}
+
+@keyframes ce-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ce-pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+@keyframes ce-in {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+
+.ce-over h2 {
+  margin: 0 0 8px;
+  font-size: 1.45rem;
+}
+
+.ce-over h2.win {
+  color: var(--accent-text);
+}
+
+.ce-standings {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.ce-standings li {
+  display: grid;
+  grid-template-columns: 2.2em minmax(0, 1fr) auto;
+  grid-template-areas: "place who score" "place hand hand";
+  align-items: center;
+  column-gap: 8px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 0.92rem;
+}
+
+.ce-standings li.mine {
+  box-shadow: 0 0 0 2px var(--c) inset;
+  font-weight: 800;
+}
+
+.ce-standings .place {
+  grid-area: place;
+  font-weight: 900;
+  color: var(--c-ink);
+}
+
+.ce-standings .who {
+  grid-area: who;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ce-standings .who span:last-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ce-standings small {
+  grid-area: score;
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ce-left {
+  grid-area: hand;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 3px;
+}
+
+
+.ce-over .detail {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ce-over .verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 8px;
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.ce-over .verdict.ok {
+  color: var(--ok);
+}
+
+.ce-over .verdict small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.ce-over .verdict.bad {
+  color: var(--danger);
+}
+
+.ce-actions-over {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ce-over .rematch-status {
+  margin-top: 8px;
+}
+
+/* A player left: the engine's notice, plus whether the game got checked. */
+.ce-ended {
+  margin-top: 12px;
+  text-align: left;
+}
+
+.ce-ended p {
+  margin: 0 0 8px;
+}
+
+.ce-ended ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.ce-ended li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.ce-ended li.gone {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ce-ended .verdict {
+  font-weight: 700;
+}
+
+.ce-ended .verdict.ok {
+  color: var(--ok);
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 600px) {
+  .ce-status {
+    font-size: 1rem;
+  }
+
+  .ce-table {
+    padding: 8px 6px 6px;
+    border-width: 5px;
+    border-radius: 20px;
+    min-height: 0;
+  }
+
+  .ce-seat .pill,
+  .ce-me .pill {
+    gap: 4px;
+    padding: 1px 6px 1px 3px;
+    font-size: 0.78rem;
+  }
+
+  .ce-seat .pill .dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .ce-seat .count {
+    min-width: 1.4em;
+    padding: 0 3px;
+  }
+
+  .ce-log li:nth-child(n + 3) {
+    display: none;
+  }
+
+  .ce-over-card {
+    padding: 10px 12px;
+  }
+
+  .ce-over .verdict small {
+    display: none;
+  }
+
+  .ce-pick {
+    font-size: 0.72rem;
+  }
+
+  .ce-pick .ce-suit {
+    width: 28px;
+    height: 28px;
+  }
+
+  .ce-over h2 {
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+  }
+
+  .ce-standings li {
+    font-size: 0.85rem;
+    padding: 3px 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ce-card .in,
+  .ce-hcard {
+    transition: none;
+  }
+}
