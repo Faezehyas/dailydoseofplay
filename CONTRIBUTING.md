@@ -135,7 +135,7 @@ the audit at the end.
 - Export `chooseMove(state, me, rng)`. It returns a legal move (a card game's also gets `face`, below).
 - Make it decent rather than perfect: win if it can, block an immediate loss, then use a heuristic or a shallow search. It must answer in well under 100 ms.
 - Wire it up: `createRobot: (session) => startTurnRobot(session, { rules, choose: chooseMove, delay: 600 })`.
-- For a card game, `chooseMove(state, me, rng, face)` gets `face(slot)`, the faces the robot may know, and you wire it up with `startCardRobot()` from `engine/card-match.js`. A robot only sees its own seat's cards.
+- For a card game, `chooseMove(state, me, rng, face)` gets `face(slot)`, the faces the robot may know, and you wire it up with `startPacedRobot()` from `engine/cards/paced-robot.js`, which pauses like a person (or `startCardRobot()` from `engine/card-match.js`, with a fixed delay). A robot only sees its own seat's cards.
 
 ### 5. Write `main.js`
 
@@ -207,6 +207,14 @@ An "abort" carries `{ reason, seat, about }`: put the name of `seat` (who
 broke the rules or stopped the match) before the reason, and when `about` is
 set, the reason is about that player ("Ana stopped the match: Bob sent a
 shuffle that doesn't check out").
+
+Don't draw the table from scratch: `engine/cards/` has what Crazy Eights and
+Go Fish share (see **The shared table** in `ARCHITECTURE.md`): the deck's
+faces and art (`faces.js`, `art.js`), the table's pieces and motion
+(`cardTable()` in `table.js`, styled by `cards.css`, which `index.html` links
+after `theme.css`), the card sounds to list in your `sounds.js`
+(`card-sounds.js`), robots that pause like a person (`paced-robot.js`) and
+the notice when a player leaves (`leave-notice.js`).
 
 **Settings (optional).** Clocks, board size, who goes first or a robot level
 go in `settings.js`, built with the engine's `gameSettings()`, and are passed
@@ -415,6 +423,7 @@ windows (one private).
 | `public/engine/session.js` | `Session` (players, rematch, leave), the start handshake, and `matchRouter()` |
 | `public/engine/turn-match.js` | `TurnMatch` and `startTurnRobot()` for open-information turn games |
 | `public/engine/card-match.js` | `CardMatch` and `startCardRobot()` for turn games with hidden cards; the deck runs in `deck-service.js` / `deck-worker.js` / `deck-crypto.js` |
+| `public/engine/cards/` | The card games' shared table: faces and art, the table's pieces and motion, card sounds, paced robots, the leaving notice |
 | `vendor/`, `scripts/build-mental-poker.sh` | The mental-poker library (submodule), our patches and lock file, and the script that builds it into `public/engine/vendor/mental-poker/` |
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |

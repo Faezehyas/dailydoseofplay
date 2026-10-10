@@ -1,7 +1,7 @@
 # Architecture
 
 Daily Dose of Play is a free, no-login site of browser games for two or more
-players (Chutes and Ladders, Ludo and Crazy Eights seat up to four). One small Node server
+players (Chutes and Ladders, Ludo, Crazy Eights and Go Fish seat up to four). One small Node server
 on Wasmer Edge serves the pages and introduces players to each other. The games
 themselves run browser to browser over WebRTC DataChannels: with more than
 two players, every guest connects to the room creator's browser, which
@@ -60,7 +60,8 @@ accounts work (F1) must rewrite it before it ships.
 
 **Import graph.** An arrow is an `import`. The game box stands for every
 `public/<slug>/` folder, so its arrows are those of all the games together;
-`art.js` and `sounds.js` are optional and `match.js` is Sea Battle's alone.
+`art.js` and `sounds.js` are optional and `match.js` is Sea Battle's alone. The `cards/`
+modules are the card games' shared table (see **Card games**).
 Dotted arrows are reads of `games.json`, not imports. Every module in
 `public/` and `server/` has a box: `test/architecture.test.js` fails when one
 is missing and names the line to add.
@@ -110,6 +111,13 @@ flowchart TB
     e_synth["synth.js"]
     e_loudness["loudness.js"]
     e_theme["theme.css<br>linked by every page"]
+    e_cards_faces["cards/faces.js"]
+    e_cards_art["cards/art.js"]
+    e_cards_table["cards/table.js"]
+    e_cards_paced_robot["cards/paced-robot.js"]
+    e_cards_leave_notice["cards/leave-notice.js"]
+    e_cards_card_sounds["cards/card-sounds.js"]
+    e_cards_css["cards/cards.css<br>linked by card games"]
   end
   subgraph server ["Server: server/"]
     s_server["server.js"]
@@ -128,7 +136,13 @@ flowchart TB
   p_main --> e_session
   p_main --> e_shell
   p_main --> e_turn_match
+  p_main --> e_card_match
   p_main --> g_art
+  p_main --> e_cards_art
+  p_main --> e_cards_faces
+  p_main --> e_cards_leave_notice
+  p_main --> e_cards_paced_robot
+  p_main --> e_cards_table
   p_main --> g_match
   p_main --> g_robot
   p_main --> g_rules
@@ -138,17 +152,20 @@ flowchart TB
   g_match --> e_channel
   g_match --> e_fair
   g_match --> g_rules
+  g_robot --> e_cards_paced_robot
   g_robot --> e_rng
   g_robot --> e_robot_pace
   g_robot --> e_session
   g_robot --> e_turn_match
   g_robot --> g_match
   g_robot --> g_rules
+  g_rules --> e_cards_faces
   g_rules --> e_rng
   g_rules --> e_turn_match
   g_settings --> e_settings
   g_settings --> g_robot
   g_settings --> g_rules
+  g_sounds --> e_cards_card_sounds
   g_sounds --> e_sound
   g_sounds --> e_synth
   e_boot --> e_shell
@@ -159,6 +176,15 @@ flowchart TB
   e_card_match --> e_robot_pace
   e_card_match --> e_session
   e_card_match --> e_turn_match
+  e_cards_art --> e_cards_faces
+  e_cards_card_sounds --> e_synth
+  e_cards_leave_notice --> e_shell
+  e_cards_paced_robot --> e_card_match
+  e_cards_paced_robot --> e_robot_pace
+  e_cards_paced_robot --> e_session
+  e_cards_table --> e_cards_art
+  e_cards_table --> e_cards_faces
+  e_cards_table --> e_shell
   e_celebrate --> e_chimes
   e_celebrate --> e_shell
   e_chimes --> e_sound
@@ -422,10 +448,17 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `chimes.js` | The result chimes: the site's jingle for each outcome in each game's timbre, through `sound.js` (see **Result moment**). No DOM. |
 | `confirm.js` | `confirmDialog({ title, text, yes, no })`: a yes-or-no question in a modal `<dialog>` styled like the site. Focus moves to Cancel, Esc or Cancel says no, and focus returns to where it was (Leave). Resolves to `true` for yes. |
 | `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a group marked `robot` is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary. `get()` is the current config, which the game sends to its guests (`setup`). |
-| `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon, Ludo and Crazy Eights, see each game's `sounds/LICENSE.txt`) |
+| `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon, Ludo and the card games, see each `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
 | `loudness.js` | `loudness(samples, sampleRate)`: how loud a sound is to the ear, in LUFS (K-weighted, loudest 100 ms). No DOM; runs in node too. |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
+| `cards/faces.js` | The standard 52-card deck: a face is 0–51, `suitOf()`, `rankOf()`, and the names of suits, ranks and cards. Pure, so rules use it too. |
+| `cards/art.js` | Playing-card art as inline SVG: `symbols()` (the shapes every card uses, added once), `faceSvg(face)`, `BACK_SVG` and `suitSvg(suit)` (see **Crazy Eights in depth** for the drawing) |
+| `cards/table.js` | `cardTable({ prefix, play, animate, done })`: the pieces of a card table. Cards that turn over (`cardEl`, `setFace`, `miniCard`), another player's seat (a fan of backs, a pill with the count), the stock with its riffle while the deck is shuffled, the deck's work shown after 450 ms (`DECK_WORK` has the words), your hand fanned along an arc (it overlaps, then scrolls in its own row; one tab stop, arrow keys, Home and End), flying cards, bubbles over a seat, confetti, the deal card by card, and the animation queue: in order, faster when it piles up, at once with reduced motion (read at each use) or a hidden tab, and a generation per match so a rematch drops the old one. Each part has the class `pc-<part>` and the game's `<prefix>-<part>`. |
+| `cards/cards.css` | The table's look for `cards/table.js`, linked by card games after `theme.css`: the status line, the layout with its side panel and the log, the felt and rim, cards (paper-white in both themes; `.four-colour` draws diamonds blue and clubs green), seats, stock, hand, flights, and the seat colours `p-0` to `p-3` (coral, teal, violet, amber), on a root with the class `pc-game` |
+| `cards/paced-robot.js` | `startPacedRobot()`: a card robot that asks the view how long to pause before each move (-1 waits for the screen to finish replaying), keeps a move it chose while waiting, and makes the game's fallback move when one is refused. `humanPause()` is the view's side: a blink in a hidden tab, less with reduced motion. |
+| `cards/leave-notice.js` | `leaveNotice()`: what a card game adds to the lobby's "Game ended" notice: whether the game got checked, and with three or more players that it is over for everyone, with each player's line. `verdictText()` and `abortText()` word a failed audit and a stopped match. |
+| `cards/card-sounds.js` | Sounds for a card game's `sounds.js` to list. `cardSounds`, handling the cards: a riffle, a deal flick, a card played, a card drawn, cards gathered; CC0 recordings in `cards/sounds/` (credited in its `LICENSE.txt`), each with a synthesized stand-in. `tableSounds`, synthesized: your turn, a refusal, the timer's tick. Also `bell()` and `note()` for a game's own sounds. |
 
 **Session flow.** A friend joining by invite link; the steps below give the
 details.
@@ -572,7 +605,8 @@ Chess 112 (a shared-random `draw`); the engine's handshake peaks at 127
 grow with the deck, so `CardMatch` sends them in parts (see **Card games**);
 its largest message, with four players and a 108-card deck, is 3063 (a part
 of a `shuffle`); Crazy Eights' (four players, 52 cards) is about the same,
-3063 to 3065 as reshuffles add digits to the round number.
+3063 to 3065 as reshuffles add digits to the round number, and Go Fish's
+3063.
 
 **Why a pre-negotiated channel.** With the default in-band handshake, the
 guest's channel opens when the host's open request arrives, and Chrome
@@ -656,7 +690,7 @@ the lobby cards:
 | Lobby, invite, waiting room | 520 px | all |
 | Game, `layout: "narrow"` | 520 px | Tic Tac Toe, Connect 4, Chess, Checkers |
 | Game, `layout: "medium"` | 640 px | Gomoku, Backgammon |
-| Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo, Crazy Eights |
+| Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo, Crazy Eights, Go Fish |
 
 Below that width the column is the page's width less its 16 px gutters. A
 game's own top-level box has no `max-width`, so it fills `#game`. The default
@@ -680,7 +714,7 @@ most two to a row; under 600 px they sit in a 2×2 grid beside Leave over a
 slimmer score, so four fit a 360 px phone. A pill and its score read
 `--seat` and `--seat-text`, which are `--mine` and `--theirs` unless the game
 gives each seat a class of its own that sets them (Chutes and Ladders `p0`
-to `p3`, Ludo its board colours, Crazy Eights `p-0` to `p-3`).
+to `p3`, Ludo its board colours, Crazy Eights and Go Fish `p-0` to `p-3`).
 
 **Result panel.** Every game shows its result the same way, in a panel
 built by `resultPanel()` in `result.js` and pinned to the bottom of the
@@ -722,12 +756,13 @@ The game passes the pieces in the order they light up: the line in Tic Tac
 Toe, Connect 4 and Gomoku, the mated king in Chess, the last capture in
 Checkers, the last checker borne off in Backgammon, the last ship sunk in
 Sea Battle (once its shell lands), the pawn on 100 in Chutes and Ladders,
-the last box in Dots and Boxes, and the winner's tokens home in Ludo. The
+the last box in Dots and Boxes, the winner's tokens home in Ludo, and the
+winners' books in Go Fish. The
 chimes (`chimes.js`) are one melody, a C-major pentatonic jingle, in a
 timbre that fits the game's pieces (`flavour`): `wood` for Chess, Checkers,
 Backgammon and Ludo; `paper` for Tic Tac Toe, Gomoku and Dots and Boxes;
 `plastic` for Connect 4; `bell` for Chutes and Ladders; `water` (a bubble
-under the bell) for Sea Battle. They are synthesized, at the `fanfare`
+under the bell) for Sea Battle and Go Fish. They are synthesized, at the `fanfare`
 level, and follow the mute toggle. With `prefers-reduced-motion` only the
 colours change: the pieces glow, the board dims, the pills take their seat
 colour, and nothing moves. The colours stay while the panel is up; it calls
@@ -794,7 +829,7 @@ checks that no game opens its own audio context or output.
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |
 | `match.js` | Only for games with hidden information that isn't a deck of cards (Sea Battle's fleet): one player's protocol state machine. Card games use `engine/card-match.js`, the others `engine/turn-match.js`. |
 | `sounds.js` | Optional: the game's sounds, `export const sounds = defineSounds({...})` with a role for each (see **Sound levels**), and the `play` helpers `main.js` calls. The only file that imports `engine/sound.js`. |
-| `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`, card games to `startCardRobot()`; custom-protocol games (Sea Battle) also export `startRobot(session)`. |
+| `robot.js` | Move choice (`chooseMove`). TurnMatch games hand it to the engine's `startTurnRobot()`, card games to `startPacedRobot()` (`engine/cards/paced-robot.js`, a `startCardRobot()` that paces itself); custom-protocol games (Sea Battle) also export `startRobot(session)`. |
 | `*.test.js` | `node --test` unit tests, next to the code |
 | `icon.svg` | Card art for the home page (16:10) |
 | `preview.svg` | Optional: the tile's short animated preview (see **Tile previews**) |
@@ -806,8 +841,8 @@ that started the room, and has no dealer. `engine/card-match.js` does it with
 mental poker: every player holds a share of the deck's key, and a card can
 only be read with every share. With three or more players, a modified host
 can still read a hand (see **A modified host** below). The rules contract is
-at the top of that file; Crazy Eights is the first game to use it (see
-**Crazy Eights in depth**).
+at the top of that file; Crazy Eights and Go Fish use it (see **Crazy Eights
+in depth** and **Go Fish in depth**).
 
 **How a match runs.** Every message carries `m`, as in `TurnMatch`.
 
@@ -857,9 +892,10 @@ or never sends their key, leaves the match unverified (`verdict` stays null):
 the view should say so. Nothing stops stalling either: a player who never
 sends their shares holds the game up until someone leaves. A seat that sends
 more than `MAX_AHEAD` shuffle or share parts ahead of the match is flooding,
-and is blamed for it. A hidden card can't pass from one player to another (Go
-Fish, Hearts' pass): that needs a private message, and every message here
-goes to everyone. A card that is already open can.
+and is blamed for it. A hidden card can't pass from one player to another
+(Hearts' pass): that needs a private message, and every message here goes
+to everyone. A card that is already open can, so Go Fish shows the cards an
+answer hands over before dealing them to the asker.
 
 **A modified host, with three or more players.** Every message goes through
 the host's browser (see **Groups**), and messages aren't signed. A modified
@@ -918,6 +954,14 @@ page for 200 ms. In Node it runs in-process. If the WebAssembly crashes, the
 job that crashed it fails (and its input is blamed), and the jobs queued
 behind it run again on a fresh worker. A stopped match drops whatever its
 running deck job returns.
+
+**The shared table.** What a card game draws is shared in `engine/cards/`
+(see the engine table above): the deck's faces and art, the card sounds, the
+table's pieces and motion, the robots' pacing and the leaving notice. A game
+builds its own layout from those pieces, keeps its own rules, robot and
+special moments, and links `cards/cards.css` after `theme.css`. Each part
+carries the class `pc-<part>` for the shared styles and `<prefix>-<part>`
+(`ce-` for Crazy Eights, `gf-` for Go Fish) for the game's own styles and tests.
 
 **Sizes.** A card is 66 bytes, a share 131. A shuffle message is 66 bytes a
 card plus its proof (7.7 KB for 52 cards, 13 KB for 108), so `CardMatch` sends
@@ -1668,10 +1712,11 @@ went on to the move limit.
 Crazy Eights is mostly the deal: over 1000 two-player games Hard beats Easy
 about 60% of the time (`robot.test.js` checks over 55%), and among three
 Easy robots it wins about 30% (25% would be even). A choice takes under 1 ms.
-`startRobot()` is `startCardRobot()` with a pause asked for each move, as in
-Ludo: robots wait while your screen replays, then think like a person,
-0.4 s for a forced draw, 0.6 to 1.8 s for a real choice, and half a second
-more to name a suit after an 8. In a hidden tab they hardly wait; with
+`startRobot()` is the shared `startPacedRobot()`
+(`engine/cards/paced-robot.js`): like `startCardRobot()`, but with a pause
+asked for each move, as in Ludo: robots wait while your screen replays, then
+think like a person, 0.4 s for a forced draw, 0.6 to 1.8 s for a real
+choice, and half a second more to name a suit after an 8. In a hidden tab they hardly wait; with
 reduced motion they wait less. `globalThis.ddpRobotPace` scales every pause,
 so a test can run a whole robot game in about the time the deck's
 cryptography takes.
@@ -1685,7 +1730,10 @@ timer (15, 30 or 60 s, off by default) times only your own browser, which is
 the only one that knows your hand, so it plays the first card that plays (an
 8 naming your longest suit), or draws or passes.
 
-**Table.** The felt sits in a wooden rim. Opponents sit round it in turn
+**Table.** The table's pieces are the card games' shared ones
+(`engine/cards/table.js` and `cards.css`, see **Card games**); Crazy Eights
+adds the discard pile, the suit badge, the picker and its layout. The felt
+sits in a wooden rim. Opponents sit round it in turn
 order, the next player on your left, with a fan of card backs and a count;
 on a phone (or a narrow table, by container query) they share the top row.
 The stock and the discard pile are in the middle, with a badge for the suit
@@ -1696,7 +1744,7 @@ Each player keeps one colour by seat everywhere it shows (coral, teal,
 violet, amber: the player bar, seats, log, standings). In the player bar a
 pill's badge is a dot in that colour and its note is the cards in hand.
 
-**Card art** (`art.js`). Inline SVG drawn in code: suit pips, large corner
+**Card art** (`engine/cards/art.js`, shared by the card games). Inline SVG drawn in code: suit pips, large corner
 indices, the classic pip layouts, aces in a dotted ring, and original court
 figures (a jack in a feathered cap with a leaf staff, a queen with a tiara
 and a flower, a bearded king with a crown and sceptre) drawn once as the
@@ -1722,8 +1770,9 @@ or a hidden tab. Motion uses the Web Animations API on transform and
 opacity, timed from the `--dur-*` and `--ease-*` tokens. Animations belong
 to a match generation, so a rematch drops the old queue and its count.
 
-**Sound** (`sounds.js`). The card handling is recorded, from Kenney's CC0
-"Casino Audio" (`crazy-eights/sounds/LICENSE.txt`): a riffle while the deck
+**Sound** (`sounds.js`). The card handling is the card games' shared set
+(`engine/cards/card-sounds.js`), recorded from Kenney's CC0 "Casino Audio"
+(`engine/cards/sounds/LICENSE.txt`): a riffle while the deck
 is shuffled, a soft flick per card dealt, a snap for a card played, a slide
 for a card drawn, and a fan of cards for a reshuffle. The rest is
 synthesized: a rising arpeggio and sparkle for an 8 (ending on a note that
@@ -1737,6 +1786,126 @@ the game was checked: verified before they left, left during the audit so it
 couldn't be verified, or stopped before the end. With three or more players
 it also says the game is over for everyone and lists each player's cards
 left.
+
+## Go Fish in depth
+
+Go Fish is the second game on `CardMatch` (see **Card games**), for two to
+four players with the standard deck (`engine/cards/faces.js`), and draws its
+table with the shared pieces (see **The shared table**). It copies Crazy
+Eights' seating, `setup {config}` from seat 0, robot count and move timer.
+
+**Cards and the deal.** Two or three players get 7 cards, four get 5 (the
+room may deal 5 or 7 instead); the rest is the stock, drawn as a pond in the
+middle of the table. A book is four of a rank; with **Pairs** (for young
+players) it is two, and there are 26.
+
+**A turn as moves.** `CardMatch` only takes a move from `state.turn`, so
+every step is a move by whoever makes it, and `state.phase` says which:
+
+| Phase | Whose move | Moves |
+|---|---|---|
+| `open` | each player in turn after the deal | lay a book dealt to you (`{ book: [slots] }`), then `{ done: true }` |
+| `ask` | the player on turn | lay any books, then `{ ask: rank, from: seat }`, a player who holds cards, for a rank you hold |
+| `answer` | the player asked | `{ give: [slots] }`, every card of the rank, or `{ fish: true }` |
+| `drawn` | the asker, after a "Go fish" draw | `{ show: slot }` for a lucky fish, books, then `{ done: true }` |
+
+A give goes again: the turn returns to the asker, in `ask`. A "Go fish"
+deals the stock's top card to the asker, hidden, and moves to `drawn`; with
+an empty stock the turn passes at once. A lucky fish (the rank asked for)
+is shown and goes again, or with **Turn passes** the turn always ends. A
+lucky card laid straight into its book is shown all the same, so it goes
+again too.
+
+**Cards change hands face up.** A hidden card can't be dealt to another
+player, so a give names its cards in `reveals()`: they open, every browser
+checks they are the rank asked for, and the rules then deal those open cards
+to the asker. Books and lucky fish are reveals too (at most four hidden
+cards, under the 16-per-move limit). Every card ends the game face up in a
+book, so the audit sees them all.
+
+**What only the audit can check.** Your hand is hidden, so these rules
+throw only when every face is known, in the audit, which names the player:
+asking for a rank you don't hold, saying "Go fish" while holding it, keeping
+some back, asking or ending a turn with a book still in hand, and ending a
+turn without showing a lucky fish. During play `deck.face()` is null for
+those cards and the state never depends on them; a lie that open cards
+already give away (asking with a hand of open cards, keeping back an open
+one) is refused at once. Your own browser never lies: answers, books, lucky
+fish and the end of a turn are `forcedMove()` from `rules.js`, made for you
+after a short beat with the same animation as any move. Only the ask is a
+choice. `match.test.js` plays each lie through the real engine and checks
+the audit names the liar.
+
+**Empty hands.** With **Draw one** (classic), a player whose hand runs out
+draws one card from the stock at their next ask and carries on; with the
+stock empty too, they sit out. With **Sit out**, an empty hand is out at
+once. A player with nobody left to ask draws one card and the turn ends; if
+everyone else is out for good, they take the whole stock and lay the books
+it makes. The game ends when every book is down: the most books wins, and
+players level on books share the win. The result says "You won" to each of
+them, names the first for everyone else, and is a draw when every player
+ties; the standings give tied players the same place.
+
+**The public log.** `state.log` records every ask, answer, draw, book,
+lucky fish and player who sat out, with ranks and counts only, never a
+hidden face. It feeds the robots and the view's log; your own drawn card is
+named only in your own browser, once its face arrives.
+
+**Robot** (`robot.js`). A robot only uses the public state, the log and its
+seat's `face()`; answers, books and lucky fish are `forcedMove()`, as for a
+player, so only the ask is chosen.
+
+| Level | Asks |
+|---|---|
+| Easy | a random player with cards for a random rank it holds |
+| Medium | whoever recently asked for a rank it holds (unless they have since handed it over or booked it); else at random, but not an ask just answered "Go fish" |
+| Hard | tracks what is public: ranks a player has shown (asking, receiving, a lucky fish), "Go fish" answers and the cards drawn since (each draw might have been one), hand sizes and books. It scores each player and rank by how likely the ask succeeds, weights ranks it holds three of, and, between close asks, prefers a rank it has already shown (asking for a new one tells the table it holds it; weighing that any more lost games in testing) |
+
+Over 1000 two-player games Hard beats Easy about 62% of the time
+(`robot.test.js` checks over 58%), Medium beats Easy about 55%, and against three Easy
+robots it wins or shares the win about 89% of the time (79% outright). A
+choice takes under 1 ms. Robots pause like a
+person (`startPacedRobot()`): half a second for an answer, less for a book,
+0.5 to 1.8 s to ask, waiting while your screen replays, hardly at all in a
+hidden tab, less with reduced motion, and a third of that once you are out
+of the game. `globalThis.ddpRobotPace` scales every pause: with it near 0
+and reduced motion, a game against three robots takes about 3 s, only the
+deck's cryptography.
+
+**Your ask.** Tap a card in your hand (it picks the rank: every card of it
+rises) and a player (their seat lights), in either order, then **Ask Bob for
+7s**. With one player to ask, they are picked for you. On a keyboard the hand
+is one tab stop (arrow keys, Enter picks), the players are buttons, A asks
+and Escape clears. The move timer (15, 30 or 60 s, off by default) times
+asks only, in your own browser, and asks Hard's choice for you.
+
+**Table.** A lake-blue felt in a sandy rim; the stock sits in a pond in the
+middle. The other players sit round it as in Crazy Eights, each with a fan
+of backs, a pill and their books, a small fan of face-up cards each that
+overlap more as they pile up. Your books sit above your hand. Asks and
+answers are speech bubbles at the seats ("Got any 7s?", "Here, both!",
+"Go fish!"). In the player bar a pill's note is the cards in hand ("out"
+once a player sits out, books at the end) and the score is each player's
+books.
+
+**Motion.** As in Crazy Eights, the shared riffle, deal and queue. Cards
+handed over fly face up from one hand to the other (turning face down into
+another player's fan); "Go fish" spreads rings on the pond and a fish leaps
+out beside the stock; the drawn card flies from the pond, face down for
+everyone else; a lucky fish hops in your hand or flips up over another
+player's seat, with sparkles; a book's cards gather and fan down in front of
+their owner; the last book gets confetti, and the result moment lights the
+winners' books.
+
+**Sound** (`sounds.js`). The shared card sounds for the shuffle, the deal,
+a card drawn, cards handed over and taking the pond; synthesized: a rising question for an
+ask, two bloops and a splash for "Go fish!", a sparkle for a lucky catch, a
+little fanfare for a book, your turn, sitting out, the timer and a refusal.
+A win or a loss plays the result chimes in their `water` timbre.
+
+**Leaving.** The shared notice (`engine/cards/leave-notice.js`): whether the
+game was checked, and with three or more players each player's cards and
+books.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 

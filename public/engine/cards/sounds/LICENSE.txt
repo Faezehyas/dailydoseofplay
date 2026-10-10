@@ -1,4 +1,5 @@
-Card recordings: Creative Commons CC0 1.0 (public domain).
+Card recordings shared by the card games (engine/cards/card-sounds.js):
+Creative Commons CC0 1.0 (public domain).
 Source: "Casino Audio" (version 1.1) by Kenney Vleugels, https://kenney.nl/assets/casino-audio
 Each one cut from its file at the first sound, trimmed, faded out and converted to mono MP3.
 
@@ -14,4 +15,4 @@ draw-1.mp3     <- card-shove-1.ogg, first 0.60 s
 draw-2.mp3     <- card-shove-3.ogg, first 0.58 s
 gather.mp3     <- card-fan-1.ogg, first 0.70 s
 
-Every other Crazy Eights sound is synthesized in sounds.js.
+Every other card-game sound is synthesized, in card-sounds.js or the game's sounds.js.

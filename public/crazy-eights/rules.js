@@ -6,15 +6,13 @@
 // runs out, the discard pile under its top card is shuffled into a new one.
 // The first player to empty their hand wins.
 //
-// A card's face is 0–51: suit = Math.floor(face / 13) (spades, hearts,
-// diamonds, clubs), rank = face % 13 (ace, 2 … 10, jack, queen, king).
+// A card's face is 0–51, the standard deck of engine/cards/faces.js.
 // Pure: the deck API is the only way to see a card.
 import { RuleError } from "../engine/turn-match.js";
+import { DECK, SUIT_SIGNS, RANK_NAMES, suitOf, rankOf, cardName } from "../engine/cards/faces.js";
 
-export const DECK = 52;
+export { DECK, SUIT_SIGNS, RANK_NAMES, suitOf, rankOf, cardName };
 export const MAX_PLAYERS = 4;
-export const SUIT_SIGNS = ["♠", "♥", "♦", "♣"];
-export const RANK_NAMES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 export const ACE = 0;
 export const TWO = 1;
 export const EIGHT = 7;
@@ -22,12 +20,9 @@ export const QUEEN = 11;
 // A game this many turns long is going round in circles (see ARCHITECTURE.md).
 export const MAX_TURNS = 1200;
 
-export const suitOf = (face) => Math.floor(face / 13);
-export const rankOf = (face) => face % 13;
 // Penalty points for a card left in hand: 8 is 50, a court card 10, an ace 1, others their pip value.
 export const points = (face) => (rankOf(face) === EIGHT ? 50 : rankOf(face) >= 10 ? 10 : rankOf(face) + 1);
 export const handSize = (players) => (players === 2 ? 7 : 5);
-export const cardName = (face) => `${RANK_NAMES[rankOf(face)]}${SUIT_SIGNS[suitOf(face)]}`;
 // What follows the pile, in words: "a ♥, a 7 or an 8" (just "a ♥ or an 8" on an 8).
 export function toFollow(state) {
   const r = rankOf(state.top);

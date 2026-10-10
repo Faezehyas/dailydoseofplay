@@ -98,7 +98,11 @@ The classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send ri
 <b><a href="https://www.dailydoseofplay.com/crazy-eights/">Crazy Eights</a></b> · 2–4 players<br>
 The classic card game with a 52-card deck; match the suit or the rank, play an 8 to name a suit, and empty your hand first. Nobody deals and nobody can see another hand: every browser shuffles with a proof, and the game is audited when it ends. Room settings for drawing, optional action cards (2, queen, ace), who starts and a move timer; 1–3 robots at three levels; a four-colour deck.
 </td>
-<td width="50%" valign="top"></td>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/go-fish/"><img src="public/go-fish/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/go-fish/">Go Fish</a></b> · 2–4 players<br>
+Ask for a rank, catch a lucky fish, and lay down the most books of four. Hidden hands with no dealer, as in Crazy Eights: cards change hands face up, and the audit at the end catches anyone who said "Go fish" while holding the rank. Room settings for the deal, the lucky fish, an empty hand, pairs for young players, who starts and a time to ask; 1–3 robots at three levels; a four-colour deck.
+</td>
 </tr>
 </table>
 

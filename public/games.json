@@ -87,6 +87,14 @@
       "players": "2–4 players",
       "maxPlayers": 4,
       "description": "Match the suit or the rank, play an 8 to change it, and empty your hand first. Nobody deals, nobody peeks."
+    },
+    {
+      "slug": "go-fish",
+      "name": "Go Fish",
+      "status": "ready",
+      "players": "2–4 players",
+      "maxPlayers": 4,
+      "description": "Got any 7s? Ask, catch, and lay down the most books of four. Nobody deals, nobody peeks."
     }
   ]
 }
