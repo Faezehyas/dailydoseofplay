@@ -45,7 +45,7 @@ export function cardTable({ prefix, play, animate, done }) {
     if (node.dataset.face === String(face)) return;
     node.dataset.face = String(face);
     node.className = node.className.replace(/\bs-\d\b/g, "").trim();
-    if (face === null) return;
+    if (face === null) return void (node.querySelector(".front").innerHTML = "");
     node.classList.add(`s-${suitOf(face)}`);
     node.querySelector(".front").innerHTML = faceSvg(face);
   }
@@ -147,8 +147,9 @@ export function cardTable({ prefix, play, animate, done }) {
     const pill = el("span", { class: "pill" }, el("span", { class: "dot", "aria-hidden": "true" }), el("span", { class: "name" }, name), countEl);
     const node = el("div", { class: `${cls("seat")} p-${p} pos-${pos}`, dataset: { seat: p } }, fan, pill);
     const cards = new Map();
-    // slots: the hand; arriving: slots still in the air (hidden here).
-    function render(slots, arriving, label) {
+    // slots: the hand; arriving: slots still in the air (hidden here); face(slot), if given,
+    // turns up the cards everyone knows (one taken from a pile).
+    function render(slots, arriving, label, face = () => null) {
       for (const [slot, card] of cards) {
         if (!slots.includes(slot)) {
           card.remove();
@@ -165,6 +166,9 @@ export function cardTable({ prefix, play, animate, done }) {
           card = cardEl(null);
           cards.set(slot, card);
         }
+        const f = face(slot);
+        setFace(card, f);
+        card.classList.toggle("down", f === null);
         if (fan.children[i] !== card) fan.insertBefore(card, fan.children[i] ?? null);
         const k = i - (shown.length - 1) / 2;
         card.style.transform = `translateX(${(k * step).toFixed(1)}px) translateY(${(Math.abs(k) * 0.8).toFixed(1)}px) rotate(${(k * 3).toFixed(1)}deg)`;
@@ -188,12 +192,15 @@ export function cardTable({ prefix, play, animate, done }) {
   const handIn = el("div", { class: cls("hand-in") });
   const hand = el("div", { class: cls("hand"), id: `${prefix}-hand`, role: "group", "aria-label": "Your hand" }, handIn);
   const handCards = new Map(); // slot -> button
+  const handMarks = []; // one per group, under its cards
   let focusSlot = null;
   let onPick = () => {};
+  let onMove = null;
+  let shown = { slots: [], lifted: new Set(), groups: null };
 
-  // slots: in the order shown; face(slot); arriving: slots still in the air;
-  // look(slot, face): { lift, classes: { name: on }, label }; first: the tab stop when none is set.
-  function renderHand(slots, { face, arriving, look, first }) {
+  // look(slot, face): { lift, classes, label }; first: the tab stop when none is set;
+  // groups: runs of slots set apart and marked (given, the hand lies flat).
+  function renderHand(slots, { face, arriving, look, first, groups = null }) {
     // The focused card may be leaving: focus then moves to the card that takes its place.
     let had = handIn.contains(document.activeElement) ? Number(document.activeElement.dataset.slot) : null;
     const at = had === null ? -1 : [...handIn.children].indexOf(document.activeElement);
@@ -226,29 +233,52 @@ export function cardTable({ prefix, play, animate, done }) {
     // One tab stop for the hand: the focused card, else the first one asked for.
     if (focusSlot === null || !handCards.has(focusSlot)) focusSlot = first ?? slots[0] ?? null;
     for (const [slot, btn] of handCards) btn.tabIndex = slot === focusSlot ? 0 : -1;
-    layoutHand(slots, lifted);
+    shown = { slots: slots.slice(), lifted, groups };
+    if (!drag?.moved) layoutHand(slots, lifted, groups);
     if (had !== null && handCards.has(had) && document.activeElement !== handCards.get(had)) handCards.get(had).focus({ preventScroll: true });
   }
 
   // Fans the hand along a shallow arc; a hand too big for the row scrolls inside it instead.
-  function layoutHand(slots, lifted) {
+  // With groups (null: none) the hand lies flat, each group set apart with a mark under it.
+  function layoutHand(slots, lifted, groups = null, hold = null) {
+    const flat = groups !== null;
+    groups ??= [];
     const n = slots.length;
     const W = hand.clientWidth;
     const cw = cardWidth() || 60;
     const min = cw * 0.4;
-    let step = n > 1 ? Math.min(cw * 0.72, (W - cw - 12) / (n - 1)) : 0;
+    // Cards in one group sit closer; a gap before each group's first card and after its last.
+    const groupOf = new Map(groups.flatMap((g, j) => g.map((slot) => [slot, j])));
+    const inGroup = slots.map((slot, i) => i > 0 && groupOf.has(slot) && groupOf.get(slot) === groupOf.get(slots[i - 1]));
+    const gapAt = slots.map((slot, i) => (i > 0 && !inGroup[i] && (groupOf.has(slot) || groupOf.has(slots[i - 1])) ? 1 : 0));
+    const gaps = gapAt.reduce((a, b) => a + b, 0);
+    const TIGHT = 0.72;
+    const units = slots.reduce((u, _, i) => u + (i ? (inGroup[i] ? TIGHT : 1) : 0), 0);
+    let gap = groups.length ? Math.max(10, cw * 0.45) : 0;
+    let step = n > 1 ? Math.min(cw * 0.72, (W - cw - 12 - gap * gaps) / units) : 0;
+    // Tight: narrow the gaps before the row has to scroll.
+    if (n > 1 && step < min && gaps) {
+      gap = Math.max(6, (W - cw - 12 - min * units) / gaps);
+      step = Math.min(cw * 0.72, (W - cw - 12 - gap * gaps) / units);
+    }
     const scroll = n > 1 && step < min;
     if (scroll) step = min;
-    const total = cw + step * (n - 1);
+    const total = cw + step * units + gap * gaps;
     handIn.style.width = scroll ? `${Math.ceil(total + 16)}px` : "100%";
+    hand.classList.toggle("scrolls", scroll);
     const x0 = scroll ? 8 : (W - total) / 2;
-    const angle = scroll ? 0 : Math.min(3.2, 26 / Math.max(n, 1));
+    const angle = scroll || flat ? 0 : Math.min(3.2, 26 / Math.max(n, 1));
+    const xs = [];
+    let x = x0;
     slots.forEach((slot, i) => {
+      if (i) x += step * (inGroup[i] ? TIGHT : 1) + gapAt[i] * gap;
+      xs.push(x);
       const btn = handCards.get(slot);
+      if (slot === hold) return;
       const k = i - (n - 1) / 2;
       const lift = lifted.has(slot) ? -12 : 0;
-      const dip = scroll ? 0 : Math.abs(k) ** 1.6 * 1.2;
-      btn.style.transform = `translate(${(x0 + i * step).toFixed(1)}px, ${(dip + lift).toFixed(1)}px) rotate(${(k * angle).toFixed(2)}deg)`;
+      const dip = scroll || flat ? 0 : Math.abs(k) ** 1.6 * 1.2;
+      btn.style.transform = `translate(${x.toFixed(1)}px, ${(dip + lift).toFixed(1)}px) rotate(${(k * angle).toFixed(2)}deg)`;
       // A new card starts in its place, rather than sliding in from the left edge.
       if (!btn.dataset.placed) {
         btn.dataset.placed = "1";
@@ -257,21 +287,87 @@ export function cardTable({ prefix, play, animate, done }) {
         btn.style.transition = "";
       }
     });
+    // The marks: one under each group, as wide as its cards.
+    while (handMarks.length < groups.length) handMarks.push(handIn.appendChild(el("span", { class: cls("meld-mark"), "aria-hidden": "true" })));
+    handMarks.forEach((mark, j) => {
+      const g = groups[j];
+      const a = g && slots.indexOf(g[0]);
+      const b = g && slots.indexOf(g.at(-1));
+      mark.hidden = !g || a < 0 || b < 0;
+      if (mark.hidden) return;
+      mark.style.width = `${(xs[b] - xs[a] + cw).toFixed(1)}px`;
+      mark.style.transform = `translateX(${xs[a].toFixed(1)}px)`;
+    });
+    return xs;
   }
 
   hand.addEventListener("click", (e) => {
     const btn = e.target.closest(".pc-hcard");
-    if (btn) {
+    if (btn && !dragged) {
       focusSlot = Number(btn.dataset.slot);
       onPick(focusSlot);
     }
+    dragged = false;
   });
-  // Arrow keys, Home and End move along the hand; Enter and Space press the card.
+
+  // Rearranging (when the game asks for it): drag a card along the row, or Shift and an arrow key.
+  let drag = null; // { slot, btn, id, x0, start, at, moved }
+  let dragged = false; // a drag just ended: the click that follows isn't a press
+  hand.addEventListener("pointerdown", (e) => {
+    const btn = e.target.closest(".pc-hcard");
+    if (!onMove || !btn || e.button !== 0) return;
+    const slot = Number(btn.dataset.slot);
+    const at = shown.slots.indexOf(slot);
+    drag = { slot, btn, id: e.pointerId, start: e.clientX, x0: new DOMMatrix(getComputedStyle(btn).transform).m41, at, moved: false };
+  });
+  hand.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    // Let go outside the hand: the drag is over.
+    if (!e.buttons && e.pointerType === "mouse") return endDrag(e, false);
+    const dx = e.clientX - drag.start;
+    if (!drag.moved) {
+      if (Math.abs(dx) < 8) return;
+      drag.moved = true;
+      drag.btn.setPointerCapture?.(e.pointerId);
+      drag.btn.classList.add("dragging");
+    }
+    const rest = shown.slots.filter((s) => s !== drag.slot);
+    const cw = cardWidth() || 60;
+    // Where it would land: among the others, laid out evenly while it moves.
+    const xs = layoutHand(rest, new Set(), []);
+    const x = Math.max(0, Math.min(handIn.offsetWidth - cw, drag.x0 + dx)); // within the row
+    drag.at = xs.filter((p) => p + cw / 2 < x + cw / 2).length;
+    const order = [...rest.slice(0, drag.at), drag.slot, ...rest.slice(drag.at)];
+    layoutHand(order, new Set(), [], drag.slot);
+    drag.btn.style.transform = `translate(${x.toFixed(1)}px, -14px) rotate(-3deg)`;
+  });
+  function endDrag(e, drop) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    if (!d.moved) return;
+    dragged = true;
+    setTimeout(() => (dragged = false), 0);
+    d.btn.classList.remove("dragging");
+    if (drop && d.at !== shown.slots.indexOf(d.slot)) onMove(d.slot, d.at, "drag");
+    else layoutHand(shown.slots, shown.lifted, shown.groups);
+  }
+  hand.addEventListener("pointerup", (e) => endDrag(e, true));
+  hand.addEventListener("lostpointercapture", (e) => endDrag(e, false)); // the card left the hand mid-drag
+  hand.addEventListener("pointercancel", (e) => endDrag(e, false));
+
+  // Arrows, Home and End move along the hand; Enter and Space press a card; Shift and an arrow move it.
   hand.addEventListener("keydown", (e) => {
     const btn = e.target.closest(".pc-hcard");
     if (!btn) return;
-    const list = [...handIn.children];
+    const list = [...handIn.children].filter((c) => c.classList.contains("pc-hcard"));
     const i = list.indexOf(btn);
+    if (onMove && e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      e.preventDefault();
+      const to = shown.slots.indexOf(Number(btn.dataset.slot)) + (e.key === "ArrowLeft" ? -1 : 1);
+      if (to >= 0 && to < shown.slots.length) onMove(Number(btn.dataset.slot), to, "key");
+      return;
+    }
     const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1, Home: -i, End: list.length - 1 - i }[e.key];
     if (step === undefined) return;
     e.preventDefault();
@@ -290,6 +386,70 @@ export function cardTable({ prefix, play, animate, done }) {
   function clearHand() {
     handCards.forEach((b) => b.remove());
     handCards.clear();
+    handMarks.forEach((m) => (m.hidden = true));
+  }
+
+  // ---------- a hand laid face up on the table, as groups (melds, then deadwood) ----------
+  function makeSpread(name) {
+    const node = el("div", { class: cls("spread", name ? `${prefix}-spread-${name}` : ""), "aria-hidden": "true" });
+    const cards = new Map(); // slot -> card
+    const marks = [];
+    // groups: [{ slots, kind }]; face(slot); arriving: slots still in the air; look(slot): { classes } for a card.
+    function render(groups, { face, arriving = new Set(), look = () => ({}) }) {
+      const all = groups.flatMap((g) => g.slots);
+      for (const [slot, card] of cards) {
+        if (!all.includes(slot)) {
+          card.remove();
+          cards.delete(slot);
+        }
+      }
+      const W = node.clientWidth || 300;
+      const n = all.length;
+      const k = groups.length;
+      // Card width so every group fits the row: cards overlap by their index, groups sit apart.
+      const units = k + 0.42 * Math.max(0, n - k) + 0.3 * Math.max(0, k - 1);
+      const w = Math.max(18, Math.min(cardWidth() || 60, (W - 4) / Math.max(units, 1)));
+      const step = w * 0.42;
+      const gap = w * 0.3;
+      let x = (W - w * units) / 2;
+      node.style.setProperty("--sw", `${w.toFixed(1)}px`);
+      groups.forEach((g, j) => {
+        if (j) x += gap;
+        const x0 = x;
+        g.slots.forEach((slot, i) => {
+          let card = cards.get(slot);
+          if (!card) {
+            card = cardEl(face(slot));
+            card.dataset.slot = slot;
+            cards.set(slot, card);
+          }
+          setFace(card, face(slot));
+          card.classList.toggle("down", face(slot) === null);
+          for (const [c, on] of Object.entries(look(slot).classes ?? {})) card.classList.toggle(c, on);
+          if (i) x += step;
+          card.style.transform = `translateX(${x.toFixed(1)}px)`;
+          card.style.zIndex = String(i + 1);
+          card.style.opacity = arriving.has(slot) ? "0" : "";
+          if (card.parentNode !== node) node.append(card);
+        });
+        x += w;
+        let mark = marks[j];
+        if (!mark) mark = marks[j] = node.appendChild(el("span", { class: cls("spread-mark") }));
+        mark.className = `${cls("spread-mark")} ${g.kind}`;
+        mark.hidden = false;
+        mark.style.width = `${(x - x0).toFixed(1)}px`;
+        mark.style.transform = `translateX(${x0.toFixed(1)}px)`;
+      });
+      marks.slice(groups.length).forEach((m) => (m.hidden = true));
+    }
+    // Where a card lies, or where the spread is when it isn't there.
+    const rect = (slot) => (cards.get(slot) ? rectIn(cards.get(slot)) : rectIn(node));
+    function clear() {
+      cards.forEach((c) => c.remove());
+      cards.clear();
+      marks.forEach((m) => (m.hidden = true));
+    }
+    return { node, render, rect, clear, cards };
   }
 
   // ---------- motion ----------
@@ -426,6 +586,12 @@ export function cardTable({ prefix, play, animate, done }) {
     renderHand,
     revealInHand,
     onPick: (fn) => (onPick = fn),
+    // fn(slot, toIndex, by): the player moved a card in their hand, by "drag" or "key" (Shift and an arrow).
+    onMove: (fn) => {
+      onMove = fn;
+      hand.classList.toggle("movable", !!fn);
+    },
+    makeSpread,
     flyLayer,
     rectIn,
     fly,
