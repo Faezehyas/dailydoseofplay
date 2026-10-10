@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4e2"/>
+      <stop offset="1" stop-color="#f3dcc0"/>
+    </linearGradient>
+    <radialGradient id="baize" cx="0.5" cy="0.45" r="0.75">
+      <stop offset="0" stop-color="#2b8a63"/>
+      <stop offset="1" stop-color="#14503a"/>
+    </radialGradient>
+    <pattern id="lattice" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M5 0L10 5L5 10L0 5Z" fill="none" stroke="#ffe7d2" stroke-width=".8"/>
+      <circle cx="5" cy="5" r="1.2" fill="#ffe7d2" opacity=".7"/>
+    </pattern>
+    <path id="heart" d="M0 8.8C-1.6 6.8-9.4 1.6-9.4-3.2C-9.4-6.5-7-8.8-4.4-8.8C-2.4-8.8-0.8-7.6 0-5.8C0.8-7.6 2.4-8.8 4.4-8.8C7-8.8 9.4-6.5 9.4-3.2C9.4 1.6 1.6 6.8 0 8.8Z"/>
+    <path id="spade" d="M0-9.4C1.8-6.6 9-2.6 9 1.8C9 4.6 7 6.4 4.6 6.4C3 6.4 1.8 5.6 1.1 4.6C1.4 6.6 2.4 8.2 3.6 9.4H-3.6C-2.4 8.2-1.4 6.6-1.1 4.6C-1.8 5.6-3 6.4-4.6 6.4C-7 6.4-9 4.6-9 1.8C-9-2.6-1.8-6.6 0-9.4Z"/>
+    <path id="diamond" d="M0-9.6C2-6 4.6-2.8 7.6 0C4.6 2.8 2 6 0 9.6C-2 6-4.6 2.8-7.6 0C-4.6-2.8-2-6 0-9.6Z"/>
+    <g id="club"><circle cx="0" cy="-4.4" r="4.3"/><circle cx="-4.7" cy="1.6" r="4.3"/><circle cx="4.7" cy="1.6" r="4.3"/><circle cx="0" cy="0.4" r="2.4"/><path d="M-1.2 1.5C-1.1 5.2-2.2 7.8-4 9.4H4C2.2 7.8 1.1 5.2 1.2 1.5Z"/></g>
+    <!-- Ranks drawn as strokes, so the icon needs no font. -->
+    <path id="r7" d="M0 0H9L3.2 15" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <g id="r8" fill="none" stroke-width="2.5"><ellipse cx="4.5" cy="3.8" rx="3.8" ry="3.5"/><ellipse cx="4.5" cy="11.2" rx="4.5" ry="4"/></g>
+    <path id="r9" d="M8.6 4.5A4.1 4.1 0 1 1 8.6 4.4C8.6 10 7 14 2.5 15" fill="none" stroke-width="2.8" stroke-linecap="round"/>
+    <path id="rA" d="M0 15L4.8 0L9.6 15M1.8 10H7.8" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <g id="face"><rect width="50" height="70" rx="5" fill="#fffdf8" stroke="#cfc5b3" stroke-width="1.2"/></g>
+  </defs>
+  <rect width="320" height="200" fill="url(#paper)"/>
+  <!-- a card table: baize in a walnut rim with a brass inlay -->
+  <rect x="14" y="16" width="292" height="170" rx="38" fill="#6b3f22"/>
+  <rect x="20" y="22" width="280" height="158" rx="33" fill="#3d2312"/>
+  <rect x="22.5" y="24.5" width="275" height="153" rx="31" fill="url(#baize)" stroke="#d0a64c" stroke-width="1.6"/>
+
+  <!-- the stock -->
+  <g transform="translate(36 42) rotate(-6)">
+    <rect x="3" y="3" width="44" height="62" rx="5" fill="#9c3f28"/>
+    <rect width="44" height="62" rx="5" fill="#d65a3c" stroke="#ffe7d2"/>
+    <rect x="4" y="4" width="36" height="54" rx="3" fill="url(#lattice)" stroke="#ffe7d2" stroke-width="1.1"/>
+  </g>
+
+  <!-- a run: 7, 8 and 9 of clubs, with the brass mark under it -->
+  <g transform="translate(96 34)">
+    <use href="#face"/><use href="#r7" x="6" y="7" stroke="#20242e"/><use href="#club" transform="translate(25 43) scale(1.25)" fill="#20242e"/>
+  </g>
+  <g transform="translate(116 34)">
+    <use href="#face"/><use href="#r8" x="6" y="7" stroke="#20242e"/><use href="#club" transform="translate(25 43) scale(1.25)" fill="#20242e"/>
+  </g>
+  <g transform="translate(136 34)">
+    <rect x="3" y="4" width="50" height="70" rx="5" fill="#0c3222" opacity=".35"/>
+    <use href="#face"/><use href="#r9" x="6" y="7" stroke="#20242e"/><use href="#club" transform="translate(25 43) scale(1.25)" fill="#20242e"/>
+  </g>
+  <rect x="96" y="108" width="90" height="4.5" rx="2.25" fill="#ffd36b"/>
+
+  <!-- a set: three aces -->
+  <g transform="translate(190 84)">
+    <use href="#face"/><use href="#rA" x="6" y="7" stroke="#c62a3b"/><use href="#heart" transform="translate(25 43) scale(1.25)" fill="#c62a3b"/>
+  </g>
+  <g transform="translate(210 84)">
+    <use href="#face"/><use href="#rA" x="6" y="7" stroke="#c62a3b"/><use href="#diamond" transform="translate(25 43) scale(1.25)" fill="#c62a3b"/>
+  </g>
+  <g transform="translate(230 84)">
+    <rect x="3" y="4" width="50" height="70" rx="5" fill="#0c3222" opacity=".35"/>
+    <use href="#face"/><use href="#rA" x="6" y="7" stroke="#20242e"/><circle cx="25" cy="43" r="15" fill="none" stroke="#20242e" stroke-dasharray="1 3" opacity=".6"/><use href="#spade" transform="translate(25 43) scale(1.25)" fill="#20242e"/>
+  </g>
+  <rect x="190" y="158" width="90" height="4.5" rx="2.25" fill="#ffd36b"/>
+
+  <!-- the knock: knuckles rapping the table -->
+  <g transform="translate(64 150) rotate(-12)">
+    <path d="M-18 -4C-18 -22 -8 -30 4 -30H12C18 -30 22 -26 22 -20V-4C22 2 18 6 12 6H-12C-16 6-18 2-18 -4Z" fill="#f1caa4" stroke="#8a5a34" stroke-width="2"/>
+    <path d="M-7 6V-6M3 6V-6M13 6V-6" stroke="#8a5a34" stroke-width="2" stroke-linecap="round"/>
+    <path d="M-18 -12C-24 -12 -26 -6 -22 -2" fill="none" stroke="#8a5a34" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <g stroke="#ffd36b" stroke-width="3" stroke-linecap="round">
+    <path d="M44 166l-8 6M66 168v9M88 162l8 5"/>
+  </g>
+  <g fill="#ffc23a"><path d="M262 42l3 6.5 7 .8-5.2 4.8 1.5 7-6.3-3.6-6.3 3.6 1.5-7-5.2-4.8 7-.8z"/><circle cx="288" cy="70" r="3"/><circle cx="236" cy="62" r="2.2"/></g>
+</svg>
