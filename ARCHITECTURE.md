@@ -378,9 +378,16 @@ server imports it straight from `public/engine/`, so the two can't drift apart.
   `cock`, so Assam, Nazir and Peacock are fine). Letters spelled out one by
   one (`a s s`) count as a word. CamelCase splits words (`BigAss`).
 
+A player without a nickname gets a friendly default from `defaultName()`,
+an adjective and an animal from a short word list ("Brave Otter", at most 20
+characters, every pair checked against the rules in `names.test.js`). It is
+saved as the nickname and shown in the nickname field, so it can be changed;
+nobody plays as a role word like Host or Guest. Robots are `Robot`, or
+`Robot 1` to `Robot 3` when there are several.
+
 A name that breaks a rule is not used: the server shows `Player` instead, the
-session handshake `Friend`, and the lobby plays under its default (`Host`,
-`Guest` or `You`) and says why in one line under the nickname field. The
+session handshake a default name, and the lobby plays under the saved default
+and says why in one line under the nickname field. The
 lobby never stores such a name. Because the host checks each guest's `$hello`
 and guests check the host's `$roster` and `$start`, a modified page can't push
 a blocked name over WebRTC either. Nicknames are never logged.
@@ -389,8 +396,8 @@ a blocked name over WebRTC either. Nicknames are never logged.
 
 | Module | Job |
 |---|---|
-| `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`), the footer every page ends with (how games run, then links to this file, the repository and the privacy page; more links join `FOOTER_LINKS`), nickname in `localStorage`, toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper, and `askBeforeLeaving()`, the hook for an "Ask before leaving" setting (always yes today) |
-| `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server |
+| `shell.js` | Header with the home link in a `nav` landmark, a "Skip to content" link to the page's `<main>` (shown on focus), and light/dark and sound toggles (each keeps one label, "Dark mode" or "Mute sounds", and gives its state through `aria-pressed`), the footer every page ends with (how games run, then links to this file, the repository and the privacy page; more links join `FOOTER_LINKS`), nickname in `localStorage` (`getNickname()` picks and saves a default when there is none), toasts (just below the header; a repeated one is announced again), a tab-title alert ("Your turn"), `el()` DOM helper, and `askBeforeLeaving()`, the hook for an "Ask before leaving" setting (always yes today) |
+| `names.js` | `checkName()` and `cleanName()`: the nickname rules (see **Nicknames**), shared with the server; `defaultName()`, a friendly default name |
 | `theme.css` | Design tokens for light and dark, fonts and motion (see **Type and motion**), chips and `.mono`, buttons, cards, lobby, the home hero with its steps and its game-table scene, the home grid (tiles whose name links to the lobby, with Play friends and Play the robot links), the moves the tiles' previews use (see **Tile previews**) and its loading tiles (see **Colours and contrast**), the game page column (see **Page column**), the player bar, the result panel, the result moment, the confirm dialog and `.text-page` (the privacy page's reading column) |
 | `signaling.js` | `RoomClient`: create, join (with or without the invite key), admit, decline, signal, leave. It uses the global `WebSocket`, so it also runs in Node 22 for the integration test. |
 | `peer.js` | `PeerChannel`: one ordered, reliable DataChannel to one other browser, pre-negotiated (`negotiated: true, id: 0`) on both sides; buffers early ICE candidates; detects ICE failure, a 20 s timeout and a 10 s disconnect grace. Refuses a message over `MAX_MESSAGE_LENGTH` before parsing it and closes with `message_too_big` (see **Message size**). |
@@ -659,7 +666,7 @@ box keeps whatever width it sets, and its rules panel matches the column.
 
 **Player bar.** Every game shows the same bar above its board, built by
 `playerBar()` in `players.js` and styled in `theme.css`: a pill per player
-(you first, "(you)" after your name, then the others in seat order), a ring
+(you first, "(you)" after your name, found by your seat and never by comparing names, then the others in seat order), a ring
 on whoever's turn it is, and Leave (`id="leave"`, outlined, with an exit arrow) at the top right. Under it
 the score (`#score`) shows wins per player and, for games whose score has a
 `draws` field, a Draws box (Dots and Boxes adds it with the first draw,

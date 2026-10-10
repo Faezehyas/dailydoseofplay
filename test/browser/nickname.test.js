@@ -27,7 +27,7 @@ async function loadPlaywright() {
 const pw = await loadPlaywright();
 const names = (page) => page.evaluate(() => window.ddp.session.players.map((p) => p.name));
 
-test("the lobby explains a blocked nickname, and a friend game shows default names instead", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
+test("the lobby explains a blocked nickname, and a friend game shows friendly default names instead", { skip: !pw && "Playwright not installed", timeout: 60_000 }, async (t) => {
   const srv = await startServer();
   const browser = await pw.chromium.launch({ args: ["--no-sandbox"] });
   t.after(async () => {
@@ -54,7 +54,7 @@ test("the lobby explains a blocked nickname, and a friend game shows default nam
   assert.equal(await problem.isVisible(), false);
   assert.equal(await host.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "no sideways scroll");
 
-  // A blocked name is never stored, and the host plays under the default name.
+  // A blocked name is never stored, and the host plays under a default name.
   await host.fill("#nickname", "f.u.c.k");
   await host.locator("#nickname").blur();
   assert.equal(await host.evaluate(() => localStorage.getItem("ddp-name")), null);
@@ -68,8 +68,9 @@ test("the lobby explains a blocked nickname, and a friend game shows default nam
   await guest.click("#join-room");
   await guest.waitForFunction(() => window.ddp.session, null, { timeout: 20_000 });
   await host.waitForFunction(() => window.ddp.session, null, { timeout: 20_000 });
-  assert.deepEqual(await names(host), ["Host", "Guest"]);
-  assert.deepEqual(await names(guest), ["Host", "Guest"]);
+  const [hostName, guestName] = await names(host);
+  assert.deepEqual(await names(guest), [hostName, guestName]);
+  for (const name of [hostName, guestName]) assert.match(name, /^[A-Z][a-z]+ [A-Z][a-z]+$/);
   for (const page of [host, guest]) assert.doesNotMatch(await page.locator("body").innerText(), /f\.u\.c\.k|BigAss/);
   assert.deepEqual(errors, []);
 });
@@ -107,7 +108,7 @@ test("a friend opening an invite link picks a nickname before joining", { skip: 
   await guest.goto(invite);
   await guest.locator("#join-room").waitFor();
   assert.match(await guest.locator("#lobby").innerText(), new RegExp(`invited to room ${code}`));
-  assert.equal(await guest.locator("#nickname").inputValue(), "");
+  assert.match(await guest.locator("#nickname").inputValue(), /^[A-Z][a-z]+ [A-Z][a-z]+$/, "a default name, ready to change");
   assert.equal(await guest.evaluate(() => window.ddp.room), null, "nothing connects before Join");
   assert.match(await host.locator("#lobby-status").innerText(), /Waiting for your friend/);
 

@@ -16,7 +16,7 @@ export function playerBar(session, { onLeave, classes = () => "" }) {
   const label = (seat) => (seat === me ? "You" : session.players[seat].name);
 
   const pills = order.map((seat) => {
-    const name = seat === me && session.me.name !== "You" ? `${session.me.name} (you)` : label(seat);
+    const name = seat === me ? `${session.me.name} (you)` : label(seat);
     const badge = el("span", { class: "pb-badge" });
     const note = el("small", { class: "pb-note" });
     const node = el("span", { class: `pb-who ${cls(seat)}` }, badge, el("span", { class: "pb-label" }, el("span", { class: "pb-name", title: name }, name), note));
