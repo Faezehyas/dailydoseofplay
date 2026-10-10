@@ -1,0 +1,648 @@
+/* Gin Rummy view. Shared tokens come from /engine/theme.css, and the card
+   table's pieces (cards, seat, hand, stock, spreads, seat colours) from
+   /engine/cards/cards.css. Here: a classic card room (deep green baize in a
+   walnut rim with a brass inlay), the piles, your melds and deadwood, the
+   knock, the hand's score and the moments for a knock, gin and an undercut. */
+.gin-rummy {
+  --pc-felt: #1f6b4e;
+  --pc-felt-2: #124631;
+  --pc-felt-muted: #d3eadf;
+  --pc-rim: #6b3f22;
+  --pc-rim-2: #3d2312;
+  --gr-brass: #d0a64c;
+  --gr-brass-2: #8f6a1f;
+  --gr-score-bg: rgb(8 30 21 / 72%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .gin-rummy {
+    --pc-felt: #18553e;
+    --pc-felt-2: #0c3222;
+    --pc-felt-muted: #b9d8ca;
+    --pc-rim: #4f2e18;
+    --pc-rim-2: #2a170b;
+    --gr-brass: #b28b3b;
+    --gr-brass-2: #6f511a;
+    --gr-score-bg: rgb(4 18 12 / 78%);
+  }
+}
+
+:root[data-theme="dark"] .gin-rummy {
+  --pc-felt: #18553e;
+  --pc-felt-2: #0c3222;
+  --pc-felt-muted: #b9d8ca;
+  --pc-rim: #4f2e18;
+  --pc-rim-2: #2a170b;
+  --gr-brass: #b28b3b;
+  --gr-brass-2: #6f511a;
+  --gr-score-bg: rgb(4 18 12 / 78%);
+}
+
+/* ---------- the table: baize in a walnut rim with a brass inlay ---------- */
+.gr-table {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  min-height: min(580px, max(420px, calc(100svh - 250px)));
+  background:
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, rgb(0 0 0 / 24%)),
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 2.5%) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(-45deg, rgb(0 0 0 / 3%) 0 1px, transparent 1px 7px),
+    radial-gradient(circle at 50% 45%, var(--pc-felt), var(--pc-felt-2));
+  box-shadow: inset 0 0 0 2px var(--pc-rim-2), inset 0 0 0 4px var(--gr-brass-2), inset 0 0 0 5px var(--gr-brass), inset 0 8px 22px rgb(0 0 0 / 34%), var(--shadow);
+}
+
+.gr-table .pc-opps .pc-seat {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.gr-table .pc-seat .pc-fan {
+  max-width: 230px;
+}
+
+/* The other player's hand laid down sits where the fan was, under their pill's line. */
+.gr-table .pc-seat {
+  grid-template-areas: "fan" "pill";
+}
+
+.gr-tally,
+.gr-deadwood {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 32%);
+  color: var(--pc-felt-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gr-deadwood strong {
+  min-width: 1.4em;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.gr-tally[hidden],
+.gr-deadwood[hidden],
+.gr-dealer[hidden] {
+  display: none;
+}
+
+/* Deadwood low enough to knock: the chip glows like brass. */
+.gr-deadwood.low {
+  background: var(--gr-brass);
+  color: #2a1a05;
+}
+
+.gr-dealer {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--gr-brass);
+  color: #2a1a05;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* "Pass", "Ready": under the other player's pill, inside the table. */
+.gr-table .pc-seat > .pc-bubble {
+  top: calc(100% + 2px);
+}
+
+/* ---------- the middle: stock, discard pile, the knock limit, a hand's score ---------- */
+.gr-centre {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  row-gap: 8px;
+  min-height: calc(var(--ch) + 64px);
+}
+
+.gr-piles {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: clamp(18px, 8cqi, 56px);
+}
+
+.gr-piles[hidden] {
+  display: none;
+}
+
+.gr-col {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.gr-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--pc-felt-muted);
+}
+
+.gr-pile {
+  position: relative;
+  width: var(--cw);
+  height: var(--ch);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.gr-pile:disabled {
+  cursor: default;
+}
+
+.gr-pile .pc-card {
+  position: absolute;
+  inset: 0;
+}
+
+.gr-pile.empty::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 2px dashed rgb(255 255 255 / 35%);
+}
+
+/* The piles you may draw from now. */
+.gr-pile.armed .pc-card:last-child .side,
+.gr-table button.pc-stock.armed .pc-card:not([hidden]):nth-of-type(1) .side {
+  box-shadow: 0 0 0 3px var(--pc-glow), 0 6px 16px var(--pc-shadow);
+}
+
+.gr-pile:focus-visible,
+.gr-table button.pc-stock:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.gr-limit {
+  padding: 1px 10px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 25%);
+  color: var(--pc-felt-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.gr-limit[hidden] {
+  display: none;
+}
+
+.gr-centre .pc-busy.float {
+  top: auto;
+  bottom: -4px;
+}
+
+/* A hand's score: what happened, the deadwood against each other, the points into the total. */
+.gr-score {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: min(300px, 92%);
+  max-width: 92%;
+  padding: 10px 18px 12px;
+  border-radius: 16px;
+  background: var(--gr-score-bg);
+  border: 2px solid var(--gr-brass);
+  color: var(--pc-felt-ink);
+  text-align: center;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+}
+
+.gr-score[hidden] {
+  display: none;
+}
+
+.gr-score-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.gr-score.gin .gr-score-title,
+.gr-score.big .gr-score-title {
+  color: var(--pc-glow);
+}
+
+.gr-score-sum {
+  color: var(--pc-felt-muted);
+  font-size: 0.85rem;
+}
+
+.gr-score-points {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--pc-glow);
+  min-height: 1.4em;
+}
+
+.gr-score-totals {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ---------- your corner: the actions, the hand, your deadwood and the sort ---------- */
+.gr-table .pc-me {
+  position: relative;
+}
+
+.gr-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 8px;
+  min-height: 40px;
+}
+
+.gr-bar .btn {
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gr-bar .btn[hidden] {
+  display: none;
+}
+
+#gr-discard:disabled {
+  background: rgb(0 0 0 / 28%);
+  border-color: transparent;
+  color: var(--pc-felt-ink);
+  opacity: 1;
+}
+
+.gr-knock {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.gr-knock small {
+  font-weight: 600;
+}
+
+.gr-knock.gin {
+  background: var(--gr-brass);
+  border-color: var(--gr-brass);
+  color: #2a1a05;
+}
+
+.gr-me-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.gr-me-row .pill {
+  min-width: 0;
+}
+
+.gr-me-row .pill .name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pc-me .pill .count {
+  flex: none;
+  min-width: 1.6em;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--pc-felt-ink);
+  color: #17201d;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.gr-sorts {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.gr-sorts[hidden] {
+  display: none;
+}
+
+.gr-sort-label {
+  color: var(--pc-felt-muted);
+  margin-right: 2px;
+}
+
+.gr-sort {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1.5px solid rgb(255 255 255 / 40%);
+  background: rgb(0 0 0 / 22%);
+  color: var(--pc-felt-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.gr-sort[aria-pressed="true"] {
+  border-color: var(--gr-brass);
+  background: rgb(0 0 0 / 45%);
+}
+
+.gr-sort:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.gr-hcard.pickable {
+  cursor: pointer;
+}
+
+.gr-hand.movable .gr-hcard:not(.pickable) {
+  cursor: grab;
+}
+
+.gr-hcard.chosen .pc-card .front {
+  box-shadow: 0 0 0 3px var(--pc-glow), 0 6px 14px var(--pc-shadow);
+}
+
+/* The card just taken from the pile can't go straight back: a brass corner says so. */
+.gr-hcard.taken .pc-card .front::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--gr-brass);
+  box-shadow: 0 0 0 2px var(--pc-paper);
+}
+
+/* ---------- hands laid down: melds, the cards laid off on them, deadwood ---------- */
+.gr-spread {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.gr-spread .pc-card.layoff {
+  translate: 0 -4px;
+}
+
+.gr-spread .pc-card.layoff .front {
+  box-shadow: 0 0 0 2.5px var(--c), 0 3px 8px var(--pc-shadow);
+}
+
+.gr-spread-mark.meld {
+  background: var(--gr-brass);
+}
+
+/* The result moment lights the winner's melds one after another. */
+.gr-spread .pc-card.celebrate-lit .front {
+  box-shadow: 0 0 0 2.5px var(--pc-glow), 0 3px 10px var(--pc-shadow);
+}
+
+/* ---------- moments: "Knock!", "Gin!", "Undercut!" ---------- */
+.gr-moment {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  z-index: 6;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.gr-moment span {
+  display: inline-block;
+  padding: 6px 22px 8px;
+  border-radius: 18px;
+  background: var(--gr-score-bg);
+  border: 3px solid var(--c);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 9cqi, 3.2rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 35%);
+}
+
+.gr-moment.gin span {
+  border-color: var(--gr-brass);
+  color: var(--pc-glow);
+}
+
+.gr-fx {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.gr-fx.spark {
+  width: 9px;
+  height: 9px;
+  margin: -4px 0 0 -4px;
+  border-radius: 2px;
+  background: var(--pc-glow);
+  rotate: 45deg;
+}
+
+.gr-fx.spark.p-0,
+.gr-fx.spark.p-1 {
+  background: var(--c);
+}
+
+/* ---------- the timer, the hint and the log ---------- */
+.gr-actions[hidden] {
+  display: none;
+}
+
+.gr-timer {
+  display: grid;
+  grid-template-columns: 90px auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--pc-felt-ink);
+}
+
+.gr-timer[hidden] {
+  display: none;
+}
+
+.gr-timer .bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 30%);
+  overflow: hidden;
+}
+
+.gr-timer .bar span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--c, var(--accent-2));
+  transform-origin: left;
+}
+
+.gr-timer.low {
+  color: #ffd2c8;
+}
+
+.gr-minis {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+
+/* ---------- game over: the scores and bonuses, and the verdict, inside the result panel ---------- */
+.gr-standings {
+  width: 100%;
+  margin: 0 0 8px;
+  border-collapse: separate;
+  border-spacing: 0 3px;
+  font-size: 0.9rem;
+}
+
+.gr-standings th,
+.gr-standings td {
+  padding: 3px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.gr-standings thead th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gr-standings tbody tr {
+  background: var(--surface-2);
+}
+
+.gr-standings tbody th {
+  text-align: left;
+  border-radius: 10px 0 0 10px;
+  max-width: 10em;
+}
+
+.gr-standings tbody td:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.gr-standings tr.mine th,
+.gr-standings tr.mine td {
+  font-weight: 800;
+}
+
+.gr-standings .who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gr-standings .who span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gr-standings .total {
+  color: var(--c-ink);
+  font-weight: 800;
+}
+
+.gr-over .verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 8px;
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gr-over .verdict.ok {
+  color: var(--ok);
+}
+
+.gr-over .verdict small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.gr-over .verdict.bad {
+  color: var(--danger);
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 600px) {
+  .gr-table {
+    min-height: 0;
+  }
+
+  .gr-centre {
+    min-height: calc(var(--ch) + 40px);
+  }
+
+  .gr-score {
+    padding: 8px 12px 10px;
+  }
+
+  .gr-score-title {
+    font-size: 1.15rem;
+  }
+
+  .gr-over .verdict small {
+    display: none;
+  }
+
+  .gr-standings {
+    font-size: 0.82rem;
+  }
+
+  .gr-standings th,
+  .gr-standings td {
+    padding: 2px 5px;
+  }
+
+  .gr-bar .btn.small {
+    padding-inline: 10px;
+  }
+}
+

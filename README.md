@@ -92,6 +92,27 @@ Join the dots on a 3×3 to 6×6 board; closing a box earns another line; optiona
 The classic cross-shaped board for 2 to 4 players; roll a 6 to come out, send rivals back to their yard, and race four tokens home; house rules for three 6s, blocks and capture bonuses, play on for places, a move timer, and 1–3 robots at three levels.
 </td>
 </tr>
+<tr>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/crazy-eights/"><img src="public/crazy-eights/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/crazy-eights/">Crazy Eights</a></b> · 2–4 players<br>
+The classic card game with a 52-card deck; match the suit or the rank, play an 8 to name a suit, and empty your hand first. Nobody deals and nobody can see another hand: every browser shuffles with a proof, and the game is audited when it ends. Room settings for drawing, optional action cards (2, queen, ace), who starts and a move timer; 1–3 robots at three levels; a four-colour deck.
+</td>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/go-fish/"><img src="public/go-fish/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/go-fish/">Go Fish</a></b> · 2–4 players<br>
+Ask for a rank, catch a lucky fish, and lay down the most books of four. Hidden hands with no dealer, as in Crazy Eights: cards change hands face up, and the audit at the end catches anyone who said "Go fish" while holding the rank. Room settings for the deal, the lucky fish, an empty hand, pairs for young players, who starts and a time to ask; 1–3 robots at three levels; a four-colour deck.
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/gin-rummy/"><img src="public/gin-rummy/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/gin-rummy/">Gin Rummy</a></b> · 2 players<br>
+Classic two-player gin: draw, discard, build sets and runs, then knock with 10 or less or go gin; lay-offs, undercuts, and a game to 100 with its bonuses. Your hand groups itself into its melds, and you can drag it into any order. No dealer and no peeking, as in the other card games; a knock shows the hand, so every score is checked as it happens. Room settings for one hand a game, Oklahoma knocking, Big Gin, who deals first and a move timer; a robot at three levels; a four-colour deck.
+</td>
+<td width="50%" valign="top">
+</td>
+</tr>
 </table>
 
 More are coming; [GAMES.md](GAMES.md) has the backlog. Found a security
@@ -189,11 +210,13 @@ server/            Node server: static files, /ws signaling, /healthz
 public/
   index.html       home page (cards from games.json)
   games.json       game registry
-  engine/          shared browser engine: lobby, signaling client, WebRTC, sessions, fair play, UI shell
+  engine/          shared browser engine: lobby, signaling client, WebRTC, sessions, fair play, card decks, UI shell
   <slug>/          one folder per game: page, rules, robot, view, sounds, tests
   privacy/         privacy page
 test/              integration and browser tests
 docs/              deploying
+vendor/            the mental-poker library behind card decks (git submodule), our patches and lock file
+scripts/           build-mental-poker.sh builds it into public/engine/vendor/mental-poker/ (committed); install-wasm-tools.sh gets the pinned tools for CI
 app.yaml           Wasmer Edge app config (name dailydoseofplay, owner faezeh_yass)
 ```
 
@@ -202,6 +225,7 @@ app.yaml           Wasmer Edge app config (name dailydoseofplay, owner faezeh_ya
 - **No relay (TURN) server.** Wasmer Edge has no UDP, so some network pairs can't connect directly (strict NAT, some mobile carriers or VPNs). The game says so and offers a retry or the robot.
 - **Rooms live in server memory.** The app is pinned to one region to keep rooms on one set of instances. A friend's join could still in theory land on a different instance.
 - **Fair play is checked after the game, not refereed live.** A modified client could lie during play; the lie is detected at the end, and stalling or leaving is not prevented.
+- **A modified host browser can read a hand in card games with three or more players.** Every message passes through the room creator's browser, which could hold back a player's moves, forge a game-ending move in their name and so get their key for the audit while the real game goes on. With two players the host is your only opponent, so this gives them nothing. See "A modified host" in [ARCHITECTURE.md](ARCHITECTURE.md#card-games-cardmatch).
 
 ## Credits and license
 

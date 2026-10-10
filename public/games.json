@@ -79,6 +79,30 @@
       "players": "2–4 players",
       "maxPlayers": 4,
       "description": "Roll a 6 to come out, knock rivals back to their yard, and race all four tokens home."
+    },
+    {
+      "slug": "crazy-eights",
+      "name": "Crazy Eights",
+      "status": "ready",
+      "players": "2–4 players",
+      "maxPlayers": 4,
+      "description": "Match the suit or the rank, play an 8 to change it, and empty your hand first. Nobody deals, nobody peeks."
+    },
+    {
+      "slug": "go-fish",
+      "name": "Go Fish",
+      "status": "ready",
+      "players": "2–4 players",
+      "maxPlayers": 4,
+      "description": "Got any 7s? Ask, catch, and lay down the most books of four. Nobody deals, nobody peeks."
+    },
+    {
+      "slug": "gin-rummy",
+      "name": "Gin Rummy",
+      "status": "ready",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Build sets and runs, then knock or go gin. First to 100 wins. Nobody deals, nobody peeks."
     }
   ]
 }

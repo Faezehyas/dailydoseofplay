@@ -16,6 +16,9 @@ don't build the same one. The recipe for building one is in
 - **Chutes and Ladders** (`chutes-and-ladders`): the classic 1943 board (nine ladders, ten chutes) and a 1–6 spinner drawn by both peers; the room picks the finish rule (exact spin, bounce back or any spin), whether a 6 spins again, and who starts. `TurnMatch`; there are no choices, so the robot only spins. Two to four players, with friends or with 1–3 robots.
 - **Dots and Boxes** (`dots-and-boxes`): 3×3 to 6×6 boxes; a line that closes a box (or two) earns another line; the most boxes wins and an even split draws; optional clocks per line and per player; the room picks who starts. `TurnMatch`; the robot's Hard level plays safe lines, counts chains and loops, and keeps control with the double-cross.
 - **Ludo** (`ludo`): the cross-shaped board with four yards, a 52-square loop, star and start squares that are safe, and a home column per colour; a 6 brings a token out and rolls again, landing on a rival sends it home, and the centre needs an exact roll; the room picks house rules (three 6s lose the turn, blocks, a capture rolls again), whether to play on for places, who starts and a move timer. `TurnMatch` with a roll-then-pick turn like Backgammon; a position-scoring robot at three levels. Two to four players, with friends or with 1–3 robots.
+- **Crazy Eights** (`crazy-eights`): 52 cards, 7 each for two players and 5 for three or four; follow the suit or the rank, 8s are wild and name a suit; draw until you can play (or draw one, then pass); the discard pile is reshuffled when the stock runs out; optional action cards (2 draw two, queen skip, ace reverse); the room picks who starts and a move timer. `CardMatch` (mental poker: no dealer, hidden hands, proved shuffles, an audit at the end); a robot at three levels that counts cards. Two to four players, with friends or with 1–3 robots.
+- **Go Fish** (`go-fish`): 52 cards, 7 each for two or three players and 5 for four; ask a player for a rank you hold, take every card of it and go again, or go fish; a lucky fish goes again; four of a rank is a book; the most books wins, and players level share the win; room settings for the deal, the lucky fish, an empty hand (draw one or sit out), pairs instead of books, who starts and a time to ask. `CardMatch`, where an answer is a move of its own and cards change hands face up; robots at three levels, the hardest tracking every ask and answer. Two to four players, with friends or with 1–3 robots.
+- **Gin Rummy** (`gin-rummy`): 52 cards, ten each, the deal alternating every hand; take the upcard or pass, then draw from the stock or the pile and discard; melds are sets and runs (aces low); knock with 10 or less of deadwood, gin with none; the defender lays off, an equal or lower deadwood undercuts for 25, gin scores 25; two cards left in the stock and no knock is a drawn hand; a game to 100 with a 100 game bonus and 25 a hand won, or one hand a game with the score adding up across rematches; Oklahoma knocking, Big Gin, who deals first and a move timer as room settings. `CardMatch`, one match a game, the deck shuffled again by both browsers before every hand; a knock shows the hand, so melds and scores are checked live; robots at three levels, the hardest counting every card that is gone.
 
 ## Up next
 
@@ -34,7 +37,6 @@ that isn't listed (propose it the same way).
 | Bulls and Cows (a hidden code) | 2 | hidden information, commit-and-reveal like Sea Battle | medium | open |
 | Go 9×9 | 2 | TurnMatch | hard | open |
 | Chinese Checkers | 2–4 | TurnMatch | hard | open |
-| Crazy Eights | 2–4 | needs engine work (a shared deck, proposed in [#76](https://github.com/Faezehyas/dailydoseofplay/pull/76)) | hard | in review in [#77](https://github.com/Faezehyas/dailydoseofplay/pull/77) by @maminrayej |
 
 Names: Othello, Quarto, Mastermind and Memory are trademarks, so the site uses
 Reversi, Pass the Piece, Bulls and Cows and Pairs instead.
@@ -43,9 +45,11 @@ Reversi, Pass the Piece, Bulls and Cows and Pairs instead.
 
 What the engine has today: `TurnMatch` runs any game where everyone sees the
 whole board and one seat moves at a time, with dice or other luck drawn by all
-peers through `needsRandom`. Rooms seat 2 to 4 players: the server allows up
-to 8, but the seat colours stop at four. Hidden information or moves made at
-the same time need a match of their own, like Sea Battle's `match.js`.
+peers through `needsRandom`. `CardMatch` does the same for card games, with a
+shared deck nobody deals and nobody can peek at. Rooms seat 2 to 4 players: the
+server allows up to 8, but the seat colours stop at four. Other hidden
+information, or moves made at the same time, need a match of their own, like
+Sea Battle's `match.js`.
 
 - **Reversi:** a player with no legal move passes; `rules.js` moves the turn on by itself. Nothing missing.
 - **Mancala:** a sowing that ends in your own store keeps the turn, which `rules.js` decides. Nothing missing.
@@ -57,7 +61,6 @@ the same time need a match of their own, like Sea Battle's `match.js`.
 - **Bulls and Cows:** each player commits to a secret code at the start and answers the other's guesses with bulls and cows. At the end both reveal, and each audits every answer it got, as Sea Battle audits shots. A match of its own.
 - **Go 9×9:** captures, passes, ko (keep past positions), area scoring after two passes, and a step where both agree on dead stones. `TurnMatch` covers it; the rules and a robot that answers in well under 100 ms are the hard part.
 - **Chinese Checkers:** a six-pointed star; hops chain like Checkers jumps; two, three or four players from their own corners. Fitting the star at 360 px and a robot for four seats are the hard part. Six players would need two more seat colours and `maxPlayers` 6.
-- **Crazy Eights:** hands are hidden, so it needs a deck no player can peek at. [#76](https://github.com/Faezehyas/dailydoseofplay/pull/76) proposes that engine and [#77](https://github.com/Faezehyas/dailydoseofplay/pull/77) the game; once they land, other card games can use the same deck.
 
 ## Claim a game
 

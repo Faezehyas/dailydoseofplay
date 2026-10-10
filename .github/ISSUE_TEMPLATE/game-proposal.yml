@@ -38,6 +38,7 @@ body:
       description: See "Pick and claim the game" in CONTRIBUTING.md.
       options:
         - TurnMatch (everyone sees the whole board, one seat moves at a time)
+        - CardMatch (hidden cards: hands and a draw pile)
         - Hidden information with commit-and-reveal, like Sea Battle
         - Needs engine work (say what below)
     validations:
