@@ -14,6 +14,7 @@ import { makeRules, normalizeConfig, isTimed, timeLeft, geometry, lineEnds, DRAW
 import { startRobot } from "./robot.js";
 import { settings } from "./settings.js";
 import { play } from "./sounds.js";
+import { howToPlay } from "./how-to-play.js";
 
 const U = 100; // one box, in board units
 const PAD = 46; // paper around the dots, so the outer lines are easy to hit too
@@ -31,6 +32,7 @@ const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 startGameShell({
   slug: "dots-and-boxes",
   title: "Dots and Boxes",
+  howToPlay,
   layout: "wide",
   settings,
   createRobot: (session) => {

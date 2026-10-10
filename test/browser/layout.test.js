@@ -112,6 +112,7 @@ test("a game that passes no layout gets the wide column, and its rules panel mat
         startGameShell({
           slug: "tic-tac-toe",
           title: "Old game",
+          howToPlay: { goal: "Win." },
           createRobot: () => ({ destroy() {} }),
           onSession(session, root) {
             root.append(el("div", { class: "card", id: "old-game", style: "max-width: 480px; margin: 0 auto" }, "Playing"));

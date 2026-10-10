@@ -31,6 +31,7 @@ import {
 import { startRobot } from "./robot.js";
 import { settings, LEVEL_NAMES } from "./settings.js";
 import { playMove } from "./sounds.js";
+import { howToPlay } from "./how-to-play.js";
 
 const ROBOT_SEARCH_MS = 250; // search cap, so a slow phone still answers quickly
 const SLIDE_MS = 190;
@@ -61,6 +62,7 @@ const pieceName = (piece) => `${COLOR_NAMES[colorOf(piece)].toLowerCase()} ${PIE
 startGameShell({
   slug: "chess",
   title: "Chess",
+  howToPlay,
   layout: "narrow",
   settings,
   createRobot(session) {

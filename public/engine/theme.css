@@ -528,6 +528,16 @@ input::placeholder {
   margin-top: 0;
 }
 
+.how-to-play {
+  margin: -4px 0 8px;
+}
+
+.how-to-play a {
+  display: inline-block;
+  padding: 4px 8px;
+  font-weight: 700;
+}
+
 .lobby-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -757,11 +767,21 @@ input::placeholder {
 /* ---------- game pages: rules panel, rematch line ---------- */
 .rules {
   margin-top: 24px;
+  scroll-margin-top: 16px;
 }
 
 .rules summary {
   cursor: pointer;
   font-weight: 800;
+}
+
+.rules h3 {
+  font-size: 1.05rem;
+  margin: 18px 0 6px;
+}
+
+.rules p {
+  margin: 6px 0;
 }
 
 .rules li {

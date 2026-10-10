@@ -14,6 +14,7 @@ import { chooseMove, startRobot } from "./robot.js";
 import { settings } from "./settings.js";
 import { play } from "./sounds.js";
 import { s, r1, U, SIZE, rotator, spotOf, pawnArt, pawnDefs, boardArt, markSvg, markPath, starPath, dieFace } from "./art.js";
+import { howToPlay } from "./how-to-play.js";
 
 const ROBOT_PACE = { roll: 500, pick: 600, forced: 350, hurry: 90 };
 const FORCED_DELAY = 650; // before a move you have no choice about is played for you
@@ -36,6 +37,7 @@ let hurry = 0; // 0 normal, 1 quick, 2 skip to the end
 startGameShell({
   slug: "ludo",
   title: "Ludo",
+  howToPlay,
   layout: "wide",
   settings,
   minPlayers: 2,

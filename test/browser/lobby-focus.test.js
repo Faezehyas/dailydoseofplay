@@ -48,6 +48,8 @@ test("lobby screens move focus to their heading", { skip: !pw && "Playwright not
   assert.equal(await focused(page), "H1 Tic Tac Toe");
   // Tab goes on from the heading to the page's controls.
   await page.keyboard.press("Tab");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "how-to-play-link");
+  await page.keyboard.press("Tab");
   assert.equal(await page.evaluate(() => document.activeElement.id), "nickname");
   assert.deepEqual(errors, []);
 });
