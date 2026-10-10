@@ -627,6 +627,77 @@ button.pc-stock:disabled {
   box-shadow: 0 0 0 3px var(--focus), 0 0 0 6px #fff, 0 6px 14px var(--pc-shadow);
 }
 
+/* A hand shown in groups: a mark under each meld. */
+.pc-meld-mark {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--pc-glow);
+  box-shadow: 0 0 6px rgb(255 211 107 / 55%);
+  pointer-events: none;
+  transition: transform var(--dur-med) var(--ease-out);
+}
+
+.pc-meld-mark[hidden] {
+  display: none;
+}
+
+/* A hand you can rearrange: drag along the row (a vertical swipe still scrolls the page). */
+.pc-hand.movable .pc-hcard {
+  touch-action: pan-y;
+}
+
+/* A row too long for the screen scrolls by touch instead; mouse and keys still move cards. */
+.pc-hand.movable.scrolls .pc-hcard {
+  touch-action: auto;
+}
+
+.pc-hcard.dragging {
+  z-index: 50 !important;
+  transition: none;
+  cursor: grabbing;
+}
+
+.pc-hcard.dragging .pc-card .side {
+  box-shadow: 0 10px 24px var(--pc-shadow);
+}
+
+/* A hand laid face up on the table: groups of overlapping cards, a mark under each. */
+.pc-spread {
+  --sw: 40px;
+  position: relative;
+  width: 100%;
+  height: calc(var(--sw) * 1.4 + 10px);
+}
+
+.pc-spread .pc-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--sw);
+  height: calc(var(--sw) * 1.4);
+  transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.pc-spread-mark {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--pc-glow);
+}
+
+.pc-spread-mark.dead {
+  background: rgb(255 255 255 / 35%);
+}
+
+.pc-spread-mark[hidden] {
+  display: none;
+}
+
 .pc-hand-hint {
   margin: 0;
   min-height: 1.3em;
@@ -784,7 +855,9 @@ button.pc-stock:disabled {
 
 @media (prefers-reduced-motion: reduce) {
   .pc-card .in,
-  .pc-hcard {
+  .pc-hcard,
+  .pc-meld-mark,
+  .pc-spread .pc-card {
     transition: none;
   }
 }

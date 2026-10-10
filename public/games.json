@@ -95,6 +95,14 @@
       "players": "2–4 players",
       "maxPlayers": 4,
       "description": "Got any 7s? Ask, catch, and lay down the most books of four. Nobody deals, nobody peeks."
+    },
+    {
+      "slug": "gin-rummy",
+      "name": "Gin Rummy",
+      "status": "ready",
+      "players": "2 players",
+      "maxPlayers": 2,
+      "description": "Build sets and runs, then knock or go gin. First to 100 wins. Nobody deals, nobody peeks."
     }
   ]
 }

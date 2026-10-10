@@ -1,0 +1,12 @@
+Knock recordings: Creative Commons CC0 1.0 (public domain).
+Source: "Chess_foley.mp3" by Amatsuuu on Freesound, "chess pieces hitting the
+wood table and board", through Chess's move-1.mp3 to move-4.mp3 in this
+repository (see public/chess/sounds/LICENSE.txt). Two knocks mixed about
+0.13 s apart, as knuckles rap twice on a table, low-passed at 1.6-1.7 kHz,
+faded, trimmed to 0.4 s and converted to mono MP3.
+https://freesound.org/people/Amatsuuu/sounds/629181/
+
+knock-1.mp3  <- move-1.mp3, then move-3.mp3 at 0.135 s
+knock-2.mp3  <- move-2.mp3, then move-4.mp3 at 0.120 s
+
+Every other Gin Rummy sound is synthesized, in sounds.js or engine/cards/card-sounds.js.

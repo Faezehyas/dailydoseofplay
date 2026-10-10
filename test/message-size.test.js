@@ -112,6 +112,14 @@ const GAMES = {
     const choose = (st, me, rng, face) => chooseMove(st, me, rng, face, { level: "easy" });
     return { config, players: 4, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
   },
+  "gin-rummy": async () => {
+    const { makeRules, DEFAULT_CONFIG } = await import("../public/gin-rummy/rules.js");
+    const { chooseMove, startRobot } = await import("../public/gin-rummy/robot.js");
+    // A game to 100: many hands, each shuffled again, and Big Gin, whose knock shows all eleven cards.
+    const config = { ...DEFAULT_CONFIG, bigGin: true, knock: "oklahoma", moveSeconds: 60 };
+    const choose = (st, me, rng, face) => chooseMove(st, me, rng, face, { level: "hard" });
+    return { config, players: 2, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
+  },
   "dots-and-boxes": async () => {
     const { makeRules, DEFAULT_CONFIG } = await import("../public/dots-and-boxes/rules.js");
     const { startRobot } = await import("../public/dots-and-boxes/robot.js");

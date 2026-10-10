@@ -104,6 +104,15 @@ The classic card game with a 52-card deck; match the suit or the rank, play an 8
 Ask for a rank, catch a lucky fish, and lay down the most books of four. Hidden hands with no dealer, as in Crazy Eights: cards change hands face up, and the audit at the end catches anyone who said "Go fish" while holding the rank. Room settings for the deal, the lucky fish, an empty hand, pairs for young players, who starts and a time to ask; 1–3 robots at three levels; a four-colour deck.
 </td>
 </tr>
+<tr>
+<td width="50%" valign="top">
+<a href="https://www.dailydoseofplay.com/gin-rummy/"><img src="public/gin-rummy/icon.svg" width="320" alt=""></a><br>
+<b><a href="https://www.dailydoseofplay.com/gin-rummy/">Gin Rummy</a></b> · 2 players<br>
+Classic two-player gin: draw, discard, build sets and runs, then knock with 10 or less or go gin; lay-offs, undercuts, and a game to 100 with its bonuses. Your hand groups itself into its melds, and you can drag it into any order. No dealer and no peeking, as in the other card games; a knock shows the hand, so every score is checked as it happens. Room settings for one hand a game, Oklahoma knocking, Big Gin, who deals first and a move timer; a robot at three levels; a four-colour deck.
+</td>
+<td width="50%" valign="top">
+</td>
+</tr>
 </table>
 
 More are coming; [GAMES.md](GAMES.md) has the backlog. Found a security

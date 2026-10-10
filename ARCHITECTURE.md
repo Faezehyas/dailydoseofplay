@@ -112,6 +112,7 @@ flowchart TB
     e_loudness["loudness.js"]
     e_theme["theme.css<br>linked by every page"]
     e_cards_faces["cards/faces.js"]
+    e_cards_melds["cards/melds.js"]
     e_cards_art["cards/art.js"]
     e_cards_table["cards/table.js"]
     e_cards_paced_robot["cards/paced-robot.js"]
@@ -141,6 +142,7 @@ flowchart TB
   p_main --> e_cards_art
   p_main --> e_cards_faces
   p_main --> e_cards_leave_notice
+  p_main --> e_cards_melds
   p_main --> e_cards_paced_robot
   p_main --> e_cards_table
   p_main --> g_match
@@ -152,6 +154,8 @@ flowchart TB
   g_match --> e_channel
   g_match --> e_fair
   g_match --> g_rules
+  g_robot --> e_cards_faces
+  g_robot --> e_cards_melds
   g_robot --> e_cards_paced_robot
   g_robot --> e_rng
   g_robot --> e_robot_pace
@@ -160,6 +164,7 @@ flowchart TB
   g_robot --> g_match
   g_robot --> g_rules
   g_rules --> e_cards_faces
+  g_rules --> e_cards_melds
   g_rules --> e_rng
   g_rules --> e_turn_match
   g_settings --> e_settings
@@ -178,6 +183,7 @@ flowchart TB
   e_card_match --> e_turn_match
   e_cards_art --> e_cards_faces
   e_cards_card_sounds --> e_synth
+  e_cards_melds --> e_cards_faces
   e_cards_leave_notice --> e_shell
   e_cards_paced_robot --> e_card_match
   e_cards_paced_robot --> e_robot_pace
@@ -453,8 +459,9 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `loudness.js` | `loudness(samples, sampleRate)`: how loud a sound is to the ear, in LUFS (K-weighted, loudest 100 ms). No DOM; runs in node too. |
 | `rng.js` | Seeded PRNG (sfc32) and sampling helpers, so shared random draws give the same results on every peer |
 | `cards/faces.js` | The standard 52-card deck: a face is 0–51, `suitOf()`, `rankOf()`, and the names of suits, ranks and cards. Pure, so rules use it too. |
+| `cards/melds.js` | Rummy melds over the standard deck, pure, so rules, views and robots share it: sets and runs (aces low), every candidate meld in a hand, `bestMelds()` (the arrangement with the least deadwood, tried exhaustively and remembered by the cards left: well under a millisecond for 11 cards), `fits()` and `bestLayoffs()` (onto someone else's melds, a run taking the next card in turn), and `bestDefence()` (your own melds and lay-offs that leave the least, which may break up a meld to lay off more). Deadwood counts aces 1 and court cards 10 unless a game passes its own `points`. |
 | `cards/art.js` | Playing-card art as inline SVG: `symbols()` (the shapes every card uses, added once), `faceSvg(face)`, `BACK_SVG` and `suitSvg(suit)` (see **Crazy Eights in depth** for the drawing) |
-| `cards/table.js` | `cardTable({ prefix, play, animate, done })`: the pieces of a card table. Cards that turn over (`cardEl`, `setFace`, `miniCard`), another player's seat (a fan of backs, a pill with the count), the stock with its riffle while the deck is shuffled, the deck's work shown after 450 ms (`DECK_WORK` has the words), your hand fanned along an arc (it overlaps, then scrolls in its own row; one tab stop, arrow keys, Home and End), flying cards, bubbles over a seat, confetti, the deal card by card, and the animation queue: in order, faster when it piles up, at once with reduced motion (read at each use) or a hidden tab, and a generation per match so a rematch drops the old one. Each part has the class `pc-<part>` and the game's `<prefix>-<part>`. |
+| `cards/table.js` | `cardTable({ prefix, play, animate, done })`: the pieces of a card table. Cards that turn over (`cardEl`, `setFace`, `miniCard`), another player's seat (a fan of backs, with the cards everyone knows face up when the game passes `face`, and a pill with the count), the stock with its riffle while the deck is shuffled, the deck's work shown after 450 ms (`DECK_WORK` has the words), your hand fanned along an arc (it overlaps, then scrolls in its own row; one tab stop, arrow keys, Home and End), or laid flat in `groups` (melds set apart, closer together, with a mark under each), and rearranged when the game sets `onMove()` (drag a card along the row, or Shift and an arrow key; a vertical swipe still scrolls the page), a hand laid face up on the table (`makeSpread()`: groups of overlapping cards sized to fit the row, a mark under each), flying cards, bubbles over a seat, confetti, the deal card by card, and the animation queue: in order, faster when it piles up, at once with reduced motion (read at each use) or a hidden tab, and a generation per match so a rematch drops the old one. Each part has the class `pc-<part>` and the game's `<prefix>-<part>`. |
 | `cards/cards.css` | The table's look for `cards/table.js`, linked by card games after `theme.css`: the status line, the layout with its side panel and the log, the felt and rim, cards (paper-white in both themes; `.four-colour` draws diamonds blue and clubs green), seats, stock, hand, flights, and the seat colours `p-0` to `p-3` (coral, teal, violet, amber), on a root with the class `pc-game` |
 | `cards/paced-robot.js` | `startPacedRobot()`: a card robot that asks the view how long to pause before each move (-1 waits for the screen to finish replaying), keeps a move it chose while waiting, and makes the game's fallback move when one is refused. `humanPause()` is the view's side: a blink in a hidden tab, less with reduced motion. |
 | `cards/leave-notice.js` | `leaveNotice()`: what a card game adds to the lobby's "Game ended" notice: whether the game got checked, and with three or more players that it is over for everyone, with each player's line. `verdictText()` and `abortText()` word a failed audit and a stopped match. |
@@ -605,8 +612,8 @@ Chess 112 (a shared-random `draw`); the engine's handshake peaks at 127
 grow with the deck, so `CardMatch` sends them in parts (see **Card games**);
 its largest message, with four players and a 108-card deck, is 3063 (a part
 of a `shuffle`); Crazy Eights' (four players, 52 cards) is about the same,
-3063 to 3065 as reshuffles add digits to the round number, and Go Fish's
-3063.
+3063 to 3065 as reshuffles add digits to the round number, Go Fish's
+3063 and Gin Rummy's 3064 to 3065 (two players, the deck shuffled again every hand).
 
 **Why a pre-negotiated channel.** With the default in-band handshake, the
 guest's channel opens when the host's open request arrives, and Chrome
@@ -690,7 +697,7 @@ the lobby cards:
 | Lobby, invite, waiting room | 520 px | all |
 | Game, `layout: "narrow"` | 520 px | Tic Tac Toe, Connect 4, Chess, Checkers |
 | Game, `layout: "medium"` | 640 px | Gomoku, Backgammon |
-| Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo, Crazy Eights, Go Fish |
+| Game, `layout: "wide"` (the default) | 980 px | Sea Battle, Chutes and Ladders, Dots and Boxes, Ludo, Crazy Eights, Go Fish, Gin Rummy |
 
 Below that width the column is the page's width less its 16 px gutters. A
 game's own top-level box has no `max-width`, so it fills `#game`. The default
@@ -714,7 +721,7 @@ most two to a row; under 600 px they sit in a 2×2 grid beside Leave over a
 slimmer score, so four fit a 360 px phone. A pill and its score read
 `--seat` and `--seat-text`, which are `--mine` and `--theirs` unless the game
 gives each seat a class of its own that sets them (Chutes and Ladders `p0`
-to `p3`, Ludo its board colours, Crazy Eights and Go Fish `p-0` to `p-3`).
+to `p3`, Ludo its board colours, Crazy Eights, Go Fish and Gin Rummy `p-0` to `p-3`).
 
 **Result panel.** Every game shows its result the same way, in a panel
 built by `resultPanel()` in `result.js` and pinned to the bottom of the
@@ -756,11 +763,11 @@ The game passes the pieces in the order they light up: the line in Tic Tac
 Toe, Connect 4 and Gomoku, the mated king in Chess, the last capture in
 Checkers, the last checker borne off in Backgammon, the last ship sunk in
 Sea Battle (once its shell lands), the pawn on 100 in Chutes and Ladders,
-the last box in Dots and Boxes, the winner's tokens home in Ludo, and the
-winners' books in Go Fish. The
+the last box in Dots and Boxes, the winner's tokens home in Ludo, the
+winners' books in Go Fish, and the winner's melds on the table in Gin Rummy. The
 chimes (`chimes.js`) are one melody, a C-major pentatonic jingle, in a
 timbre that fits the game's pieces (`flavour`): `wood` for Chess, Checkers,
-Backgammon and Ludo; `paper` for Tic Tac Toe, Gomoku and Dots and Boxes;
+Backgammon and Ludo; `paper` for Tic Tac Toe, Gomoku, Dots and Boxes and Gin Rummy;
 `plastic` for Connect 4; `bell` for Chutes and Ladders; `water` (a bubble
 under the bell) for Sea Battle and Go Fish. They are synthesized, at the `fanfare`
 level, and follow the mute toggle. With `prefers-reduced-motion` only the
@@ -841,8 +848,8 @@ that started the room, and has no dealer. `engine/card-match.js` does it with
 mental poker: every player holds a share of the deck's key, and a card can
 only be read with every share. With three or more players, a modified host
 can still read a hand (see **A modified host** below). The rules contract is
-at the top of that file; Crazy Eights and Go Fish use it (see **Crazy Eights
-in depth** and **Go Fish in depth**).
+at the top of that file; Crazy Eights, Go Fish and Gin Rummy use it (see
+**Crazy Eights in depth**, **Go Fish in depth** and **Gin Rummy in depth**).
 
 **How a match runs.** Every message carries `m`, as in `TurnMatch`.
 
@@ -961,7 +968,8 @@ table's pieces and motion, the robots' pacing and the leaving notice. A game
 builds its own layout from those pieces, keeps its own rules, robot and
 special moments, and links `cards/cards.css` after `theme.css`. Each part
 carries the class `pc-<part>` for the shared styles and `<prefix>-<part>`
-(`ce-` for Crazy Eights, `gf-` for Go Fish) for the game's own styles and tests.
+(`ce-` for Crazy Eights, `gf-` for Go Fish, `gr-` for Gin Rummy) for the
+game's own styles and tests.
 
 **Sizes.** A card is 66 bytes, a share 131. A shuffle message is 66 bytes a
 card plus its proof (7.7 KB for 52 cards, 13 KB for 108), so `CardMatch` sends
@@ -1906,6 +1914,131 @@ A win or a loss plays the result chimes in their `water` timbre.
 **Leaving.** The shared notice (`engine/cards/leave-notice.js`): whether the
 game was checked, and with three or more players each player's cards and
 books.
+
+## Gin Rummy in depth
+
+Gin Rummy is the third game on `CardMatch` (see **Card games**), for two
+players with the standard deck (`engine/cards/faces.js`), and draws its
+table with the shared pieces (see **The shared table**). Its melds come from
+`engine/cards/melds.js`, which the rules, the view and the robots share.
+
+**One match is a whole game.** A game to 100 takes several hands, so a match
+plays hand after hand: between hands, `deck.shuffle()` sends all 52 cards
+through another round of shuffles by both browsers, into new slots, and the
+next hand is dealt from them. The deal alternates every hand, a drawn hand
+too. The audit at the end covers every hand. With **One hand** a game, a
+match is a single hand and the view adds the scores up across rematches.
+
+**Cards and the deal.** Ten each, one at a time from the non-dealer; the
+next card is opened as the upcard, the start of the discard pile; the rest
+is the stock. `settle()` reads the upcard once its face has arrived and sets
+the knock limit: 10, or with **Oklahoma** the upcard's points (an ace 1).
+
+**A turn as moves.** `CardMatch` only takes a move from `state.turn`, so each
+step is a move by whoever makes it, and `state.phase` says which:
+
+| Phase | Whose move | Moves |
+|---|---|---|
+| `upcard` | the non-dealer, then the dealer | `{ take: true }` or `{ pass: true }`; when both pass, the dealer's pass deals the stock's top card to the non-dealer |
+| `draw` | the player on turn | `{ draw: "stock" }` (dealt hidden) or `{ draw: "pile" }` (an open card, dealt to them: everyone knows they hold it) |
+| `discard` | the same player | `{ discard: slot }`, or `{ discard: slot, knock: true }`, or `{ knock: true }` for Big Gin; not the card just taken from the pile |
+| `lay` | the knocker | `{ melds: [[slots]] }`: real melds of their own cards, deadwood within the limit (none for gin) |
+| `defend` | the other player | `{ melds, layoffs: [[slot, meld]] }`: their own melds, then cards laid off one at a time onto the knocker's melds as they stand (none after gin) |
+| `result` | each player in turn | `{ next: true }`; the second shuffles and deals the next hand |
+
+A discard that leaves two cards in the stock without a knock ends the hand
+as a draw.
+
+**Checked as it happens.** A discard names its card in `reveals()`. A knock
+names the whole hand (at most 11 cards, under the 16-a-move limit) and the
+defence the defender's, so `applyMove()` reads every face it needs: the
+knock's best deadwood, each meld, each lay-off, and the score. Nothing waits
+for the audit, which confirms the keys, the first deck, and the replay (the
+shuffle proofs already showed each reshuffle kept the same cards). Laying
+down and the defence are `forcedMove()` from `rules.js`, made for you after
+a short beat with the same animation as any move: the arrangement with the
+least deadwood, and the melds and lay-offs that leave the least (it may
+break up a meld to lay off more). The rules accept any legal arrangement, as
+at a real table.
+
+**Scoring.** A knock scores the difference in deadwood; if the defender's is
+equal or lower it's an undercut, worth the difference plus 25 to them. Gin
+scores 25 plus the defender's deadwood, Big Gin (eleven cards in melds, no
+discard, a room setting) 31 plus it. In a game to 100, whoever reaches it first wins,
+with 100 for the game and 25 for every hand each player won (no shutout
+doubling). A drawn hand scores nothing; in a one-hand game it is a drawn game.
+
+**Robot** (`robot.js`). A robot only uses the public state, this hand's log
+(passes, takes, draws, discards) and its seat's `face()`; laying down and the
+defence are `forcedMove()`, as for a player. `robot.test.js` scripts the
+other seat so its ten cards stay hidden, swaps them for other cards, and
+checks the robot's choices don't change.
+
+| Level | Discards | Knocks |
+|---|---|---|
+| Easy | its highest deadwood | as soon as it can |
+| Medium | high deadwood, less for each card still unseen that would make a meld with it and another deadwood card; less of what is near the last card the other player took from the pile (its rank, or within two in its suit) | as soon as it can |
+| Hard | the same, less what it may feed: cards next to what the other player took weigh more, ones they threw or passed on less, and a card whose every meld is out of play (in its own hand or the pile) is safe; this counts for more as the stock runs down | gin always; with 6 or less early on (14 cards or more in the stock) it plays on for gin or an undercut; otherwise not into a likely undercut, judged from how long the hand has gone on and how often the other player took from the pile |
+
+Every level takes the pile's card (the upcard too) only when it completes a
+meld: taking a low card to replace a high one, or one that only connects,
+lost games in testing. Over 600 games to 100, Hard beats Easy about 69% of
+the time and Medium about 59%, and Medium beats Easy about 59%
+(`robot.test.js` checks over 60%, 52% and 52% on 200). A choice takes under
+3 ms. Robots pause like a person (`startPacedRobot()`): half a second to
+draw, 0.8 to 2 s to discard, longer to knock, a beat for laying down and the
+next hand, waiting while your screen replays; `globalThis.ddpRobotPace`
+scales every pause, so a whole game to 100 at full speed takes about 10 s of
+the deck's own work.
+
+**Your turn.** Tap the stock or the pile (or Take, Pass and Draw); tap a
+card to pick it and again to discard it; **Knock** shows only when you can,
+says **Gin** (or **Big Gin**) when it is, and throws the picked card if that
+leaves as little as the best throw, else the best throw. Between hands,
+**Next hand** says you're ready; pressed early, it goes when your turn to
+say so comes. On a keyboard: D, T, P, K and N; the hand is one tab stop
+(arrow keys, Enter picks), and Shift with an arrow moves a card. The move
+timer (15, 30 or 60 s, off by default) times only your own choices (Next
+hand too), in your own browser, from when the move can be made, and makes
+Hard's choice for you.
+
+**Table.** A classic card room: deep green baize with a faint weave, in a
+walnut rim with a brass inlay. The other player sits at the top with a fan of
+backs (the cards they took from the pile face up in it), the stock and the pile
+in the middle with the knock limit under them, and your hand at the bottom,
+grouped into its best melds (closer together, a brass mark under each, a gap
+between) with the deadwood after them and your deadwood counted beside it
+(with eleven cards, also what the best throw would leave; brass when it is
+within the knock limit). You can sort it by rank or suit, drag cards into
+any order, or move them with Shift and the arrow keys: a meld moves as a
+whole among the melds, and a card that joins a meld settles into it. At the
+end of a hand both hands lie face up as melds and deadwood, the lay-offs
+ringed in the colour of who laid them, and a score card in the middle says
+what happened, the deadwood against each other, and counts the points into
+the score. In the player bar the note is the cards in hand and the score is
+the game's points (one hand a game: across rematches).
+
+**Motion.** The shared riffle, deal (ten each, alternating) and queue. The
+upcard flips onto the pile; a card drawn from the stock flies face down to
+the other player; one taken from the pile flies face up; a discard flies to
+the pile, turning over when it leaves a hidden hand. A knock thumps the table
+with "Knock!", gin adds a fanfare and sparkles; the knocker's hand fans open
+into its melds, then the defender's, the lay-offs fly onto the knocker's
+melds one by one, the deadwood counts up and the points count into the score;
+an undercut gets its own sting and the knocker's hand shakes. Between hands
+the cards gather into the stock for the shuffle. The game's end is the result
+moment, the winner's melds lighting up.
+
+**Sound** (`sounds.js`). The shared card sounds (shuffle, deal, a card drawn,
+a discard, gathering the cards). A knock is two raps of knuckles on the
+table, recorded (CC0, cut from Chess's piece-on-board knocks, see
+`gin-rummy/sounds/LICENSE.txt`); synthesized: a soft click as a card joins a
+meld in your hand, a lay-off, the points counting, a ready, a fanfare for gin
+and a sting for an undercut. A win or a loss plays the result chimes in
+their `paper` timbre.
+
+**Leaving.** The shared notice (`engine/cards/leave-notice.js`): whether the
+game was checked before they left.
 
 ## Differences from the reference (wasmerio/edge-multiplayer-games)
 
