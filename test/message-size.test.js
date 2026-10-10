@@ -104,6 +104,14 @@ const GAMES = {
     const choose = (st, me, rng, face) => chooseMove(st, me, rng, face, { level: "easy" });
     return { config, players: 4, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
   },
+  "go-fish": async () => {
+    const { makeRules, DEFAULT_CONFIG } = await import("../public/go-fish/rules.js");
+    const { chooseMove, startRobot } = await import("../public/go-fish/robot.js");
+    // Seven cards each and "sit out", where the last player with cards takes the whole stock.
+    const config = { ...DEFAULT_CONFIG, hand: 7, empty: "out", moveSeconds: 60 };
+    const choose = (st, me, rng, face) => chooseMove(st, me, rng, face, { level: "easy" });
+    return { config, players: 4, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
+  },
   "dots-and-boxes": async () => {
     const { makeRules, DEFAULT_CONFIG } = await import("../public/dots-and-boxes/rules.js");
     const { startRobot } = await import("../public/dots-and-boxes/robot.js");
