@@ -23,6 +23,7 @@ import { makeRules, normalizeConfig, forcedMove, bestKnock, arrange, GIN_BONUS, 
 import { chooseMove, startRobot, timeoutMove } from "./robot.js";
 import { settings } from "./settings.js";
 import { play } from "./sounds.js";
+import { howToPlay } from "./how-to-play.js";
 
 // How long robots take before each move (robotPause() scales these in tests).
 const ROBOT_PACE = { upcard: 700, draw: 480, discard: 820, option: 50, knock: 1300, forced: 420, next: 650, max: 2000 };
@@ -51,6 +52,7 @@ function robotDelay(st, me, move, level) {
 startGameShell({
   slug: "gin-rummy",
   title: "Gin Rummy",
+  howToPlay,
   layout: "wide",
   settings,
   createRobot: (session) => {

@@ -11,6 +11,7 @@ import { makeRules, normalizeConfig, isTimed, timeLeft, legalSteps, legalPlays, 
 import { chooseMove, inContact, startRobot } from "./robot.js";
 import { settings } from "./settings.js";
 import { play } from "./sounds.js";
+import { howToPlay } from "./how-to-play.js";
 
 const ROBOT_DELAY = 800;
 const ROBOT_RACING = 250; // the robot's pause once you let the game race your checkers home
@@ -46,6 +47,7 @@ let racingForYou = false;
 startGameShell({
   slug: "backgammon",
   title: "Backgammon",
+  howToPlay,
   layout: "medium",
   settings,
   createRobot: (session) => {

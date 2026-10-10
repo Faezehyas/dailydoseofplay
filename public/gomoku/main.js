@@ -10,6 +10,7 @@ import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, stoneOf, isTimed, timeLeft, EMPTY, DRAW, SIZE } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { settings } from "./settings.js";
+import { howToPlay } from "./how-to-play.js";
 
 const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
@@ -20,6 +21,7 @@ const COUNT_WORD = { 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine" };
 startGameShell({
   slug: "gomoku",
   title: "Gomoku",
+  howToPlay,
   layout: "medium",
   settings,
   createRobot: (session) =>

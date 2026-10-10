@@ -19,6 +19,7 @@ import { makeRules, normalizeConfig, MAX_PLAYERS, SUIT_SIGNS, suitOf, rankOf, po
 import { chooseMove, startRobot, timeoutMove } from "./robot.js";
 import { settings } from "./settings.js";
 import { play } from "./sounds.js";
+import { howToPlay } from "./how-to-play.js";
 
 // How long robots think, before each move (robotPause() scales these in tests).
 const ROBOT_PACE = { forced: 420, again: 320, think: 560, option: 130, eight: 450, max: 1800 };
@@ -45,6 +46,7 @@ function robotDelay(st, me, move, face, level) {
 startGameShell({
   slug: "crazy-eights",
   title: "Crazy Eights",
+  howToPlay,
   layout: "wide",
   settings,
   minPlayers: 2,

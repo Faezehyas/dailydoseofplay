@@ -2,7 +2,7 @@
 // waiting room, and hand-off of a Session to the game. How players get
 // connected lives in room.js; this file is only the UI around it.
 //
-//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout, settings })
+//   startGameShell({ slug, title, tagline, createRobot, onSession, minPlayers, maxPlayers, robots, layout, settings, howToPlay })
 //
 // onSession(session, root, shell) mounts the game in `root` and returns { destroy }.
 // shell.leave() goes back to the lobby; while the game says a friend match is
@@ -17,10 +17,13 @@
 // "wide" (the default); the lobby is always narrow. Sizes live in theme.css.
 // settings is the game's gameSettings() (settings.js): the home screen shows
 // them inside the lobby card, and the host's waiting screen their summary.
+// howToPlay is the game's "How to play" text (how-to-play.js), shown under the
+// game and linked from the lobby card.
 import { initShell, el, $, toast, copyText, getNickname, setNickname, setTabAlert, askBeforeLeaving } from "./shell.js";
 import { confirmDialog } from "./confirm.js";
 import { HostRoom, GuestRoom, RoomError, localRoom } from "./room.js";
 import { checkName } from "./names.js";
+import { howToPlayPanel } from "./how-to-play.js";
 
 const ERRORS = {
   no_such_room: "That room doesn't exist any more. Ask your friend for a fresh invite link.",
@@ -62,10 +65,11 @@ const LAYOUTS = ["narrow", "medium", "wide"];
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 4;
 
-export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide", settings }) {
+export function startGameShell({ slug, title, tagline = "", createRobot, onSession, minPlayers = 2, maxPlayers = 2, robots = 1, layout = "wide", settings, howToPlay }) {
   initShell({ title });
   const lobbyRoot = $("#lobby");
   const gameRoot = $("#game");
+  if (howToPlay) gameRoot.after(howToPlayPanel(howToPlay));
   // The lobby, game and "How to play" share one column (theme.css).
   const page = lobbyRoot.closest(".page");
   const showView = (name) => {

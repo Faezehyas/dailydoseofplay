@@ -10,6 +10,7 @@ import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, markOf, isTimed, timeLeft, EMPTY, DRAW, IN_A_ROW } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { settings } from "./settings.js";
+import { howToPlay } from "./how-to-play.js";
 
 const MARK_SVG = {
   X: '<svg viewBox="0 0 100 100" class="mark x" aria-hidden="true"><path d="M24 24 76 76"/><path d="M76 24 24 76"/></svg>',
@@ -22,6 +23,7 @@ const IN_A_ROW_WORD = { 3: "three", 4: "four" };
 startGameShell({
   slug: "tic-tac-toe",
   title: "Tic Tac Toe",
+  howToPlay,
   layout: "narrow",
   settings,
   createRobot: (session) =>

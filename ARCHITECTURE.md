@@ -77,6 +77,7 @@ flowchart TB
     g_robot["robot.js"]
     g_settings["settings.js"]
     g_sounds["sounds.js"]
+    g_how_to_play["how-to-play.js"]
     g_art["art.js"]
     g_match["match.js<br>Sea Battle only"]
   end
@@ -105,6 +106,7 @@ flowchart TB
     e_chimes["chimes.js"]
     e_confirm["confirm.js"]
     e_settings["settings.js"]
+    e_how_to_play["how-to-play.js"]
     e_names["names.js"]
     e_robot_pace["robot-pace.js"]
     e_sound["sound.js"]
@@ -150,6 +152,7 @@ flowchart TB
   p_main --> g_rules
   p_main --> g_settings
   p_main --> g_sounds
+  p_main --> g_how_to_play
   g_art --> g_rules
   g_match --> e_channel
   g_match --> e_fair
@@ -204,6 +207,7 @@ flowchart TB
   e_group --> e_channel
   e_confirm --> e_shell
   e_lobby --> e_confirm
+  e_lobby --> e_how_to_play
   e_lobby --> e_names
   e_lobby --> e_room
   e_lobby --> e_shell
@@ -220,6 +224,7 @@ flowchart TB
   e_session --> e_group
   e_session --> e_names
   e_settings --> e_shell
+  e_how_to_play --> e_shell
   e_shell --> e_names
   e_shell --> e_sound
   e_signaling --> e_channel
@@ -446,13 +451,14 @@ a blocked name over WebRTC either. Nicknames are never logged.
 | `deck-crypto.js` | A synchronous layer over the vendored mental-poker WebAssembly (`vendor/mental-poker/`): keys, shuffles and their proofs, shares, opening, the audit. Bytes in, bytes out. |
 | `base64.js` | Bytes to base64 and back, strict about its input, for binary data in JSON messages |
 | `vendor/mental-poker/` | The built library, committed (see **Card games**): `cards_play_bg.wasm`, its loader `cards_play.js`, `LICENSE`, and `SOURCE` (the commit it was built from) |
-| `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), a "How to play" link under it that opens the page's `details.rules` panel and moves focus to its summary, the "Play with a friend" / "Play vs robot" / join-by-code UI with a quiet line under the Play buttons that games connect browsers directly, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. It hands the game a `shell` with `leave()` and `setInProgress(on)` (see **Leaving**). With a game's `settings` it shows them inside the home screen's card, between the nickname and the Play buttons, and their summary on the host's waiting screen, so friends see the rules before the game starts. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column. |
+| `lobby.js` | `startGameShell()`: the game's `description` from `games.json` under its name (the lobby shows at once and the text fills in when the file arrives), a "How to play" link under it that opens the game's `howToPlay` panel (see `how-to-play.js`, put under `#game`) and moves focus to its summary, the "Play with a friend" / "Play vs robot" / join-by-code UI with a quiet line under the Play buttons that games connect browsers directly, invite link with copy and share, the waiting room (a player list and a Start button when a game allows more than two; Accept / Decline for anyone knocking), `?room=CODE&key=KEY` auto-join, `?robot=1` (a robot game) and `?friend=1` (a new room at once, as if "Play with a friend" was pressed; dropped from the address bar so a reload doesn't make another), connection-failure and player-left screens. It hands the game a `shell` with `leave()` and `setInProgress(on)` (see **Leaving**). With a game's `settings` it shows them inside the home screen's card, between the nickname and the Play buttons, and their summary on the host's waiting screen, so friends see the rules before the game starts. Each new screen moves focus to its heading (not on page load); progress such as "Creating a room…" or "Bo joined" is read out from one `role="status"` line, and the connection-problem screen uses `role="alert"`. The code field takes only the server's code letters (uppercased, spaces and dashes dropped, anything else refused with a hint) and joins by itself at four; a join that fails returns to it with the code still in, the error under the field and read out from the status line. It also sets which view is on show for the page column. |
 | `fair.js` | `commit` and `verifyCommit` (SHA-256 commitments), `HashChain` and `SharedRandom` (random draws all peers agree on). SHA-256 uses WebCrypto where the page has it, else a plain-JS copy (see below). |
 | `players.js` | `playerBar(session, { onLeave, classes })`: the bar above every game (see **Player bar**). |
 | `result.js` | `resultPanel(session, { onLeave, onShow, classes })`: the game-over panel of every game, with Rematch and Leave (see **Result panel**). |
 | `celebrate.js` | `celebrate({ outcome, flavour, highlight, anchor, board })`: the result moment a game plays from the panel's `onShow`, and `calm()`, which the panel calls when it hides (see **Result moment**). |
 | `chimes.js` | The result chimes: the site's jingle for each outcome in each game's timbre, through `sound.js` (see **Result moment**). No DOM. |
 | `confirm.js` | `confirmDialog({ title, text, yes, no })`: a yes-or-no question in a modal `<dialog>` styled like the site. Focus moves to Cancel, Esc or Cancel says no, and focus returns to where it was (Leave). Resolves to `true` for yes. |
+| `how-to-play.js` | `howToPlayPanel(sections)`: the "How to play" panel (`details.rules#how-to-play`) with the same `<h3>` sections in every game, in one order: Goal, Players, Setup, On your turn, Winning, Settings and clocks, Fair play, Keyboard. A game leaves out what doesn't apply; a section is a paragraph or a list, and an unknown one throws. `startGameShell()` puts it under `#game`. |
 | `settings.js` | `gameSettings()`: a game's settings (groups of segmented options such as clocks or board size), remembered per device under the game's key. The lobby shows them folded to a summary ("Game settings" over chips such as "No clocks", "Coin toss", "Easy robot", and Change) that opens to the options; a group marked `robot` is tagged "vs robot only", its chip has a teal dot, and it is left out of the waiting screen's summary. `get()` is the current config, which the game sends to its guests (`setup`). |
 | `sound.js` | Every game's sounds play through it (see **Sound levels**): `defineSounds()` takes a game's list of sounds, each with a role, and returns `play(name, opts, at)`. One audio context and one output for the site, the per-device mute toggle in the header, and preloading of short CC0 recordings (Sea Battle, Chess, Backgammon, Ludo and the card games, see each `sounds/LICENSE.txt`) |
 | `synth.js` | Building blocks for synthesized sounds: `tone()`, `noise()` (white or brown), `decay()` and a `pentatonic()` scale |
@@ -830,7 +836,8 @@ checks that no game opens its own audio context or output.
 
 | File | Job |
 |---|---|
-| `index.html` | Page with `#lobby` and `#game` sections and "How to play" (`details.rules#how-to-play`): the same `<h3>` sections in every game, in the order the recipe in `CONTRIBUTING.md` gives |
+| `index.html` | Page with `#lobby` and `#game` sections |
+| `how-to-play.js` | The "How to play" text, `export const howToPlay = { goal, players, setup, turn, winning, settings, fairPlay, keyboard }`, passed to `startGameShell()` |
 | `main.js` | `startGameShell({ slug, title, layout, settings, createRobot, onSession, minPlayers, maxPlayers, robots })` and the view. The player counts default to 2 and `maxPlayers` must match `games.json`; the lobby's tagline is the game's `description` there (a `tagline` option still overrides it); `layout` picks the page column (see **Page column**). |
 | `settings.js` | Optional: the game's settings, `export const settings = gameSettings({ key, prefix, groups, normalize, hint })`, passed to `startGameShell()` and read with `settings.get()` |
 | `rules.js` | Pure rules: no DOM, timers, network or `Math.random`. Randomness is passed in. |

@@ -11,6 +11,7 @@ import { startRobot } from "./robot.js";
 import * as R from "./rules.js";
 import { settings } from "./settings.js";
 import { play } from "./sounds.js";
+import { howToPlay } from "./how-to-play.js";
 
 const ICON = {
   fire:
@@ -82,6 +83,7 @@ const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting
 startGameShell({
   slug: "sea-battle",
   title: "Sea Battle",
+  howToPlay,
   layout: "wide",
   settings,
   createRobot: (session) => startRobot(session, { delay: AI_DELAY, config: settings.get() }),

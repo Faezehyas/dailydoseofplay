@@ -21,6 +21,7 @@ import { makeRules, normalizeConfig, forcedMove, askable, ranksIn, rankOf, rankW
 import { chooseMove, startRobot, timeoutMove } from "./robot.js";
 import { settings } from "./settings.js";
 import { play } from "./sounds.js";
+import { howToPlay } from "./how-to-play.js";
 
 // How long robots take before each move (robotPause() scales these in tests).
 const ROBOT_PACE = { answer: 480, book: 380, done: 220, ask: 650, option: 80, max: 1800 };
@@ -58,6 +59,7 @@ function robotDelay(st, me, move, face, level) {
 startGameShell({
   slug: "go-fish",
   title: "Go Fish",
+  howToPlay,
   layout: "wide",
   settings,
   minPlayers: 2,

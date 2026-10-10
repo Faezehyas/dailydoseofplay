@@ -63,11 +63,12 @@ things, because they choose your protocol:
 
 ```
 public/<slug>/
-├── index.html       page shell: copy public/sea-battle/index.html, change title, meta and "How to play"
+├── index.html       page shell: copy public/sea-battle/index.html, change title and meta
 ├── style.css        game-specific styles; only var(--…) tokens from /engine/theme.css, light and dark
 ├── main.js          startGameShell(...) and the view
 ├── rules.js         pure rules
 ├── robot.js         move choice (+ startRobot when not using startTurnRobot)
+├── how-to-play.js   the "How to play" text, in the shared sections (below)
 ├── settings.js      optional: the game's settings, shown in the lobby card (step 5)
 ├── sounds.js        optional: the game's sounds, played through the engine (step 5b)
 ├── icon.svg         original 16:10 card art (viewBox 0 0 320 200), no external refs
@@ -85,27 +86,26 @@ styles (`.card`, `.btn`, `.btn.small`, `.rules` for the "How to play" panel,
 `.rematch-status`, `.overlay`, `.spinner`, `.sr-only`) live in
 `/engine/theme.css`. `style.css` holds only what is specific to your game.
 
-"How to play" follows the same shape in every game, so players know where to
-look. It is the `<details>` after `#game`; the lobby's "How to play" link
-opens it by its id. Use these `<h3>` sections in this order and leave out any
-that don't apply: Goal, Players (2, or 2–4, and robots and their levels),
-Setup, On your turn, Winning (and draws), Settings and clocks, Fair play,
-Keyboard. Give a section a `<p>` for one point or a `<ul>` for several, in
-your own words. `test/browser/how-to-play.test.js` checks the order.
+"How to play" has the same sections in every game, so players know where to
+look. Write its text in `how-to-play.js` and pass it to `startGameShell()`
+(step 5): the engine draws the panel under the game, in this order, and the
+lobby card links to it. Leave out any section that doesn't apply. A section
+is a string (one paragraph) or an array (a list), in your own words;
+`**text**` is bold. Name every robot level and robot count, every setting and
+clock, and every key.
 
-```html
-<details class="card rules" id="how-to-play">
-  <summary>How to play</summary>
-  <h3>Goal</h3>
-  <p>Be the first to line up three marks.</p>
-  <h3>Players</h3>
-  <p>Two: play a friend, or play the robot.</p>
-  <h3>On your turn</h3>
-  <ul>
-    <li>…</li>
-  </ul>
-  <!-- Setup, Winning, Settings and clocks, Fair play, Keyboard -->
-</details>
+```js
+// <Name>'s "How to play", in the sections every game uses (see engine/how-to-play.js).
+export const howToPlay = {
+  goal: "…", // what wins, in one line
+  players: "…", // 2, or 2–4, and the robots and their levels
+  setup: "…", // the board, pieces or deal at the start
+  turn: ["…", "…"], // what you do on your turn, special rules, tap and drag
+  winning: ["…", "…"], // wins, draws, scoring, Rematch
+  settings: ["…", "…"], // each setting and clock, and whose apply in a friend game
+  fairPlay: "…", // what the browsers check, and how randomness is drawn
+  keyboard: "…", // every key
+};
 ```
 
 ### 3. Write `rules.js` (pure)
@@ -172,10 +172,12 @@ import { resultPanel } from "../engine/result.js";
 import { celebrate } from "../engine/celebrate.js";
 import { rules } from "./rules.js";
 import { chooseMove } from "./robot.js";
+import { howToPlay } from "./how-to-play.js";
 
 startGameShell({
   slug: "<slug>",
   title: "<Name>",
+  howToPlay,
   layout: "narrow", // the page column while playing: "narrow", "medium" or "wide"
   createRobot: (session) => startTurnRobot(session, { rules, choose: chooseMove, delay: 600 }),
   onSession(session, root, shell) {
@@ -413,7 +415,7 @@ windows (one private).
 
 ## Checklist before opening the PR
 
-- [ ] `public/<slug>/` contains `index.html`, `style.css`, `main.js`, `rules.js`, `robot.js`, `icon.svg` and tests
+- [ ] `public/<slug>/` contains `index.html`, `style.css`, `main.js`, `rules.js`, `robot.js`, `how-to-play.js`, `icon.svg` and tests
 - [ ] `rules.js` is pure and fully unit-tested; illegal moves throw `RuleError`
 - [ ] Robot plays legal, decent moves, and robot-vs-robot games always finish
 - [ ] Friend match works in two windows: invite link, auto-join, full game, rematch, leave
@@ -453,6 +455,7 @@ windows (one private).
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
 | `public/engine/shell.js` | Header, footer, theme toggle, nickname, `el()`, `toast()` |
 | `public/engine/settings.js` | `gameSettings()`: a game's settings, shown in the lobby card |
+| `public/engine/how-to-play.js` | `howToPlayPanel()`: the "How to play" panel, the same sections in every game |
 | `public/engine/players.js` | `playerBar()`: names, whose turn it is, the score and Leave, above every game |
 | `public/engine/result.js` | `resultPanel()`: the game-over panel with the result, Rematch and Leave, in every game |
 | `public/engine/celebrate.js` | `celebrate()`: the win, loss and draw moment as the result panel opens, with its chimes from `chimes.js` |

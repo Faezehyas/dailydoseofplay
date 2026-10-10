@@ -10,6 +10,7 @@ import { celebrate } from "../engine/celebrate.js";
 import { makeRules, normalizeConfig, dimensions, colorOf, isTimed, timeLeft, landing, EMPTY, DRAW } from "./rules.js";
 import { chooseMove } from "./robot.js";
 import { settings } from "./settings.js";
+import { howToPlay } from "./how-to-play.js";
 
 const ROBOT_DELAY = 600;
 const CLAIM_GRACE_MS = 5000; // past the opponent's limit before we stop waiting for their forfeit
@@ -18,6 +19,7 @@ const LEVEL_NAME = { easy: "Easy", medium: "Medium", hard: "Hard" };
 startGameShell({
   slug: "connect-4",
   title: "Connect 4",
+  howToPlay,
   layout: "narrow",
   settings,
   createRobot: (session) => {
