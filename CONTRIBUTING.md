@@ -208,11 +208,12 @@ broke the rules or stopped the match) before the reason, and when `about` is
 set, the reason is about that player ("Ana stopped the match: Bob sent a
 shuffle that doesn't check out").
 
-Don't draw the table from scratch: `engine/cards/` has what Crazy Eights and
-Go Fish share (see **The shared table** in `ARCHITECTURE.md`): the deck's
-faces and art (`faces.js`, `art.js`), the table's pieces and motion
-(`cardTable()` in `table.js`, styled by `cards.css`, which `index.html` links
-after `theme.css`), the card sounds to list in your `sounds.js`
+Don't draw the table from scratch: `engine/cards/` has what the card games
+share (see **The shared table** in `ARCHITECTURE.md`): the deck's
+faces and art (`faces.js`, `art.js`), rummy melds and lay-offs (`melds.js`),
+the table's pieces and motion (`cardTable()` in `table.js`, styled by
+`cards.css`, which `index.html` links after `theme.css`; a hand can show its
+melds, be rearranged, or be laid face up), the card sounds to list in your `sounds.js`
 (`card-sounds.js`), robots that pause like a person (`paced-robot.js`) and
 the notice when a player leaves (`leave-notice.js`).
 
