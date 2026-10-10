@@ -1,0 +1,548 @@
+/* Go Fish view. Shared tokens come from /engine/theme.css, and the card
+   table's pieces (cards, seats, hand, stock, seat colours) from
+   /engine/cards/cards.css. Here: the lake-blue table on a sandy dock, the
+   pond the stock sits in, the books, the ask and the speech bubbles. */
+.go-fish {
+  --pc-felt: #2a7189;
+  --pc-felt-2: #1b5266;
+  --pc-rim: #c09461;
+  --pc-rim-2: #8a6639;
+  --gf-pond: #3d93ab;
+  --gf-pond-2: #2b7790;
+  --gf-pond-line: rgb(255 255 255 / 30%);
+  --gf-bubble-fish: #e3f4f8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .go-fish {
+    --pc-felt: #1f566a;
+    --pc-felt-2: #133846;
+    --pc-rim: #7c5c37;
+    --pc-rim-2: #4b3520;
+    --gf-pond: #2a6c80;
+    --gf-pond-2: #1d5466;
+    --gf-pond-line: rgb(255 255 255 / 22%);
+    --gf-bubble-fish: #d6edf3;
+  }
+}
+
+:root[data-theme="dark"] .go-fish {
+  --pc-felt: #1f566a;
+  --pc-felt-2: #133846;
+  --pc-rim: #7c5c37;
+  --pc-rim-2: #4b3520;
+  --gf-pond: #2a6c80;
+  --gf-pond-2: #1d5466;
+  --gf-pond-line: rgb(255 255 255 / 22%);
+  --gf-bubble-fish: #d6edf3;
+}
+
+/* ---------- the table: a lake on a sandy dock ---------- */
+.gf-table {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  min-height: min(560px, max(400px, calc(100svh - 260px)));
+}
+
+/* Room for a row of books under each player at the top. */
+.gf-table .pc-opps .pc-seat {
+  flex-basis: 300px;
+}
+
+/* A seat you may ask: tap anywhere on it. */
+.gf-pick {
+  position: absolute;
+  inset: -4px;
+  z-index: 2;
+  padding: 0;
+  border: 2px dashed transparent;
+  border-radius: 16px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+.gf-pick:disabled {
+  cursor: default;
+  pointer-events: none;
+}
+
+.pc-seat.askable .gf-pick {
+  border-color: rgb(255 255 255 / 32%);
+}
+
+.pc-seat.askable .gf-pick:hover {
+  background: rgb(255 255 255 / 8%);
+}
+
+.pc-seat.chosen .gf-pick {
+  border-style: solid;
+  border-color: var(--pc-glow);
+  background: rgb(255 255 255 / 10%);
+}
+
+.gf-pick:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The player being asked: their pill takes the asker's question. */
+.pc-seat.asked .pill,
+.pc-me.asked .pill {
+  border-color: var(--pc-glow);
+  background: rgb(0 0 0 / 45%);
+}
+
+.pc-seat.out .pc-fan {
+  opacity: 0.4;
+}
+
+/* ---------- books: each a small fan of its cards, face up ---------- */
+.gf-books {
+  --bw: var(--ow);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  row-gap: 2px;
+  min-height: calc(var(--bw) * 1.4 + 4px);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.gf-books:empty {
+  min-height: 0;
+}
+
+.gf-books.mine {
+  --bw: calc(var(--ow) * 1.15);
+}
+
+.gf-book {
+  position: relative;
+  flex: none;
+  width: calc(var(--bw) * 1.55);
+  height: calc(var(--bw) * 1.4 + 4px);
+}
+
+/* The more books, the more they overlap; the row wraps only when it must. */
+.gf-book + .gf-book {
+  margin-left: calc(var(--bw) * max(-0.85, 0.1 - 0.08 * var(--n, 1)));
+}
+
+.gf-book .pc-card {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: var(--bw);
+  height: calc(var(--bw) * 1.4);
+}
+
+.gf-book .pc-card:nth-child(1) { transform: rotate(-9deg); }
+.gf-book .pc-card:nth-child(2) { transform: translateX(calc(var(--bw) * 0.18)) rotate(-3deg); }
+.gf-book .pc-card:nth-child(3) { transform: translateX(calc(var(--bw) * 0.36)) rotate(3deg); }
+.gf-book .pc-card:nth-child(4) { transform: translateX(calc(var(--bw) * 0.54)) rotate(9deg); }
+.gf-book .pc-card:nth-child(2):last-child { transform: translateX(calc(var(--bw) * 0.3)) rotate(5deg); }
+
+/* The result moment lights the winners' books one after another. */
+.gf-book.celebrate-lit .pc-card .front {
+  box-shadow: 0 0 0 2px var(--pc-glow), 0 3px 8px var(--pc-shadow);
+}
+
+/* ---------- the pond: the stock, in the water ---------- */
+.gf-centre {
+  position: relative;
+  display: grid;
+  justify-content: center;
+  align-content: center;
+  justify-items: center;
+  row-gap: 6px;
+  min-height: calc(var(--ch) + 56px);
+}
+
+.gf-pond {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+  width: calc(var(--cw) * 3.1);
+  padding: 14px 0 8px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--gf-pond), var(--gf-pond-2) 85%, transparent 100%);
+}
+
+.gf-ripples span {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: calc(var(--cw) * 2.5);
+  height: calc(var(--cw) * 1.1);
+  margin: calc(var(--cw) * -0.55) 0 0 calc(var(--cw) * -1.25);
+  border-radius: 50%;
+  border: 1.5px solid var(--gf-pond-line);
+  pointer-events: none;
+}
+
+.gf-ripples span + span {
+  transform: scale(0.7);
+}
+
+.gf-pond-label {
+  position: relative;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--pc-felt-ink);
+}
+
+.gf-centre .pc-busy.float {
+  top: auto;
+  bottom: -4px;
+}
+
+/* ---------- your corner: books, the ask, the hand ---------- */
+.gf-table .pc-me {
+  position: relative;
+}
+
+.gf-ask-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 10px;
+  min-height: 40px;
+}
+
+/* Waiting for a card and a player: a quiet prompt rather than a faded button. */
+.gf-ask:disabled {
+  background: rgb(0 0 0 / 28%);
+  border-color: transparent;
+  color: var(--pc-felt-ink);
+  opacity: 1;
+}
+
+.gf-ask {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-me .pill .gf-book-count {
+  font-weight: 700;
+  color: var(--pc-felt-muted);
+}
+
+.gf-hcard.askable {
+  cursor: pointer;
+}
+
+.gf-hcard.chosen .pc-card .front {
+  box-shadow: 0 0 0 3px var(--pc-glow), 0 6px 14px var(--pc-shadow);
+}
+
+/* ---------- speech bubbles ---------- */
+.gf-say {
+  position: absolute;
+  left: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: max-content;
+  max-width: min(260px, 90cqi);
+  padding: 4px 12px;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--c, var(--border));
+  font-weight: 800;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow);
+}
+
+/* Over the other players, the bubble hangs below their pill; yours sits over your hand. */
+.pc-seat > .gf-say {
+  top: calc(100% - 4px);
+}
+
+.gf-ask-bar > .gf-say {
+  top: 2px;
+}
+
+.gf-say::after {
+  content: "";
+  position: absolute;
+  left: calc(50% - var(--shift, 0px));
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: inherit;
+  border: inherit;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.pc-seat > .gf-say::after {
+  top: -7px;
+  transform: rotate(-135deg);
+}
+
+.gf-ask-bar > .gf-say::after {
+  bottom: -7px;
+}
+
+.gf-say.fish {
+  background: var(--gf-bubble-fish);
+  color: #12303a;
+}
+
+.gf-say-fish {
+  display: inline-grid;
+  width: 26px;
+  color: var(--accent);
+}
+
+.gf-say-fish svg {
+  width: 100%;
+}
+
+.gf-rank {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5em;
+  height: 1.4em;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--pc-paper);
+  border: 1px solid var(--pc-edge);
+  color: #1d2129;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+/* ---------- effects: ripples, the leaping fish, drops, sparkles ---------- */
+.gf-fx {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.gf-fx.ring {
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 75%);
+}
+
+.gf-fx.fish {
+  --fw: 44px;
+  width: var(--fw);
+  height: calc(var(--fw) * 0.6);
+  margin: calc(var(--fw) * -0.3) 0 0 calc(var(--fw) * -0.5);
+  color: var(--accent);
+}
+
+.gf-fx.fish svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.gf-fx.drop {
+  width: 7px;
+  height: 9px;
+  margin: -4px 0 0 -3px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: #cfeef6;
+}
+
+.gf-fx.spark {
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 2px;
+  background: var(--c, var(--pc-glow));
+  rotate: 45deg;
+}
+
+/* ---------- the ask timer, the hint and the log ---------- */
+.gf-actions[hidden] {
+  display: none;
+}
+
+.gf-timer {
+  display: grid;
+  grid-template-columns: 90px auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--pc-felt-ink);
+}
+
+.gf-timer[hidden] {
+  display: none;
+}
+
+.gf-timer .bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 30%);
+  overflow: hidden;
+}
+
+.gf-timer .bar span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--c, var(--accent-2));
+  transform-origin: left;
+}
+
+.gf-timer.low {
+  color: #ffd2c8;
+}
+
+.gf-minis {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+
+.gf-log .gf-rank {
+  flex: none;
+  min-width: 28px;
+  height: 22px;
+  font-size: 0.75rem;
+}
+
+/* ---------- game over: standings and the verdict, inside the result panel ---------- */
+.gf-standings {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.gf-standings li {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 0.9rem;
+}
+
+.gf-standings li.mine {
+  box-shadow: 0 0 0 2px var(--c) inset;
+  font-weight: 800;
+}
+
+.gf-standings .place {
+  font-weight: 900;
+  color: var(--c-ink);
+}
+
+.gf-standings .who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gf-standings .who span:last-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gf-standings .gf-ranks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+.gf-standings small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.gf-over .verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 8px;
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.gf-over .verdict.ok {
+  color: var(--ok);
+}
+
+.gf-over .verdict small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.gf-over .verdict.bad {
+  color: var(--danger);
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 600px) {
+  .gf-table {
+    min-height: 0;
+  }
+
+  .gf-say {
+    font-size: 0.82rem;
+    padding: 3px 9px;
+  }
+
+  .gf-over .verdict small {
+    display: none;
+  }
+
+  .gf-standings li {
+    font-size: 0.85rem;
+    padding: 2px 6px;
+  }
+
+  .gf-standings .gf-ranks {
+    display: none;
+  }
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Go Fish · Daily Dose of Play</title>
+    <meta name="description" content="Free Go Fish for 2 to 4 players with friends or vs robots, right in the browser. Ask for a rank, catch a lucky fish, and lay down the most books of four. Nobody deals and nobody can peek. No sign-up." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/engine/fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/engine/theme.css" />
+    <link rel="stylesheet" href="/engine/cards/cards.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section id="lobby"></section>
+      <section id="game" hidden></section>
+      <details class="card rules">
+        <summary>How to play</summary>
+        <ul>
+          <li>Two to four players and a standard 52-card deck. With two or three players everyone gets 7 cards; with four, 5 each. The rest of the deck is the pond.</li>
+          <li>On your turn, ask one player for a <strong>rank</strong> you hold at least one of: "Got any 7s?" If they have any, they hand over every one of them and you ask again.</li>
+          <li>If they have none, they say <strong>"Go fish!"</strong> and you draw from the pond. If you catch the rank you asked for, you show it and go again; otherwise the turn passes to the next player.</li>
+          <li>Four cards of one rank make a <strong>book</strong>, laid face up in front of you as soon as you have it. Books you were dealt go down before the first ask.</li>
+          <li>If your hand runs out, you draw one card from the pond and carry on; with the pond empty too, you sit out. If nobody else has cards to ask for, you draw one and your turn ends (with <strong>Sit out</strong>, the last player with cards takes the whole pond).</li>
+          <li>When every book is down (13, or 26 pairs), the most books wins. Players level on books share the win.</li>
+          <li>Room settings: how many cards are dealt; whether a lucky fish lets you go again or the turn passes anyway; whether an empty hand draws a card or sits out; <strong>pairs</strong> instead of books of four (easier for young players: 26 pairs); who goes first; and a time to ask, after which an ask is made for you. With friends, the settings of whoever creates the room apply to everyone.</li>
+          <li>Tap a card to ask for its rank, then tap a player, then <strong>Ask</strong> (or the other way round). On a keyboard, Tab to your hand, use the arrow keys and Enter to pick a card, Tab to the players, and press A or Enter on Ask; Esc clears. Answering, laying books and showing a lucky fish are done for you, truthfully.</li>
+          <li>To play friends, create a room and send the invite link to up to three of them, then press <strong>Start game</strong>. Against robots, pick 1, 2 or 3 robots and their level. <strong>Four colours</strong> shows diamonds blue and clubs green, on this device only.</li>
+          <li>Fair play without a dealer: every browser shuffles the deck in turn and proves it did so honestly, and a card can only be read with every player's key, so nobody can peek at another hand or stack the deck. Cards change hands only face up. (The one gap: with three or more players, a room creator running a tampered browser could read a hand.) When the game ends, everyone reveals their key and each browser replays the whole game with every card known, so a player who asked for a rank they didn't hold, said "Go fish" while holding it, kept some back or hid a book or a lucky fish is caught: you see "Fair play verified" or what didn't add up.</li>
+        </ul>
+      </details>
+    </main>
+  </body>
+</html>
