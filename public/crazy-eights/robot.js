@@ -6,10 +6,9 @@
 //   Hard    counts the cards shown, keeps its 8s, names the suit it holds most
 //           of (weighted by what is left out there), sheds high-penalty cards,
 //           and goes after whoever is closest to going out.
-// startRobot() drives a seat, asking the view how long to pause each time.
-import { matchRouter } from "../engine/session.js";
-import { robotPause } from "../engine/robot-pace.js";
-import { CardMatch } from "../engine/card-match.js";
+// startRobot() drives a seat, asking the view how long to pause each time
+// (engine/cards/paced-robot.js).
+import { startPacedRobot } from "../engine/cards/paced-robot.js";
 import { suitOf, rankOf, points, isEight, canDraw, next, playable, TWO, QUEEN, ACE } from "./rules.js";
 
 const randInt = (rng, n) => Math.floor(rng() * n);
@@ -154,56 +153,7 @@ export function timeoutMove(state, me, face) {
   return { play: first, suit: n.indexOf(Math.max(...n)) };
 }
 
-// startCardRobot() with a pause asked for each move: delay() returns ms, or -1 to wait for the screen.
+// A robot seat that pauses as the view asks: delay() returns ms, or -1 to wait for the screen.
 export function startRobot(session, { rules, choose, delay, rng = Math.random }) {
-  const router = matchRouter(session);
-  let match = null;
-  let timer = null;
-  let destroyed = false;
-  let waiting = false; // for the screen, rather than thinking
-  let planned = null; // the move chosen for this turn, kept while waiting
-  let refused = ""; // a turn whose chosen move was refused: play the timer's move instead
-  function schedule() {
-    if (destroyed || timer || !match.canMove()) return;
-    const face = (slot) => match.face(slot);
-    const key = `${match.m}:${match.state.moves}:${match.state.drew}`;
-    if (planned?.key !== key) planned = { key, move: refused === key ? timeoutMove(match.state, match.me, face) : choose(match.state, match.me, rng, face) };
-    const ms = delay(match.state, match.me, planned.move, face);
-    waiting = ms < 0;
-    timer = setTimeout(() => {
-      timer = null;
-      if (destroyed || !match.canMove()) return;
-      if (waiting) return schedule();
-      const { move } = planned;
-      planned = null;
-      match.play(move);
-    }, robotPause(waiting ? 40 : ms));
-  }
-  function newMatch(m) {
-    match = new CardMatch({ send: (msg) => session.send(msg), me: session.index, players: session.players.length, rules, m });
-    match.on("update", schedule);
-    match.on("invalid", () => {
-      refused = `${match.m}:${match.state.moves}:${match.state.drew}`;
-      planned = null;
-    });
-    router.start(match);
-  }
-  session.on("rematch-start", () => newMatch(match.m + 1));
-  newMatch(1);
-  return {
-    get match() {
-      return match;
-    },
-    // The screen has caught up: stop waiting for it now rather than at the next check.
-    poke() {
-      if (!timer || !waiting) return;
-      clearTimeout(timer);
-      timer = null;
-      schedule();
-    },
-    destroy() {
-      destroyed = true;
-      clearTimeout(timer);
-    },
-  };
+  return startPacedRobot(session, { rules, choose, delay, rng, key: (st) => `${st.moves}:${st.drew}`, fallback: timeoutMove });
 }

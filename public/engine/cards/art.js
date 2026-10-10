@@ -1,9 +1,10 @@
-// Crazy Eights card art, drawn as inline SVG: suit pips, the faces (large
-// corner indices, pip layouts, and original court figures drawn once per
-// rank and mirrored like a real double-headed card) and the back. Shapes
-// live once in a hidden <svg> of symbols; a card is a few <use>s. Colours
-// come from CSS: a card's suit colour is --suit, set by its s-0…s-3 class.
-import { suitOf, rankOf, RANK_NAMES } from "./rules.js";
+// Playing-card art for the standard deck (faces.js), drawn as inline SVG:
+// suit pips, the faces (large corner indices, pip layouts, and original court
+// figures drawn once per rank and mirrored like a real double-headed card)
+// and the back. Shapes live once in a hidden <svg> of symbols; a card is a
+// few <use>s. Colours come from cards.css: a card's suit colour is --suit,
+// set by its s-0…s-3 class.
+import { suitOf, rankOf, RANK_NAMES } from "./faces.js";
 
 // Suit pips in a 20×20 box around 0,0: spade, heart, diamond, club.
 const SUIT_SHAPES = [
@@ -65,28 +66,28 @@ const LOOK = {
   robe: "fill:var(--suit)",
   fur: "fill:#fffaf0;stroke:rgb(0 0 0/25%);stroke-width:.5",
   "fur-dot": "fill:#2b2b36",
-  skin: "fill:var(--ce-skin);stroke:rgb(0 0 0/22%);stroke-width:.5",
-  beard: "fill:var(--ce-beard)",
-  "hair-q": "fill:var(--ce-hair-q)",
-  "hair-j": "fill:var(--ce-hair-j)",
+  skin: "fill:var(--pc-skin);stroke:rgb(0 0 0/22%);stroke-width:.5",
+  beard: "fill:var(--pc-beard)",
+  "hair-q": "fill:var(--pc-hair-q)",
+  "hair-j": "fill:var(--pc-hair-j)",
   ink: "fill:#2b2b36",
-  cheek: "fill:var(--ce-cheek);opacity:.7",
-  gold: "fill:var(--ce-gold)",
-  "gold-dark": "fill:var(--ce-gold-dark)",
+  cheek: "fill:var(--pc-cheek);opacity:.7",
+  gold: "fill:var(--pc-gold)",
+  "gold-dark": "fill:var(--pc-gold-dark)",
   gem: "fill:var(--suit)",
-  cap: "fill:var(--ce-cap)",
-  petal: "fill:var(--ce-petal)",
-  leaf: "fill:var(--ce-leaf)",
-  "gold line": "fill:none;stroke:var(--ce-gold);stroke-width:2;stroke-linecap:round",
-  "gold line thin": "fill:none;stroke:var(--ce-gold);stroke-width:.8;stroke-linecap:round",
+  cap: "fill:var(--pc-cap)",
+  petal: "fill:var(--pc-petal)",
+  leaf: "fill:var(--pc-leaf)",
+  "gold line": "fill:none;stroke:var(--pc-gold);stroke-width:2;stroke-linecap:round",
+  "gold line thin": "fill:none;stroke:var(--pc-gold);stroke-width:.8;stroke-linecap:round",
   "ink line thin": "fill:none;stroke:#2b2b36;stroke-width:.8;stroke-linecap:round",
-  "leaf line": "fill:none;stroke:var(--ce-leaf);stroke-width:2;stroke-linecap:round",
-  "wood line": "fill:none;stroke:var(--ce-wood);stroke-width:2;stroke-linecap:round",
-  "back-bg": "fill:var(--ce-back)",
-  "back-bg back-line": "fill:var(--ce-back);stroke:var(--ce-back-line)",
-  "back-line": "stroke:var(--ce-back-line)",
-  "back-dot": "fill:var(--ce-back-line);opacity:.7",
-  "back-star": "fill:var(--ce-back-line)",
+  "leaf line": "fill:none;stroke:var(--pc-leaf);stroke-width:2;stroke-linecap:round",
+  "wood line": "fill:none;stroke:var(--pc-wood);stroke-width:2;stroke-linecap:round",
+  "back-bg": "fill:var(--pc-back)",
+  "back-bg back-line": "fill:var(--pc-back);stroke:var(--pc-back-line)",
+  "back-line": "stroke:var(--pc-back-line)",
+  "back-dot": "fill:var(--pc-back-line);opacity:.7",
+  "back-star": "fill:var(--pc-back-line)",
 };
 const styled = (markup) => markup.replace(/class="([^"]+)"/g, (all, cls) => (LOOK[cls] ? `style="${LOOK[cls]}"` : all));
 
@@ -107,7 +108,7 @@ const PIPS = {
 };
 
 const pip = (s, x, y, size, flip = false) =>
-  `<use href="#ce-s${s}" x="${x - size / 2}" y="${y - size / 2}" width="${size}" height="${size}"${flip ? ` transform="rotate(180 ${x} ${y})"` : ""}/>`;
+  `<use href="#pc-s${s}" x="${x - size / 2}" y="${y - size / 2}" width="${size}" height="${size}"${flip ? ` transform="rotate(180 ${x} ${y})"` : ""}/>`;
 
 // The hidden symbols every card uses; added to the page once.
 export function symbols() {
@@ -120,21 +121,21 @@ export function symbols() {
   const back = `
     <rect class="back-bg" x="0" y="0" width="100" height="140" rx="7"/>
     <rect class="back-line" x="5" y="5" width="90" height="130" rx="4.5" fill="none" stroke-width="1.6"/>
-    <rect x="9" y="9" width="82" height="122" rx="3" fill="url(#ce-lattice)"/>
+    <rect x="9" y="9" width="82" height="122" rx="3" fill="url(#pc-lattice)"/>
     <ellipse class="back-bg back-line" cx="50" cy="70" rx="22" ry="26" stroke-width="1.6"/>
     <ellipse class="back-line" cx="50" cy="70" rx="18.5" ry="22.5" fill="none" stroke-width=".8"/>
     <path class="back-star" d="M${star}Z"/>
     <circle class="back-bg" cx="50" cy="70" r="3.4"/>`;
-  return styled(`<svg class="ce-symbols" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute">
+  return styled(`<svg class="pc-symbols" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute">
     <defs>
-      <pattern id="ce-lattice" width="10" height="10" patternUnits="userSpaceOnUse" x="9" y="9">
+      <pattern id="pc-lattice" width="10" height="10" patternUnits="userSpaceOnUse" x="9" y="9">
         <path class="back-line" d="M5 0L10 5L5 10L0 5Z" fill="none" stroke-width=".7"/>
         <circle class="back-dot" cx="5" cy="5" r="1.2"/><circle class="back-dot" cx="0" cy="0" r=".7"/><circle class="back-dot" cx="10" cy="0" r=".7"/><circle class="back-dot" cx="0" cy="10" r=".7"/><circle class="back-dot" cx="10" cy="10" r=".7"/>
       </pattern>
     </defs>
-    ${SUIT_SHAPES.map((d, s) => box(`ce-s${s}`, "-10 -10 20 20", d)).join("")}
-    ${Object.entries(COURTS).map(([r, body]) => box(`ce-c${r}`, "0 0 60 54", body)).join("")}
-    ${box("ce-back", "0 0 100 140", back)}
+    ${SUIT_SHAPES.map((d, s) => box(`pc-s${s}`, "-10 -10 20 20", d)).join("")}
+    ${Object.entries(COURTS).map(([r, body]) => box(`pc-c${r}`, "0 0 60 54", body)).join("")}
+    ${box("pc-back", "0 0 100 140", back)}
   </svg>`);
 }
 
@@ -150,18 +151,18 @@ export function faceSvg(face) {
   let middle;
   if (r === 0) middle = `<circle class="ace-ring" cx="50" cy="70" r="30"/>${pip(s, 50, 70, 44)}`;
   else if (COURTS[r]) {
-    const half = `<use href="#ce-c${r}" x="20" y="16" width="60" height="54"/>${pip(s, 50, 61.5, 8)}`;
+    const half = `<use href="#pc-c${r}" x="20" y="16" width="60" height="54"/>${pip(s, 50, 61.5, 8)}`;
     middle = `<rect class="court-bg" x="18" y="13" width="64" height="114" rx="4"/>${half}<g transform="rotate(180 50 70)">${half}</g><path class="court-line" d="M18 70H82"/>`;
   } else {
     const size = r >= 8 ? 15 : 17;
     middle = PIPS[r].map(([x, y]) => pip(s, x, y, size, y > 70.5)).join("");
   }
-  const svg = `<svg class="ce-svg" viewBox="0 0 100 140" aria-hidden="true" focusable="false"><rect class="paper" x=".75" y=".75" width="98.5" height="138.5" rx="7"/>${middle}<g class="idx">${corner}</g><g class="idx" transform="rotate(180 50 70)">${corner}</g></svg>`;
+  const svg = `<svg class="pc-svg" viewBox="0 0 100 140" aria-hidden="true" focusable="false"><rect class="paper" x=".75" y=".75" width="98.5" height="138.5" rx="7"/>${middle}<g class="idx">${corner}</g><g class="idx" transform="rotate(180 50 70)">${corner}</g></svg>`;
   faceCache.set(face, svg);
   return svg;
 }
 
-export const BACK_SVG = '<svg class="ce-svg" viewBox="0 0 100 140" aria-hidden="true" focusable="false"><use href="#ce-back" width="100" height="140"/></svg>';
+export const BACK_SVG = '<svg class="pc-svg" viewBox="0 0 100 140" aria-hidden="true" focusable="false"><use href="#pc-back" width="100" height="140"/></svg>';
 
-// A suit sign on its own, for the suit badge, picker and log.
-export const suitSvg = (s) => `<svg class="ce-suit" viewBox="-10 -10 20 20" aria-hidden="true" focusable="false"><use href="#ce-s${s}" x="-10" y="-10" width="20" height="20"/></svg>`;
+// A suit sign on its own, for badges, pickers and logs.
+export const suitSvg = (s) => `<svg class="pc-suit" viewBox="-10 -10 20 20" aria-hidden="true" focusable="false"><use href="#pc-s${s}" x="-10" y="-10" width="20" height="20"/></svg>`;
