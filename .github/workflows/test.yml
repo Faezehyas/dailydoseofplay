@@ -49,3 +49,20 @@ jobs:
 
       - name: Browser tests
         run: npm run test:browser
+
+  # The committed mental-poker WebAssembly must be what its pinned source builds.
+  mental-poker:
+    name: mental-poker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: true
+
+      - name: Install wasm-pack and wasm-opt
+        run: scripts/install-wasm-tools.sh "$RUNNER_TEMP/wasm-tools" >> "$GITHUB_PATH"
+
+      - name: Rebuild and compare
+        run: scripts/build-mental-poker.sh --check

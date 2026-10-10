@@ -13,6 +13,8 @@ import { localPair, MAX_MESSAGE_LENGTH } from "../public/engine/channel.js";
 import { localRoom } from "../public/engine/room.js";
 import { admitGuest, greetHost, startHub } from "../public/engine/session.js";
 import { startTurnRobot } from "../public/engine/turn-match.js";
+import { startCardRobot } from "../public/engine/card-match.js";
+import { makeRules as toyCards, chooseMove as toyMove } from "./fixtures/toy-cards.js";
 import { NAME_MAX } from "../public/engine/names.js";
 
 // "Far below": a real message may grow 16 times before it reaches the cap.
@@ -95,6 +97,29 @@ const GAMES = {
     const choose = (st, me, rng) => chooseMove(st, me, rng, { level: "easy" });
     return { config, players: 4, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
   },
+  "crazy-eights": async () => {
+    const { makeRules, DEFAULT_CONFIG } = await import("../public/crazy-eights/rules.js");
+    const { chooseMove, startRobot } = await import("../public/crazy-eights/robot.js");
+    const config = { ...DEFAULT_CONFIG, actions: true, moveSeconds: 60 };
+    const choose = (st, me, rng, face) => chooseMove(st, me, rng, face, { level: "easy" });
+    return { config, players: 4, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
+  },
+  "go-fish": async () => {
+    const { makeRules, DEFAULT_CONFIG } = await import("../public/go-fish/rules.js");
+    const { chooseMove, startRobot } = await import("../public/go-fish/robot.js");
+    // Seven cards each and "sit out", where the last player with cards takes the whole stock.
+    const config = { ...DEFAULT_CONFIG, hand: 7, empty: "out", moveSeconds: 60 };
+    const choose = (st, me, rng, face) => chooseMove(st, me, rng, face, { level: "easy" });
+    return { config, players: 4, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
+  },
+  "gin-rummy": async () => {
+    const { makeRules, DEFAULT_CONFIG } = await import("../public/gin-rummy/rules.js");
+    const { chooseMove, startRobot } = await import("../public/gin-rummy/robot.js");
+    // A game to 100: many hands, each shuffled again, and Big Gin, whose knock shows all eleven cards.
+    const config = { ...DEFAULT_CONFIG, bigGin: true, knock: "oklahoma", moveSeconds: 60 };
+    const choose = (st, me, rng, face) => chooseMove(st, me, rng, face, { level: "hard" });
+    return { config, players: 2, robot: (s) => startRobot(s, { rules: makeRules(config), choose, delay: () => 0 }) };
+  },
   "dots-and-boxes": async () => {
     const { makeRules, DEFAULT_CONFIG } = await import("../public/dots-and-boxes/rules.js");
     const { startRobot } = await import("../public/dots-and-boxes/robot.js");
@@ -151,4 +176,18 @@ test("the engine's own handshake, with four players at the longest names, is far
   await Promise.all(joined);
   t.diagnostic(`engine handshake: ${largest.size} characters (${largest.t})`);
   assert.ok(largest.size * HEADROOM <= MAX_MESSAGE_LENGTH);
+});
+
+test("the card engine's largest message is far below the cap, with four players and a 108-card deck", { timeout: 300_000 }, async (t) => {
+  // Shuffles and share rounds grow with the deck, so CardMatch sends them in parts.
+  const rules = toyCards({ deckSize: 108, hand: 7, maxTurns: 40 });
+  const sessions = localRoom({ game: "cards", names: names(4), mode: "friend" });
+  const largest = { size: 0, t: null };
+  measure([...sessions[0].group.links.values(), ...sessions.slice(1).map((s) => s.group.link)], largest);
+  const robots = sessions.map((s) => startCardRobot(s, { rules, choose: toyMove, delay: 0 }));
+  await until(() => robots.every((r) => r.match.verdict || r.match.phase === "aborted"));
+  for (const r of robots) r.destroy();
+  assert.deepEqual(robots.map((r) => r.match.verdict?.ok), [true, true, true, true]);
+  t.diagnostic(`card engine: ${largest.size} characters (${largest.t})`);
+  assert.ok(largest.size * HEADROOM <= MAX_MESSAGE_LENGTH, `${largest.size} is too close to ${MAX_MESSAGE_LENGTH}`);
 });

@@ -152,10 +152,10 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
     return el("label", { class: "field" }, el("span", {}, "Nickname"), input, problem, el("small", {}, "Saved on this device only."));
   }
 
-  function currentName(fallback) {
+  // The typed nickname, or the saved default when the field is empty or refused.
+  function currentName() {
     const input = $("#nickname");
-    if (input) setNickname(input.value);
-    return getNickname() || fallback;
+    return (input && setNickname(input.value)) || getNickname();
   }
 
   // error: why the last join failed, shown under the code field, which keeps `code`.
@@ -374,7 +374,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   }
 
   async function host() {
-    const name = currentName("Host");
+    const name = currentName();
     cleanupConnection();
     const attempt = state.attempt;
     const current = () => attempt === state.attempt;
@@ -433,7 +433,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
   // key comes only from an invite link; a typed code asks the host to let us in.
   async function join(rawCode, key) {
     const code = String(rawCode).trim().toUpperCase();
-    const name = currentName("Guest");
+    const name = currentName();
     // Keep ?room= until the join settles so a reload retries it.
     state.attempt += 1;
     state.room?.close();
@@ -472,7 +472,7 @@ export function startGameShell({ slug, title, tagline = "", createRobot, onSessi
 
   function playRobot() {
     cleanupConnection();
-    const name = currentName("You");
+    const name = currentName();
     const count = typeof robots === "function" ? robots() : robots;
     const names = [name, ...Array.from({ length: count }, (_, i) => (count === 1 ? "Robot" : `Robot ${i + 1}`))];
     const [session, ...robotSessions] = localRoom({ game: slug, names, mode: "robot" });

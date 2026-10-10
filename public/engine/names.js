@@ -64,3 +64,20 @@ export function cleanName(raw, fallback) {
   const { name, problem } = checkName(raw);
   return name && !problem ? name : fallback;
 }
+
+// A friendly default for players who haven't picked a nickname ("Brave Otter"),
+// so nobody plays as a role word like Host or Guest. Every pair passes
+// checkName() and fits NAME_MAX (names.test.js checks them all).
+export const ADJECTIVES = [
+  "Brave", "Bright", "Calm", "Cheerful", "Clever", "Cosy", "Curious", "Daring", "Eager", "Gentle",
+  "Happy", "Jolly", "Kind", "Lucky", "Merry", "Mighty", "Nimble", "Plucky", "Quick", "Quiet", "Sunny", "Swift", "Witty",
+];
+export const ANIMALS = [
+  "Otter", "Badger", "Beaver", "Falcon", "Fox", "Gecko", "Hedgehog", "Heron", "Koala", "Lemur", "Lynx",
+  "Owl", "Panda", "Penguin", "Puffin", "Rabbit", "Robin", "Seal", "Sparrow", "Tiger", "Turtle", "Walrus", "Wombat", "Zebra",
+];
+
+export function defaultName() {
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+  return `${pick(ADJECTIVES)} ${pick(ANIMALS)}`;
+}

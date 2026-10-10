@@ -1,0 +1,13 @@
+diff --git a/play/src/wasm.rs b/play/src/wasm.rs
+index 3ac8e4b..20802cb 100644
+--- a/play/src/wasm.rs
++++ b/play/src/wasm.rs
+@@ -63,7 +63,7 @@ impl MaskedCards {
+ #[repr(transparent)]
+ pub struct CardsErrorWasm(#[wasm_bindgen(readonly)] pub(crate) String);
+ 
+-#[wasm_bindgen]
++#[wasm_bindgen(js_class = "CardsError")]
+ impl CardsErrorWasm {
+     pub fn as_js_error(&self) -> JsError {
+         JsError::new(&self.0)

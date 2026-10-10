@@ -1,0 +1,423 @@
+/* Crazy Eights view. Shared tokens come from /engine/theme.css, and the
+   card table's look (felt, rim, cards, seats, hand, stock, seat colours)
+   from /engine/cards/cards.css; this file is what is Crazy Eights' own: the
+   layout, the discard pile, the suit badge and picker, the log and the
+   standings. */
+.crazy-eights {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+/* ---------- the table (cards.css draws the felt and the rim) ---------- */
+.ce-table {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  min-height: min(560px, max(400px, calc(100svh - 240px)));
+}
+
+/* ---------- centre: stock, discard pile, suit and direction ---------- */
+.ce-centre {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  column-gap: clamp(14px, 6cqi, 40px);
+  row-gap: 6px;
+  min-height: calc(var(--ch) + 40px);
+}
+
+.ce-pile {
+  position: relative;
+  width: var(--cw);
+  height: var(--ch);
+}
+
+.ce-pile .pc-card {
+  position: absolute;
+  inset: 0;
+}
+
+.ce-pile-label,
+.ce-stock-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--pc-felt-muted);
+  text-align: center;
+}
+
+/* The suit to follow: big and clear, above all after an 8 names one. */
+.ce-suit-badge {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px 3px 4px;
+  border-radius: 999px;
+  background: var(--pc-paper);
+  color: #1d2129;
+  font-weight: 800;
+  box-shadow: 0 2px 6px var(--pc-shadow);
+}
+
+.ce-suit-badge[hidden] {
+  display: none;
+}
+
+.ce-suit-badge .pc-suit {
+  width: 22px;
+  height: 22px;
+}
+
+.ce-suit-badge.named {
+  box-shadow: 0 0 0 3px var(--pc-glow), 0 2px 8px var(--pc-shadow);
+}
+
+/* Which way play goes, when aces can turn it. */
+.ce-dir {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 1px 10px 1px 6px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 30%);
+  color: var(--pc-felt-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ce-dir[hidden] {
+  display: none;
+}
+
+.ce-dir .arrow {
+  display: inline-grid;
+}
+
+.ce-dir.ccw .arrow svg {
+  transform: scaleX(-1);
+}
+
+/* ---------- the suit picker ---------- */
+.ce-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  background: rgb(0 0 0 / 25%);
+  border-radius: 20px;
+}
+
+.ce-picker[hidden] {
+  display: none;
+}
+
+.ce-picker-card {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.ce-picker-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.ce-picker-suits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ce-pick {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 4px 6px;
+  border-radius: 12px;
+  border: 2px solid var(--control-border);
+  background: var(--pc-paper);
+  color: #1d2129;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.ce-pick .pc-suit {
+  width: 34px;
+  height: 34px;
+}
+
+.ce-pick.best {
+  border-color: var(--accent-2);
+}
+
+.ce-pick:hover {
+  transform: translateY(-2px);
+}
+
+.ce-picker-card .btn {
+  margin-top: 2px;
+}
+
+/* ---------- side: actions, timer, log ---------- */
+
+.ce-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.ce-buttons .btn {
+  flex: 1 1 0;
+}
+
+.ce-timer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.ce-timer[hidden] {
+  display: none;
+}
+
+.ce-timer .bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ce-timer .bar span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--c, var(--accent-2));
+  transform-origin: left;
+}
+
+.ce-timer.low {
+  color: var(--danger);
+}
+
+/* ---------- game over: over the table, so it's in view ---------- */
+/* At least the table's size; on a small phone it may reach below the table. */
+.ce-over {
+  position: absolute;
+  inset: 0 0 auto;
+  min-height: 100%;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--bg) 35%, transparent);
+}
+
+.ce-over[hidden] {
+  display: none;
+}
+
+.ce-over-card {
+  width: min(100%, 400px);
+  text-align: center;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ce-over {
+    animation: ce-fade var(--dur-slow) var(--ease-out);
+  }
+
+  .ce-over-card {
+    animation: ce-pop var(--dur-slow) var(--ease-spring);
+  }
+}
+
+@keyframes ce-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ce-pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+.ce-over h2 {
+  margin: 0 0 8px;
+  font-size: 1.45rem;
+}
+
+.ce-over h2.win {
+  color: var(--accent-text);
+}
+
+.ce-standings {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.ce-standings li {
+  display: grid;
+  grid-template-columns: 2.2em minmax(0, 1fr) auto;
+  grid-template-areas: "place who score" "place hand hand";
+  align-items: center;
+  column-gap: 8px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 0.92rem;
+}
+
+.ce-standings li.mine {
+  box-shadow: 0 0 0 2px var(--c) inset;
+  font-weight: 800;
+}
+
+.ce-standings .place {
+  grid-area: place;
+  font-weight: 900;
+  color: var(--c-ink);
+}
+
+.ce-standings .who {
+  grid-area: who;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ce-standings .who span:last-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ce-standings small {
+  grid-area: score;
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ce-left {
+  grid-area: hand;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 3px;
+}
+
+.ce-over .detail {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ce-over .verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 8px;
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.ce-over .verdict.ok {
+  color: var(--ok);
+}
+
+.ce-over .verdict small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.ce-over .verdict.bad {
+  color: var(--danger);
+}
+
+.ce-actions-over {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ce-over .rematch-status {
+  margin-top: 8px;
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 600px) {
+  .ce-table {
+    min-height: 0;
+  }
+
+  .ce-over-card {
+    padding: 10px 12px;
+  }
+
+  .ce-over .verdict small {
+    display: none;
+  }
+
+  .ce-pick {
+    font-size: 0.72rem;
+  }
+
+  .ce-pick .pc-suit {
+    width: 28px;
+    height: 28px;
+  }
+
+  .ce-over h2 {
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+  }
+
+  .ce-standings li {
+    font-size: 0.85rem;
+    padding: 3px 6px;
+  }
+}

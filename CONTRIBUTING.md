@@ -8,7 +8,7 @@ WebRTC. Read `ARCHITECTURE.md` once before your first change.
 ## Ground rules
 
 - **Language:** plain JavaScript only. Node ES modules on the server; browser JS, HTML and CSS in `public/`. No TypeScript, no frameworks, no build step, no bundler.
-- **Dependencies:** `ws` is the only one. Do not add more.
+- **Dependencies:** `ws` is the only npm dependency. Do not add more. The card deck's cryptography, the mental-poker library, is a pinned git submodule built to WebAssembly and committed (see **Card games** in `ARCHITECTURE.md`); games don't need anything else.
 - **Originality:** use original names, art, text and sounds. Copy papergames' rules and flow only, never their logo, art, sounds or wording.
 - **License:** contributions are accepted under the repo's [MIT License](LICENSE). A third-party asset needs a license compatible with it, credited in the game's folder the way each `sounds/LICENSE.txt` credits its recordings.
 - **No accounts:** no logins, tournaments, leaderboards, ads, analytics or random matchmaking. The nickname stays in `localStorage`.
@@ -29,6 +29,15 @@ anybuild . --start                    # build and serve on PORT (default 8080)
 anybuild . --start --runner=wasmer    # the same inside Wasmer's runtime; needs the Wasmer CLI
 ```
 
+Only to change the card deck's WebAssembly (Rust, `wasm-pack` and
+`wasm-opt` at the versions the script names):
+
+```bash
+git submodule update --init
+scripts/build-mental-poker.sh          # rebuild public/engine/vendor/mental-poker/
+scripts/build-mental-poker.sh --check  # what CI runs: fail if it differs from the committed files
+```
+
 `npm run test:browser` skips itself when Playwright is missing. If it is
 installed globally, the test finds it through `npm root -g`, or set
 `PLAYWRIGHT_MODULE=/path/to/playwright/index.js`. Screenshots go to
@@ -46,7 +55,8 @@ Take the first unchecked game in `GAMES.md`. Write down its papergames rules:
 board, turn order, win and draw conditions, and any special rules. Decide two
 things, because they choose your protocol:
 
-- **Hidden information?** (cards, hidden ships) → follow `public/sea-battle/match.js` (commitments and reveal-and-audit).
+- **Hidden cards?** (hands, a draw pile) → use `public/engine/card-match.js`. Nobody deals and nobody can see another hand; see **Card games** in `ARCHITECTURE.md`.
+- **Other hidden information?** (a fleet set up at the start) → follow `public/sea-battle/match.js` (commitments and reveal-and-audit).
 - **No hidden information?** (all board games in the backlog) → use `public/engine/turn-match.js`. Randomness such as dice goes through `rules.needsRandom()`, so it is drawn jointly by all peers.
 
 ### 2. Create the folder
@@ -131,11 +141,24 @@ export const rules = {
 Moves are small JSON objects (`{ cell: 4 }`, `{ from: 12, to: 28 }`). Both
 peers call `applyMove` with the same arguments, so it must be deterministic.
 
+For a card game (`CardMatch`), the rules object also has `deckSize`, and
+`newState(first, players, deck)` and `applyMove(state, player, move, deck)`
+get the deck: `deck.deal()`, `deck.open()`, `deck.shuffle()`, `deck.face()`
+and `deck.owner()`, plus, in `newState`, `deck.cards` (the shuffled deck's
+slots). A move that plays a card from a hand names it in `reveals(state,
+player, move)`; `settle(state, deck)` runs after cards are dealt. The contract
+is at the top of `engine/card-match.js`, and `test/fixtures/toy-cards.js` is a
+small game that uses all of it. The one rule to keep: the state must never
+depend on a face that may be hidden (`deck.face()` is null for it). A rule
+that needs a hidden card throws only when the face is known, which happens in
+the audit at the end.
+
 ### 4. Write `robot.js`
 
-- Export `chooseMove(state, me, rng)`. It returns a legal move, and only for `TurnMatch` games.
+- Export `chooseMove(state, me, rng)`. It returns a legal move (a card game's also gets `face`, below).
 - Make it decent rather than perfect: win if it can, block an immediate loss, then use a heuristic or a shallow search. It must answer in well under 100 ms.
 - Wire it up: `createRobot: (session) => startTurnRobot(session, { rules, choose: chooseMove, delay: 600 })`.
+- For a card game, `chooseMove(state, me, rng, face)` gets `face(slot)`, the faces the robot may know, and you wire it up with `startPacedRobot()` from `engine/cards/paced-robot.js`, which pauses like a person (or `startCardRobot()` from `engine/card-match.js`, with a fixed delay). A robot only sees its own seat's cards.
 
 ### 5. Write `main.js`
 
@@ -193,6 +216,29 @@ startGameShell({
   },
 });
 ```
+
+**Card games.** Use `CardMatch` from `../engine/card-match.js` the same way
+(`new CardMatch({ send, me, players, rules, m })`). While `match.busy` is set
+("keys", "shuffling", "dealing" or "auditing") the deck is working, so show
+it. `match.face(slot)` is a card's face if you may see it (every card once
+the audit has passed), else `null`. After "over", a "verified" event
+brings `match.verdict`: show "Fair play verified" or what didn't add up, as
+Sea Battle does. If the session ends while
+`match.busy` is "auditing", say the game couldn't be verified. A rematch can
+start before the verdict arrives, so keep listening to the old match for it.
+An "abort" carries `{ reason, seat, about }`: put the name of `seat` (who
+broke the rules or stopped the match) before the reason, and when `about` is
+set, the reason is about that player ("Ana stopped the match: Bob sent a
+shuffle that doesn't check out").
+
+Don't draw the table from scratch: `engine/cards/` has what the card games
+share (see **The shared table** in `ARCHITECTURE.md`): the deck's
+faces and art (`faces.js`, `art.js`), rummy melds and lay-offs (`melds.js`),
+the table's pieces and motion (`cardTable()` in `table.js`, styled by
+`cards.css`, which `index.html` links after `theme.css`; a hand can show its
+melds, be rearranged, or be laid face up), the card sounds to list in your `sounds.js`
+(`card-sounds.js`), robots that pause like a person (`paced-robot.js`) and
+the notice when a player leaves (`leave-notice.js`).
 
 **Settings (optional).** Clocks, board size, who goes first or a robot level
 go in `settings.js`, built with the engine's `gameSettings()`, and are passed
@@ -330,7 +376,7 @@ no change.
   - it takes an immediate win;
   - it blocks an immediate loss;
   - robot vs robot over 20 seeded games always finishes with legal moves.
-- **Protocol** (in `match.test.js` or `robot.test.js`): pair two `TurnMatch`es over `localPair()` + `openSession()` + `matchRouter()` (see `public/engine/turn-match.test.js`), play a full game, and assert both states are equal. For more than two players, seat them with `localRoom()` from `engine/room.js` and pass `players` to each `TurnMatch` (see the three-player test in `turn-match.test.js`).
+- **Protocol** (in `match.test.js` or `robot.test.js`): pair two `TurnMatch`es over `localPair()` + `openSession()` + `matchRouter()` (see `public/engine/turn-match.test.js`), play a full game, and assert both states are equal. For more than two players, seat them with `localRoom()` from `engine/room.js` and pass `players` to each `TurnMatch` (see the three-player test in `turn-match.test.js`). For a card game, run `startCardRobot()` in every seat of a `localRoom()` and also assert every `match.verdict` is `{ ok: true }` (see `public/engine/card-match.test.js`).
 - **Sounds:** nothing to add. `test/browser/sound-levels.test.js` finds every `sounds.js` and checks each sound's loudness.
 - **Message size:** add the game to `GAMES` in `test/message-size.test.js` (its biggest board and most players). It plays a full match and fails if a message is over 4 K characters; a browser cuts off a player whose message is over 64 K (see **Message size** in `ARCHITECTURE.md`). Send moves, not whole states.
 - **Browser (recommended):** add `test/browser/<slug>.test.js` modelled on `test/browser/friend-match.test.js`. Host clicks `#play-friend`, the guest opens `#invite-link`, both play through `window.ddp.match`, then a rematch.
@@ -371,7 +417,7 @@ windows (one private).
 - [ ] `rules.js` is pure and fully unit-tested; illegal moves throw `RuleError`
 - [ ] Robot plays legal, decent moves, and robot-vs-robot games always finish
 - [ ] Friend match works in two windows: invite link, auto-join, full game, rematch, leave
-- [ ] No hidden information leaks over the wire. If the game has any, it uses commitments like Sea Battle.
+- [ ] No hidden information leaks over the wire. Hidden cards go through `CardMatch`; other hidden information uses commitments like Sea Battle.
 - [ ] All randomness comes from `SharedRandom`, through `TurnMatch` or a custom match
 - [ ] `layout` passed to `startGameShell()`, and the view's top-level box has no `max-width`
 - [ ] Names, turn, score and Leave come from `playerBar()`, not a bar of the game's own
@@ -400,6 +446,9 @@ windows (one private).
 | `public/engine/group.js` | The group transport: send to everyone, receive `(msg, fromSeat)`; today a star through the host |
 | `public/engine/session.js` | `Session` (players, rematch, leave), the start handshake, and `matchRouter()` |
 | `public/engine/turn-match.js` | `TurnMatch` and `startTurnRobot()` for open-information turn games |
+| `public/engine/card-match.js` | `CardMatch` and `startCardRobot()` for turn games with hidden cards; the deck runs in `deck-service.js` / `deck-worker.js` / `deck-crypto.js` |
+| `public/engine/cards/` | The card games' shared table: faces and art, the table's pieces and motion, card sounds, paced robots, the leaving notice |
+| `vendor/`, `scripts/build-mental-poker.sh` | The mental-poker library (submodule), our patches and lock file, and the script that builds it into `public/engine/vendor/mental-poker/` |
 | `public/engine/robot-pace.js` | `robotPause()`: robots' pauses, which browser tests shorten |
 | `public/engine/fair.js` | Commitments and `SharedRandom` |
 | `public/engine/shell.js` | Header, footer, theme toggle, nickname, `el()`, `toast()` |

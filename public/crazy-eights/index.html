@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Crazy Eights · Daily Dose of Play</title>
+    <meta name="description" content="Free Crazy Eights for 2 to 4 players with friends or vs robots, right in the browser. Match the suit or the rank, play an 8 to change the suit, and empty your hand first. Nobody deals and nobody can peek. No sign-up." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/engine/fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/engine/theme.css" />
+    <link rel="stylesheet" href="/engine/cards/cards.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section id="lobby"></section>
+      <section id="game" hidden></section>
+      <details class="card rules">
+        <summary>How to play</summary>
+        <ul>
+          <li>Two to four players and a standard 52-card deck. With two players everyone gets 7 cards; with three or four, 5 each. The next card is turned up to start the discard pile (an 8 goes to the bottom of the stock instead).</li>
+          <li>On your turn, play one card that matches the top card's <strong>suit</strong> or its <strong>rank</strong>. Cards you can play glow.</li>
+          <li>8s are wild: play one on anything and name the suit the next player must follow.</li>
+          <li>If you can't play, draw from the stock until you can, then play. With <strong>Draw one, then pass</strong>, you draw a single card, then play or pass. When the stock runs out, the discard pile (all but its top card) is shuffled into a new one; with nothing left to draw, you pass. When drawing is the only thing you can do, it's done for you.</li>
+          <li>The first player to empty their hand wins. With three or four players, the others are ranked by penalty points left in their hands: 8s 50, kings, queens and jacks 10, aces 1, others their number. If nobody can move, or a game goes round in circles for very long, the fewest cards win.</li>
+          <li>Room settings: draw until you can play or draw one; whether you may draw while you hold a card that plays (by default you may not, and since nobody can see your hand, that's checked when the game ends); action cards (a 2 makes the next player take two and miss their turn, a queen skips the next player, an ace reverses the direction; with two players it gives you another turn); who goes first; and a time to move, after which a move is made for you. With friends, the settings of whoever creates the room apply to everyone.</li>
+          <li>Tap a glowing card to play it, or tap the stock to draw. On a keyboard, Tab to your hand, use the arrow keys and press Enter; D draws and P passes. After an 8, pick a suit with the arrow keys and Enter.</li>
+          <li>To play friends, create a room and send the invite link to up to three of them, then press <strong>Start game</strong>. Against robots, pick 1, 2 or 3 robots and their level. <strong>Four colours</strong> shows diamonds blue and clubs green, on this device only.</li>
+          <li>Fair play without a dealer: every browser shuffles the deck in turn and proves it did so honestly, and a card can only be read with every player's key, so nobody can peek at another hand or stack the deck. (The one gap: with three or more players, a room creator running a tampered browser could read a hand.) When the game ends, everyone reveals their key and each browser replays the whole game with every card known: you see "Fair play verified" or what didn't add up.</li>
+        </ul>
+      </details>
+    </main>
+  </body>
+</html>
