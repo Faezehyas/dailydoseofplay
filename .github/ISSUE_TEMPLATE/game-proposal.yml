@@ -1,0 +1,71 @@
+name: Game proposal
+description: Claim a game from GAMES.md, or suggest a new one, before you build it.
+title: "Game proposal: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for wanting to build a game! A maintainer labels this issue `accepted` and assigns it to you; then open a draft PR within a week, or the claim lapses. One game per PR. The recipe is in [CONTRIBUTING.md](https://github.com/Faezehyas/dailydoseofplay/blob/main/CONTRIBUTING.md).
+  - type: input
+    id: game
+    attributes:
+      label: Game
+      description: The name the site would use. Pick an original one if the classic name is a trademark.
+      placeholder: Reversi
+    validations:
+      required: true
+  - type: dropdown
+    id: players
+    attributes:
+      label: Players
+      options:
+        - "2"
+        - 2–4
+    validations:
+      required: true
+  - type: input
+    id: rules
+    attributes:
+      label: Rules source
+      description: A link to the rules you'll follow. Say in the PR where you change them.
+      placeholder: https://
+    validations:
+      required: true
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Protocol
+      description: See "Pick and claim the game" in CONTRIBUTING.md.
+      options:
+        - TurnMatch (everyone sees the whole board, one seat moves at a time)
+        - CardMatch (hidden cards: hands and a draw pile)
+        - Hidden information with commit-and-reveal, like Sea Battle
+        - Needs engine work (say what below)
+    validations:
+      required: true
+  - type: textarea
+    id: robot
+    attributes:
+      label: Robot idea
+      description: How the robot picks a move, and its levels if any. It must answer in well under 100 ms.
+    validations:
+      required: true
+  - type: textarea
+    id: art
+    attributes:
+      label: Original art plan
+      description: How you'll draw the board, pieces and home card (icon.svg). Nothing copied from other sites or games.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Engine work the game needs, settings you plan, questions.
+  - type: checkboxes
+    id: read
+    attributes:
+      label: Before you post
+      options:
+        - label: I've read CONTRIBUTING.md.
+          required: true
